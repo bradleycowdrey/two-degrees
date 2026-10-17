@@ -134,7 +134,8 @@ enum SelfTest {
         updater.selfTestShow(phase: .downloading)
         try? await Task.sleep(for: .seconds(0.6))
         snapshot(host: host, dir: dir, name: "update-2-downloading.png")
-        updater.selfTestShow(phase: .upToDate, notice: "You’re up to date. Two Degrees \(updater.latest?.version ?? "") is the newest version.", clearLatest: true)
+        let newest = updater.latest?.version ?? "?"
+        updater.selfTestShow(phase: .upToDate, notice: "You’re up to date. Two Degrees \(newest) is the newest version.", clearLatest: true)
         try? await Task.sleep(for: .seconds(0.6))
         snapshot(host: host, dir: dir, name: "update-3-up-to-date.png")
         updater.selfTestShow(phase: .failed("x"), notice: "Couldn’t check for updates. GitHub didn’t respond.", error: true)
@@ -172,6 +173,8 @@ enum SelfTest {
         }
 
         // 8. Logic checks that need no UI.
+        let fromTag = try? Updater.release(fromTagPage: URL(string: "https://github.com/bradleycowdrey/two-degrees/releases/tag/v1.2.3")!)
+        check(fromTag?.version == "1.2.3" && fromTag?.dmg.lastPathComponent == "TwoDegrees-1.2.3.dmg", "update fallback reads the version from the release page")
         check(Updater.isNewer("0.2.10", than: "0.2.9") && !Updater.isNewer("0.2.0", than: "0.2.0") && Updater.isNewer("1.0", than: "0.9.9-dev"),
               "version comparison")
         let ticks = Ticks.make(low: 0, high: 25, unit: .fahrenheit)
@@ -187,13 +190,22 @@ enum SelfTest {
             check(false, "\(label): no window")
             return
         }
-        content.layoutSubtreeIfNeeded()
-        let fit = content.fittingSize
+        // The SwiftUI hosting view reports the panel's ideal size; the window must match its width
+        // (taller panels scroll inside the window when the screen is short) and stay on screen.
+        func hosting(_ view: NSView) -> NSView? {
+            if String(describing: type(of: view)).contains("HostingView") { return view }
+            for sub in view.subviews { if let found = hosting(sub) { return found } }
+            return nil
+        }
+        let measured = hosting(content) ?? content
+        measured.layoutSubtreeIfNeeded()
+        let fit = measured.fittingSize
         let bounds = content.bounds
-        let clipped = fit.width > bounds.width + 1 || fit.height > bounds.height + 1
+        let widthOK = fit.width < 1 || abs(fit.width - bounds.width) <= 1
         let onScreen = screen.isEmpty || screen.insetBy(dx: -1, dy: -1).contains(window.frame)
-        check(!clipped && onScreen,
-              "\(label): window \(Int(window.frame.width))x\(Int(window.frame.height)), content needs \(Int(fit.width))x\(Int(fit.height))\(clipped ? " CLIPPED" : "")\(onScreen ? "" : " OFFSCREEN")")
+        let scrolls = fit.height > bounds.height + 1
+        check(widthOK && onScreen,
+              "\(label): window \(Int(window.frame.width))x\(Int(window.frame.height)), panel wants \(Int(fit.width))x\(Int(fit.height))\(scrolls ? " (scrolls)" : "")\(widthOK ? "" : " WIDTH MISMATCH")\(onScreen ? "" : " OFFSCREEN")")
     }
 
     private static func snapshot(host: HostWindow, dir: URL, name: String) {

@@ -20,7 +20,11 @@ jobs:
         with:
           fetch-depth: 0
       - name: Unit tests
-        run: swift test 2>&1 | tee "$RUNNER_TEMP/unit-tests.txt"
+        id: unit
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          swift test 2>&1 | tee "$RUNNER_TEMP/unit-tests.txt"
       - name: Build
         run: scripts/build-app.sh 0.0.0-selftest
       - name: Run self-test
@@ -43,4 +47,5 @@ jobs:
           git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" ci-shots
       - name: Fail on any failed check
         run: |
+          [ "${{ steps.unit.outcome }}" = "success" ] || { echo "Unit tests failed"; exit 1; }
           head -1 "$RUNNER_TEMP/shots/report.txt" | grep -q "ALL PASSED"

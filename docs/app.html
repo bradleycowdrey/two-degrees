@@ -481,7 +481,7 @@
       hourly: 'temperature_2m,weather_code,precipitation_probability,is_day',
       daily: 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset',
     });
-    const res = await fetch(url);
+    const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
     if (!res.ok) throw new Error('Open-Meteo answered ' + res.status);
     const j = await res.json();
     const c = j.current, h = j.hourly, d = j.daily;
@@ -621,7 +621,16 @@
     const data = state.data[keyOf(city)];
     $('#unitF').setAttribute('aria-pressed', state.unit === 'F');
     $('#unitC').setAttribute('aria-pressed', state.unit === 'C');
-    if (!data) return;
+    if (!data) {
+      // A city whose forecast hasn't arrived yet: say so, never show the previous city's numbers.
+      $('#now').innerHTML = `<div class="place"><h2>${esc(city.name)}</h2><span class="local">${esc(city.region)}</span></div><div class="skeleton">Loading the forecast…</div>`;
+      $('#hours').innerHTML = '';
+      $('#hoursAside').textContent = '';
+      $('#days').innerHTML = '';
+      $('#dayTicks').innerHTML = '';
+      $('#statusText').textContent = 'Loading…';
+      return;
+    }
     const u = state.unit, o = other(u);
     const cur = data.current;
     const [condName, kind] = codeInfo(cur.code);
@@ -732,7 +741,7 @@
   let searchSeq = 0;
   function openSearch(open) {
     $('#search').hidden = !open;
-    if (open) { $('#searchInput').value = ''; showResults(''); setTimeout(() => $('#searchInput').focus(), 0); }
+    if (open) { $('#searchInput').value = ''; showResults(''); $('#searchInput').focus(); }
     renderCities();
   }
   function resultRow(c, i) {
@@ -899,6 +908,7 @@
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && !$('#shareMenu').hidden) { toggleShare(false); $('#shareBtn').focus(); }
     if (e.key === 'Escape' && !$('#moreMenu').hidden) { toggleMore(false); $('#moreBtn').focus(); }
+    else if (e.key === 'Escape' && $('#shareMenu').hidden && (!$('#search').hidden || state.editing)) { state.editing = false; openSearch(false); }
   });
 
   setInterval(() => { state.cities.forEach((c) => { const d = state.data[keyOf(c)]; if (d && d.source === 'live' && Date.now() - d.fetchedAt > CACHE_MS) delete state.data[keyOf(c)]; }); refreshAll(); }, 15 * 60 * 1000);

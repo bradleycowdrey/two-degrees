@@ -23,6 +23,14 @@ final class UpdaterTests: XCTestCase {
         XCTAssertEqual(release.sha256?.lastPathComponent, "TwoDegrees-0.2.2.dmg.sha256")
     }
 
+    func testFallbackReadsVersionFromReleasePage() throws {
+        let release = try Updater.release(fromTagPage: URL(string: "https://github.com/bradleycowdrey/two-degrees/releases/tag/v0.3.0")!)
+        XCTAssertEqual(release.version, "0.3.0")
+        XCTAssertEqual(release.dmg.absoluteString, "https://github.com/bradleycowdrey/two-degrees/releases/download/v0.3.0/TwoDegrees-0.3.0.dmg")
+        XCTAssertEqual(release.sha256?.lastPathComponent, "TwoDegrees-0.3.0.dmg.sha256")
+        XCTAssertThrowsError(try Updater.release(fromTagPage: URL(string: "https://github.com/bradleycowdrey/two-degrees/releases")!))
+    }
+
     func testReleaseWithoutDMGIsAnError() {
         let json = #"{"tag_name":"v9.9.9","html_url":"https://example.com","assets":[]}"#
         XCTAssertThrowsError(try Updater.parse(Data(json.utf8)))

@@ -279,24 +279,39 @@ private struct UpdateBanner: View {
                     message("Checking for updates…")
                 }
             } else if let notice = updater.notice {
-                row {
-                    Image(systemName: notice.isError ? "exclamationmark.circle.fill" : "checkmark.circle.fill")
-                        .font(ui.font(14, .semibold))
-                        .foregroundStyle(notice.isError ? Palette.crimson : Palette.cream)
-                    message(notice.text)
-                    Spacer(minLength: ui.s)
-                    if notice.isError {
-                        Button("Retry") {
-                            Task {
-                                if updater.latest != nil { await updater.install() } else { await updater.check(userInitiated: true) }
-                            }
-                        }
-                        .buttonStyle(PillButtonStyle())
-                        Button("Download") { updater.openReleasePage() }
-                            .buttonStyle(PillButtonStyle())
+                // The message gets the full width; an error's actions sit on their own line below.
+                VStack(alignment: .leading, spacing: ui.s) {
+                    HStack(alignment: .top, spacing: ui.m) {
+                        Image(systemName: notice.isError ? "exclamationmark.circle.fill" : "checkmark.circle.fill")
+                            .font(ui.font(14, .semibold))
+                            .foregroundStyle(notice.isError ? Palette.crimson : Palette.cream)
+                            .padding(.top, ui.pt(1))
+                        Text(notice.text)
+                            .font(ui.meta)
+                            .foregroundStyle(Palette.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        IconButton(symbol: "xmark", help: "Dismiss", small: true) { updater.dismissNotice() }
                     }
-                    IconButton(symbol: "xmark", help: "Dismiss") { updater.dismissNotice() }
+                    if notice.isError {
+                        HStack(spacing: ui.s) {
+                            Spacer()
+                            Button("Download from GitHub") { updater.openReleasePage() }
+                                .buttonStyle(PillButtonStyle(small: true))
+                            Button("Try Again") {
+                                Task {
+                                    if updater.latest != nil { await updater.install() } else { await updater.check(userInitiated: true) }
+                                }
+                            }
+                            .buttonStyle(PillButtonStyle(prominent: true, small: true))
+                        }
+                    }
                 }
+                .padding(.leading, ui.l)
+                .padding(.trailing, ui.pt(8))
+                .padding(.vertical, ui.pt(10))
+                .background(RoundedRectangle(cornerRadius: ui.pt(18), style: .continuous).fill(Palette.raisedTile))
+                .transition(.move(edge: .top).combined(with: .opacity))
             }
         }
         .animation(.snappy, value: updater.notice)

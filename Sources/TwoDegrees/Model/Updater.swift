@@ -81,12 +81,15 @@ final class Updater: ObservableObject {
         if userInitiated { userChecking = true; notice = nil }
         defer { userChecking = false }
         do {
-            var request = URLRequest(url: Brand.releasesAPI, timeoutInterval: 20)
-            request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
-            request.setValue("TwoDegrees/\(currentVersion)", forHTTPHeaderField: "User-Agent")
-            let (data, response) = try await URLSession.shared.data(for: request)
-            guard (response as? HTTPURLResponse)?.statusCode == 200 else { throw UpdateError.server }
-            let release = try Self.parse(data)
+            // The API gives release notes and exact asset names, but it rate-limits unsigned
+            // requests (60 an hour per network). If it refuses, read the version from the public
+            // "latest release" redirect instead, which has no such limit.
+            let release: Release
+            do {
+                release = try await fetchFromAPI()
+            } catch {
+                release = try await fetchFromLatestRedirect()
+            }
 
             lastChecked = Date()
             UserDefaults.standard.set(lastChecked, forKey: "updates.lastChecked")
@@ -104,6 +107,36 @@ final class Updater: ObservableObject {
             phase = .failed(error.localizedDescription)
             if userInitiated { post("Couldn’t check for updates. \(error.localizedDescription)", error: true) }
         }
+    }
+
+    private func fetchFromAPI() async throws -> Release {
+        var request = URLRequest(url: Brand.releasesAPI, timeoutInterval: 20)
+        request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+        request.setValue("TwoDegrees/\(currentVersion)", forHTTPHeaderField: "User-Agent")
+        let (data, response) = try await URLSession.shared.data(for: request)
+        let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+        guard status == 200 else { throw UpdateError.status(status) }
+        return try Self.parse(data)
+    }
+
+    /// github.com/<repo>/releases/latest redirects to …/releases/tag/v<version>; the release
+    /// assets follow a fixed naming scheme (see .github/workflows/release.yml).
+    private func fetchFromLatestRedirect() async throws -> Release {
+        var request = URLRequest(url: Brand.repository.appendingPathComponent("releases/latest"), timeoutInterval: 20)
+        request.httpMethod = "HEAD"
+        let (_, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse else { throw UpdateError.server }
+        guard http.statusCode == 200, let final = http.url else { throw UpdateError.status(http.statusCode) }
+        return try Self.release(fromTagPage: final)
+    }
+
+    nonisolated static func release(fromTagPage page: URL) throws -> Release {
+        let tag = page.lastPathComponent
+        guard page.pathComponents.contains("tag"), tag.hasPrefix("v") else { throw UpdateError.noDownload }
+        let version = String(tag.dropFirst())
+        let dmg = Brand.repository.appendingPathComponent("releases/download/\(tag)/TwoDegrees-\(version).dmg")
+        return Release(version: version, notes: "", dmg: dmg,
+                       sha256: dmg.deletingLastPathComponent().appendingPathComponent(dmg.lastPathComponent + ".sha256"), page: page)
     }
 
     // MARK: Install
@@ -196,7 +229,7 @@ final class Updater: ObservableObject {
         let assets: [Asset]
     }
 
-    static func parse(_ data: Data) throws -> Release {
+    nonisolated static func parse(_ data: Data) throws -> Release {
         let release = try JSONDecoder().decode(GitHubRelease.self, from: data)
         let version = release.tag_name.hasPrefix("v") ? String(release.tag_name.dropFirst()) : release.tag_name
         let versioned = release.assets.first { $0.name.hasPrefix("TwoDegrees-") && $0.name.hasSuffix(".dmg") }
@@ -214,7 +247,7 @@ final class Updater: ObservableObject {
     }
 
     /// Numeric dotted comparison; anything after "-" (e.g. "-dev") is ignored.
-    static func isNewer(_ candidate: String, than current: String) -> Bool {
+    nonisolated static func isNewer(_ candidate: String, than current: String) -> Bool {
         func parts(_ v: String) -> [Int] {
             let core = v.split(separator: "-").first.map(String.init) ?? v
             return core.split(separator: ".").map { Int($0) ?? 0 }
@@ -228,7 +261,7 @@ final class Updater: ObservableObject {
         return false
     }
 
-    static func sha256(of url: URL) throws -> String {
+    nonisolated static func sha256(of url: URL) throws -> String {
         let digest = SHA256.hash(data: try Data(contentsOf: url))
         return digest.map { String(format: "%02x", $0) }.joined()
     }
@@ -340,11 +373,13 @@ final class Updater: ObservableObject {
 
 enum UpdateError: LocalizedError {
     case server, download, checksum, noDownload, noApp, wrongVersion
+    case status(Int)
     case tool(String, Int32)
 
     var errorDescription: String? {
         switch self {
         case .server: return "GitHub didn’t respond. Check your internet connection and try again."
+        case .status(let code): return "GitHub answered with an error (HTTP \(code)). Try again in a little while."
         case .download: return "The download didn’t finish."
         case .checksum: return "The download didn’t match its published checksum, so it wasn’t installed."
         case .noDownload: return "The latest release has no Mac download yet."
