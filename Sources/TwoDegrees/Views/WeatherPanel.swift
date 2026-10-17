@@ -994,7 +994,7 @@ private struct StatusLine: View {
         if store.loading && store.activeForecast == nil { return "Loading…" }
         guard let forecast = store.activeForecast else { return "Offline" }
         let time = forecast.fetchedAt.formatted(date: .omitted, time: .shortened)
-        return store.isOffline ? "Offline. Forecast from \(time)" : "Updated \(time)"
+        return store.isOffline ? "Offline · from \(time)" : "Updated \(time)"
     }
 }
 

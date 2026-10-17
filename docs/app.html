@@ -218,7 +218,7 @@
     .cities.editing { padding-top: 10px; }
     .chip { height: 36px; }
     .seg.list button { width: 36px; height: 32px; }
-    .seg.list { position: sticky; right: 0; box-shadow: -12px 0 12px var(--bg); }
+    .seg.list { position: sticky; right: 0; box-shadow: -20px 0 14px 2px var(--bg); }
     .days-head { grid-template-columns: 134px minmax(0, 1fr) 44px; column-gap: 8px; }
     .foot .sep { display: none; }
     .foot .host { display: block; }
@@ -430,7 +430,7 @@
     const body = isDay ? sun : moon;
     let g;
     switch (kind) {
-      case 'clear': g = isDay ? sun(12, 12, 4.6) : moon(11, 12, 6.4); break;
+      case 'clear': g = isDay ? sun(12, 12, 4.6) : moon(11, 12, 7.6); break;
       case 'partly': g = (isDay ? sun(8.6, 8.4, 3.4) : moon(8.4, 8.4, 4.4)) + `<path d="${CLOUD}" fill="var(--cloud)" stroke="var(--tile)" stroke-width="1.4"/>`; break;
       case 'cloud': g = `<path d="M10.5 9.8a4.6 4.6 0 0 1 8.4 1.6 3.2 3.2 0 0 1 .2 6.3" fill="none" stroke="var(--cloud-dark)" stroke-width="1.6" stroke-linecap="round"/><path d="${CLOUD}" fill="var(--cloud)"/>`; break;
       case 'fog': g = `<path d="${CLOUD_HI}" fill="var(--cloud)"/><path d="M5 18.5h14M7 21.5h10" stroke="var(--cloud-dark)" stroke-width="1.8" stroke-linecap="round"/>`; break;
@@ -692,7 +692,7 @@
     status.classList.toggle('live', data.source === 'live' && !data.stale);
     $('#statusText').title = data.source === 'live' ? '' : 'Live data couldn’t load here, so this is an example forecast.';
     $('#statusText').textContent = data.source === 'live'
-      ? `${data.stale ? 'Offline, showing the forecast from' : 'Updated'} ${new Date(data.fetchedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`
+      ? `${data.stale ? 'Offline · from' : 'Updated'} ${new Date(data.fetchedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`
       : 'Sample forecast';
     document.title = `${deg(cur.t, u)}°${u} ${city.name} · Two Degrees`;
   }
