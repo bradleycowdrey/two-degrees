@@ -738,13 +738,12 @@ private struct HoursTile: View {
                 ScrollView(.horizontal, showsIndicators: false) {
                     ZStack(alignment: .topLeading) {
                         HStack(spacing: 0) {
-                            let anyRain = hours.contains { $0.rainChance >= 20 }
                             ForEach(Array(hours.enumerated()), id: \.element.id) { index, hour in
-                                HourColumn(hour: hour, index: index, showsRain: anyRain)
+                                HourColumn(hour: hour, index: index)
                             }
                         }
                         Sparkline(temperatures: temps, column: ui.hourWidth, height: ui.sparkHeight)
-                            .offset(y: ui.pt(16) + ui.pt(4) + ui.pt(26))
+                            .offset(y: ui.pt(16) + ui.pt(30))   // under the label and icon slot
                             .allowsHitTesting(false)
                     }
                     .padding(.trailing, ui.xl)
@@ -760,7 +759,6 @@ private struct HourColumn: View {
     @Environment(\.metrics) private var ui
     let hour: Forecast.Hour
     let index: Int
-    let showsRain: Bool
 
     var body: some View {
         let unit = store.unit, other = store.unit.other
@@ -771,19 +769,18 @@ private struct HourColumn: View {
                 .font(ui.font(12, index == 0 ? .semibold : .medium))
                 .foregroundStyle(index == 0 ? Palette.cream : Palette.textMuted)
                 .frame(height: ui.pt(16))
-            // With rain in the next 24 hours, the icon shrinks to make room for the % beneath it,
-            // in the same 30pt slot, so the sparkline below never moves.
-            if showsRain {
+            // An hour with rain shrinks its icon to make room for the % beneath it, in the same
+            // 30pt slot, so the sparkline below never moves.
+            if hour.rainChance >= 20 {
                 WeatherSymbol(code: hour.code, isDay: hour.isDay, size: ui.pt(15))
                     .frame(width: ui.pt(26), height: ui.pt(20))
-                Text(hour.rainChance >= 20 ? "\(hour.rainChance)%" : " ")
+                Text("\(hour.rainChance)%")
                     .font(ui.font(10, .semibold))
                     .foregroundStyle(Palette.rain)
                     .frame(height: ui.pt(10))
             } else {
-                WeatherSymbol(code: hour.code, isDay: hour.isDay, size: ui.pt(18))
-                    .frame(width: ui.pt(26), height: ui.pt(26))
-                    .padding(.top, ui.pt(4))
+                WeatherSymbol(code: hour.code, isDay: hour.isDay, size: ui.pt(17))
+                    .frame(width: ui.pt(26), height: ui.pt(30))
             }
             Color.clear.frame(height: ui.sparkHeight)
             Text("\(unit.value(hour.temperature))°")
@@ -812,7 +809,7 @@ private struct Sparkline: View {
     var body: some View {
         Canvas { context, size in
             guard temperatures.count > 1, let low = temperatures.min(), let high = temperatures.max() else { return }
-            let pad: CGFloat = 5
+            let pad: CGFloat = 4
             let span = max(high - low, 1)
             let points = temperatures.enumerated().map { i, t in
                 CGPoint(x: CGFloat(i) * column + column / 2, y: pad + (1 - CGFloat((t - low) / span)) * (height - pad * 2))
@@ -925,8 +922,8 @@ private struct DayRow: View {
             .frame(width: ui.pt(48), alignment: .leading)
         }
         .monospacedDigit()
-        .frame(minHeight: ui.pt(44))
-        .padding(.vertical, ui.pt(4))
+        .frame(minHeight: ui.pt(48))
+        .padding(.vertical, ui.pt(2))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(name): \(Condition.name(day.code)). Low \(Speech.temperature(day.low)). High \(Speech.temperature(day.high)).\(day.rainChance >= 20 ? " \(day.rainChance) percent chance of rain." : "")")
     }

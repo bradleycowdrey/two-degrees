@@ -144,7 +144,7 @@ struct Metrics {
     var tileRadius: CGFloat { pt(22) }
     var cellRadius: CGFloat { pt(12) }
     var hourWidth: CGFloat { pt(48) }
-    var sparkHeight: CGFloat { pt(30) }
+    var sparkHeight: CGFloat { pt(26) }
     var panelWidth: CGFloat { pt(444) }
 }
 
