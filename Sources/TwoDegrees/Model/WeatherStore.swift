@@ -35,11 +35,13 @@ final class WeatherStore: ObservableObject {
     @Published private(set) var failed: Set<String> = []
     @Published private(set) var loading = false
 
-    private let defaults = UserDefaults.standard
+    private let defaults: UserDefaults
     private var timer: Timer?
 
-    init() {
-        let saved: [City]? = Self.load("cities")
+    /// `defaults` and `autoRefresh` are for unit tests (an isolated suite, no timers).
+    init(defaults: UserDefaults = .standard, autoRefresh: Bool = true) {
+        self.defaults = defaults
+        let saved: [City]? = Self.load("cities", from: defaults)
         let cities = saved?.isEmpty == false ? saved! : Self.starterCities
         self.cities = cities
         activeID = defaults.string(forKey: "activeID").flatMap { id in cities.contains { $0.id == id } ? id : nil } ?? cities[0].id
@@ -49,7 +51,8 @@ final class WeatherStore: ObservableObject {
         uiSize = defaults.string(forKey: "uiSize").flatMap(UISize.init(rawValue:)) ?? .medium
         appFont = defaults.string(forKey: "appFont").flatMap(AppFont.init(rawValue:)) ?? .inter
         floatOnTop = defaults.bool(forKey: "floatOnTop")
-        if let cached: [String: Forecast] = Self.load("forecasts") { forecasts = cached }
+        if let cached: [String: Forecast] = Self.load("forecasts", from: defaults) { forecasts = cached }
+        guard autoRefresh else { return }
 
         timer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
             Task { @MainActor in await self?.refreshIfDue() }
@@ -75,6 +78,7 @@ final class WeatherStore: ObservableObject {
     func add(_ city: City) {
         if let existing = cities.first(where: { $0.id == city.id }) {
             activeID = existing.id
+            if forecasts[existing.id] == nil { Task { await load(existing) } }
         } else if canAdd {
             cities.append(city)
             activeID = city.id
@@ -85,6 +89,9 @@ final class WeatherStore: ObservableObject {
     func remove(_ city: City) {
         guard cities.count > 1 else { return }
         cities.removeAll { $0.id == city.id }
+        forecasts[city.id] = nil
+        failed.remove(city.id)
+        save(forecasts, "forecasts")
         if activeID == city.id { activeID = cities[0].id }
     }
 
@@ -126,6 +133,8 @@ final class WeatherStore: ObservableObject {
     private func load(_ city: City) async {
         do {
             let forecast = try await OpenMeteo.forecast(for: city)
+            // The city may have been removed while its forecast loaded: don't keep (or save) it.
+            guard cities.contains(where: { $0.id == city.id }) else { return }
             forecasts[city.id] = forecast
             failed.remove(city.id)
             save(forecasts, "forecasts")
@@ -171,8 +180,8 @@ final class WeatherStore: ObservableObject {
         if let data = try? JSONEncoder().encode(value) { defaults.set(data, forKey: key) }
     }
 
-    private static func load<T: Decodable>(_ key: String) -> T? {
-        guard let data = UserDefaults.standard.data(forKey: key) else { return nil }
+    private static func load<T: Decodable>(_ key: String, from defaults: UserDefaults) -> T? {
+        guard let data = defaults.data(forKey: key) else { return nil }
         return try? JSONDecoder().decode(T.self, from: data)
     }
 }

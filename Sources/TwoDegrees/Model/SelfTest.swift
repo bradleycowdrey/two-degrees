@@ -208,7 +208,9 @@ enum SelfTest {
         let onScreen = screen.isEmpty || screen.insetBy(dx: -1, dy: -1).contains(window.frame)
         let scrolls = contentHeight > maxBodyHeight + 1
         let screenFull = window.frame.height >= screen.height - 80
-        check(widthOK && onScreen && contentHeight > 0 && (!scrolls || screenFull),
+        // On a normal laptop screen (800pt+ tall), the closed panel must fit without scrolling.
+        let roomy = screen.height >= 800 && !label.contains("forecast-open") && !label.contains("adding")
+        check(widthOK && onScreen && contentHeight > 0 && (!scrolls || screenFull) && !(roomy && scrolls),
               "\(label): window \(Int(window.frame.width))x\(Int(window.frame.height)), panel \(Int(panelWidth)) wide, content \(Int(contentHeight)) tall"
               + (scrolls ? " (scrolls: screen allows \(Int(maxBodyHeight)))" : " (fits)")
               + (widthOK ? "" : " WIDTH MISMATCH") + (onScreen ? "" : " OFFSCREEN"))

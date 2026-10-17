@@ -5,7 +5,8 @@ import AppKit
 @MainActor
 enum DockTile {
     static func update(store: WeatherStore) {
-        let tile = NSApp.dockTile
+        guard let app = NSApp else { return }   // no app (unit tests)
+        let tile = app.dockTile
         guard store.dockShowsWeather, let forecast = store.activeForecast else {
             if tile.contentView != nil {
                 tile.contentView = nil   // back to the app icon

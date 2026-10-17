@@ -119,6 +119,8 @@ final class PanelLogicTests: XCTestCase {
 final class StubProtocol: URLProtocol {
     /// url prefix → (status, body, final URL after redirects)
     nonisolated(unsafe) static var routes: [(String, Int, Data, URL?)] = []
+    /// Seconds to wait before answering, to hold a request "in flight".
+    nonisolated(unsafe) static var delay: TimeInterval = 0
 
     override class func canInit(with request: URLRequest) -> Bool { true }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
@@ -129,9 +131,11 @@ final class StubProtocol: URLProtocol {
             return
         }
         let response = HTTPURLResponse(url: route.3 ?? request.url!, statusCode: route.1, httpVersion: nil, headerFields: nil)!
-        client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
-        client?.urlProtocol(self, didLoad: route.2)
-        client?.urlProtocolDidFinishLoading(self)
+        DispatchQueue.global().asyncAfter(deadline: .now() + Self.delay) {
+            self.client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+            self.client?.urlProtocol(self, didLoad: route.2)
+            self.client?.urlProtocolDidFinishLoading(self)
+        }
     }
     override func stopLoading() {}
 
@@ -149,6 +153,28 @@ final class UpdaterFlowTests: XCTestCase {
 
     func release(_ version: String) -> Data {
         Data(#"{"tag_name":"v\#(version)","html_url":"https://github.com/x","assets":[{"name":"TwoDegrees-\#(version).dmg","browser_download_url":"https://github.com/d/TwoDegrees-\#(version).dmg"},{"name":"TwoDegrees-\#(version).dmg.sha256","browser_download_url":"https://github.com/d/TwoDegrees-\#(version).dmg.sha256"}]}"#.utf8)
+    }
+
+    override func setUp() { StubProtocol.delay = 0 }
+
+    func testUserCheckDuringAutomaticCheckIsAnswered() async throws {
+        StubProtocol.routes = [(api, 200, release("0.2.2"), nil)]
+        StubProtocol.delay = 0.4
+        let u = updater("0.2.2")
+        let automatic = Task { await u.check(userInitiated: false) }
+        try await Task.sleep(for: .milliseconds(100))
+        XCTAssertEqual(u.phase, .checking)
+        await u.check(userInitiated: true)
+        XCTAssertTrue(u.userChecking, "shows Checking… instead of ignoring the click")
+        await automatic.value
+        XCTAssertTrue(u.notice?.text.contains("up to date") ?? false, "the user hears the result")
+    }
+
+    func testUserCheckDuringInstallIsAnswered() async {
+        let u = updater("0.2.2")
+        u.selfTestShow(phase: .downloading)
+        await u.check(userInitiated: true)
+        XCTAssertTrue(u.notice?.text.contains("already being installed") ?? false)
     }
 
     func updater(_ version: String) -> Updater {
@@ -269,5 +295,118 @@ final class MoreLogicTests: XCTestCase {
         XCTAssertEqual(WindowPlacement.topLeft(for: .edge(.left), size: size, visible: screen), NSPoint(x: 16, y: 884))
         XCTAssertEqual(WindowPlacement.topLeft(for: .edge(.center), size: size, visible: screen), NSPoint(x: 474, y: 884))
         XCTAssertEqual(WindowPlacement.topLeft(for: .edge(.right), size: size, visible: screen), NSPoint(x: 932, y: 884))
+    }
+}
+
+@MainActor
+final class StoreTests: XCTestCase {
+    var defaults: UserDefaults!
+
+    override func setUp() {
+        defaults = UserDefaults(suiteName: "TwoDegreesTests-\(UUID().uuidString)")
+        StubProtocol.delay = 0
+        StubProtocol.routes = [("https://api.open-meteo.com/v1/forecast", 200, Data(Fixtures.forecast.utf8), nil)]
+        OpenMeteo.session = StubProtocol.session()
+    }
+
+    func testStartsWithThreeCitiesAndRestoresTheActiveOne() {
+        let store = WeatherStore(defaults: defaults, autoRefresh: false)
+        XCTAssertEqual(store.cities.map(\.name), ["New York", "London", "Tokyo"])
+        store.activeID = store.cities[2].id
+        let again = WeatherStore(defaults: defaults, autoRefresh: false)
+        XCTAssertEqual(again.active.name, "Tokyo")
+    }
+
+    func testAddLimitRemoveAndPersistence() {
+        let store = WeatherStore(defaults: defaults, autoRefresh: false)
+        store.add(City(name: "Paris", region: "France", latitude: 48.85, longitude: 2.35))
+        XCTAssertEqual(store.active.name, "Paris")
+        store.add(City(name: "Paris", region: "France", latitude: 48.85, longitude: 2.35))
+        XCTAssertEqual(store.cities.count, 4, "no duplicates")
+        store.add(City(name: "Rome", region: "Italy", latitude: 41.9, longitude: 12.5))
+        XCTAssertFalse(store.canAdd)
+        store.add(City(name: "Cairo", region: "Egypt", latitude: 30, longitude: 31))
+        XCTAssertEqual(store.cities.count, 5, "the limit holds")
+        store.remove(store.active)
+        XCTAssertEqual(store.active.name, "New York", "removing the active city selects the first")
+        XCTAssertEqual(WeatherStore(defaults: defaults, autoRefresh: false).cities.count, 4, "cities persist")
+        while store.cities.count > 1 { store.remove(store.cities.last!) }
+        store.remove(store.cities[0])
+        XCTAssertEqual(store.cities.count, 1, "the last city stays")
+    }
+
+    func testRefreshLoadsEveryCity() async {
+        let store = WeatherStore(defaults: defaults, autoRefresh: false)
+        await store.refresh()
+        XCTAssertEqual(store.forecasts.count, 3)
+        XCTAssertFalse(store.isOffline)
+    }
+
+    func testRemovingACityWhileItLoadsLeavesNothingBehind() async throws {
+        let store = WeatherStore(defaults: defaults, autoRefresh: false)
+        StubProtocol.delay = 0.4
+        let paris = City(name: "Paris", region: "France", latitude: 48.85, longitude: 2.35)
+        store.add(paris)
+        store.remove(paris)
+        try await Task.sleep(for: .milliseconds(800))
+        XCTAssertNil(store.forecasts[paris.id], "a late forecast for a removed city is dropped")
+        let saved = WeatherStore(defaults: defaults, autoRefresh: false)
+        XCTAssertNil(saved.forecasts[paris.id], "and never saved")
+    }
+
+    func testFailedFetchMarksOffline() async {
+        StubProtocol.routes = [("https://api.open-meteo.com/v1/forecast", 500, Data(), nil)]
+        let store = WeatherStore(defaults: defaults, autoRefresh: false)
+        await store.refresh()
+        XCTAssertTrue(store.isOffline)
+        XCTAssertNil(store.activeForecast)
+    }
+
+    func testMenuBarText() {
+        XCTAssertEqual(MenuBarLabel.reading(17.6, unit: .fahrenheit, style: .both), "64° · 18°")
+        XCTAssertEqual(MenuBarLabel.reading(17.6, unit: .celsius, style: .both), "18° · 64°")
+        XCTAssertEqual(MenuBarLabel.reading(17.6, unit: .fahrenheit, style: .primary), "64°")
+        XCTAssertNil(MenuBarLabel.reading(17.6, unit: .fahrenheit, style: .icon))
+    }
+}
+
+/// The install helper script swaps the app in, or rolls back if the copy fails.
+final class InstallScriptTests: XCTestCase {
+    func run(target: URL, new: URL, in dir: URL) throws {
+        let script = dir.appendingPathComponent("install.sh")
+        // Don't actually relaunch anything.
+        try Updater.installScript
+            .replacingOccurrences(of: "/usr/bin/open \"$TARGET\"", with: "true")
+            .write(to: script, atomically: true, encoding: .utf8)
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/sh")
+        process.arguments = [script.path, "999999", target.path, new.path]   // a pid that isn't running
+        try process.run()
+        process.waitUntilExit()
+    }
+
+    func makeApp(_ url: URL, marker: String) throws {
+        try FileManager.default.createDirectory(at: url.appendingPathComponent("Contents"), withIntermediateDirectories: true)
+        try marker.write(to: url.appendingPathComponent("Contents/marker"), atomically: true, encoding: .utf8)
+    }
+
+    func marker(_ url: URL) -> String? { try? String(contentsOf: url.appendingPathComponent("Contents/marker"), encoding: .utf8) }
+
+    func testSwapsInTheNewApp() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let target = dir.appendingPathComponent("TwoDegrees.app"), new = dir.appendingPathComponent("staged/TwoDegrees.app")
+        try makeApp(target, marker: "old")
+        try makeApp(new, marker: "new")
+        try run(target: target, new: new, in: dir)
+        XCTAssertEqual(marker(target), "new")
+        XCTAssertFalse(FileManager.default.fileExists(atPath: target.path + ".old"))
+    }
+
+    func testRollsBackWhenTheCopyFails() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let target = dir.appendingPathComponent("TwoDegrees.app"), missing = dir.appendingPathComponent("nothing-here.app")
+        try makeApp(target, marker: "old")
+        try run(target: target, new: missing, in: dir)
+        XCTAssertEqual(marker(target), "old", "the old app is restored")
     }
 }

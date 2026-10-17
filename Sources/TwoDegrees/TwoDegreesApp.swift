@@ -68,14 +68,19 @@ struct MenuBarLabel: View {
     @EnvironmentObject private var store: WeatherStore
     @ObservedObject private var updater = Updater.shared
 
+    /// The menu bar text for a reading: "57° · 14°", "57°", or nil for icon only.
+    static func reading(_ celsius: Double, unit: TempUnit, style: MenuBarStyle) -> String? {
+        switch style {
+        case .both: return "\(unit.value(celsius))° · \(unit.other.value(celsius))°"
+        case .primary: return "\(unit.value(celsius))°"
+        case .icon: return nil
+        }
+    }
+
     var body: some View {
         // A trailing dot whenever an update is waiting.
         let dot = updater.latest == nil ? "" : " •"
-        if let forecast = store.activeForecast, store.menuBarStyle != .icon {
-            let t = forecast.now.temperature
-            let reading = store.menuBarStyle == .both
-                ? "\(store.unit.value(t))° · \(store.unit.other.value(t))°"
-                : "\(store.unit.value(t))°"
+        if let forecast = store.activeForecast, let reading = Self.reading(forecast.now.temperature, unit: store.unit, style: store.menuBarStyle) {
             HStack(spacing: 4) {
                 Image(systemName: Condition.symbol(forecast.now.code, isDay: forecast.now.isDay))
                 Text(reading + dot).monospacedDigit()

@@ -81,8 +81,16 @@ final class Updater: ObservableObject {
 
     func check(userInitiated: Bool) async {
         if isBusy {
-            // Never drop a request the user made: show "Checking…" and report this check's result.
-            if userInitiated && phase == .checking { userChecking = true; userWaiting = true; notice = nil }
+            // Never drop a request the user made: show "Checking…" and report this check's result,
+            // or say an update is already on its way.
+            guard userInitiated else { return }
+            if phase == .checking {
+                userChecking = true
+                userWaiting = true
+                notice = nil
+            } else {
+                post("An update is already being installed.")
+            }
             return
         }
         let pending = latest
@@ -214,7 +222,7 @@ final class Updater: ObservableObject {
         NSApp.terminate(nil)
     }
 
-    static let installScript = """
+    nonisolated static let installScript = """
     #!/bin/sh
     # $1 = pid to wait for, $2 = installed app, $3 = staged new app
     PID="$1"; TARGET="$2"; NEW="$3"
