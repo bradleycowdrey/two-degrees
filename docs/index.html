@@ -49,7 +49,7 @@
   .panel::before { content: ""; position: absolute; inset: 0 0 auto; height: 3px; background: var(--crimson); }
 
   /* Header */
-  .hdr { display: flex; align-items: center; gap: 12px; padding: 0 4px 4px; }
+  .hdr { display: flex; align-items: center; gap: 12px; padding: 0 0 4px; }
   .hdr h1 { margin: 0; white-space: nowrap; font-size: 19px; font-weight: 600; letter-spacing: -.02em; }
   .hdr .sp { flex: 1; }
   .mark { width: 28px; height: 28px; flex: none; }
@@ -59,7 +59,7 @@
   .seg button:hover { background: var(--border); color: var(--text); }
   .seg button[aria-pressed="true"] { background: var(--cream); color: var(--bg); }
   /* Meridian's Add | Edit control, icon-only so the city row stays on one line. */
-  .seg.list { align-items: center; flex: none; }
+  .seg.list { align-items: center; flex: none; padding: 2px; }
   .seg.list button { display: grid; place-items: center; width: 32px; min-width: 0; padding: 0; }
   .seg.list button svg { width: 13px; height: 13px; }
   .seg.list button:disabled { color: var(--faint); cursor: default; background: none; }
@@ -71,7 +71,7 @@
   .circle svg { width: 16px; height: 16px; }
 
   /* Cities */
-  .cities { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; padding: 0 2px; }
+  .cities { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
   .chip { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; border: 0; border-radius: 980px; cursor: pointer;
     background: var(--border); color: var(--secondary); font-size: 13px; font-weight: 500; transition: background .15s, color .15s; }
   .chip:hover { background: var(--border-strong); color: var(--text); }
@@ -140,8 +140,10 @@
   .hour .spark { height: 30px; }
   .hour .f { font-size: 15px; font-weight: 600; line-height: 18px; }
   .hour .c { font-size: 12px; color: var(--muted); line-height: 16px; }
+  /* With rain in the next 24 hours, the icon shrinks to make room for the % beneath it, in the same 30px. */
   .hours.no-pop .hour .p { display: none; }
-  .hour .p { height: 16px; font-size: 11px; font-weight: 600; color: var(--rain); line-height: 16px; }
+  .hours:not(.no-pop) .hour .ic { width: 20px; height: 20px; margin-top: 0; }
+  .hour .p { height: 10px; font-size: 10px; font-weight: 600; color: var(--rain); line-height: 10px; }
   .hour.day-start::before { content: ""; position: absolute; width: 1px; top: 0; bottom: 0; margin-left: -54px; background: var(--border-strong); }
   .hour.day-start { position: relative; }
   .hour.day-start::before { left: 0; margin-left: 0; }
@@ -153,9 +155,9 @@
     min-height: 44px; padding-block: 4px; border-top: 0.5px solid var(--border-strong); font-variant-numeric: tabular-nums; }
   .day:first-child { border-top: 0; }
   .day .d { font-size: 15px; font-weight: 600; }
-  .day .ic { display: flex; flex-direction: column; align-items: center; }
+  .day .ic { position: relative; display: flex; justify-content: center; }
   .day .ic svg { width: 24px; height: 24px; }
-  .day .p { font-size: 10px; font-weight: 600; line-height: 1; color: var(--rain); }
+  .day .p { position: absolute; top: 100%; margin-top: 1px; font-size: 10px; font-weight: 600; line-height: 1; color: var(--rain); }
   .day .lo, .day .hi { display: flex; flex-direction: column; line-height: 1.15; }
   .day .lo { align-items: flex-end; }
   .day .hi { align-items: flex-start; }
@@ -165,19 +167,20 @@
   .bar { position: relative; height: 6px; border-radius: 6px; background: var(--raised); box-shadow: inset 0 0 0 0.5px var(--border-strong); }
   .bar i { position: absolute; top: 0; bottom: 0; border-radius: 6px; }
   .bar s { position: absolute; top: -4px; bottom: -4px; width: 1px; margin-left: -0.5px; background: var(--border-strong); }
-  .day.axis { min-height: 0; padding-block: 6px 0; border-top: 0; }
+  .days-head { display: grid; grid-template-columns: 152px minmax(0, 1fr) 48px; column-gap: 10px; align-items: center; margin-bottom: 4px; }
+  .days-head .eyebrow { margin: 0; }
   .ticks { position: relative; height: 14px; }
   .ticks span { position: absolute; transform: translateX(-50%); font-size: 11px; font-weight: 500; line-height: 14px; color: var(--faint); }
   .bar u { position: absolute; top: 50%; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%; background: var(--text); box-shadow: 0 0 0 2.5px var(--tile); }
 
   /* Footer */
-  .status { display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; white-space: nowrap; padding: 0 4px; font-size: 12px; color: var(--muted); }
+  .status { display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; white-space: nowrap; font-size: 12px; color: var(--muted); }
   #statusText { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
   .status .dot { align-self: center; width: 7px; height: 7px; border-radius: 50%; background: var(--crimson); flex: none; }
   .status.live .dot { background: #6FD39C; }
   .status a { text-decoration: underline; text-decoration-color: var(--border-strong); text-underline-offset: 2px; }
   .status a:hover { color: var(--text); }
-  .foot { display: flex; align-items: center; gap: 10px; padding: 0 4px; }
+  .foot { display: flex; align-items: center; gap: 10px; }
   .foot .brand { flex: 1; min-width: 0; font-size: 11.5px; letter-spacing: -.005em; color: var(--muted); }
   .foot .brand:hover { color: var(--text); }
   .pill { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 12px; border: 0; border-radius: 980px; cursor: pointer;
@@ -214,7 +217,11 @@
     .chip-x { width: 24px; height: 24px; line-height: 24px; top: -8px; right: -8px; }
     .cities.editing { padding-top: 10px; }
     .chip { height: 36px; }
-    .seg.list button { width: 36px; }
+    .seg.list button { width: 36px; height: 32px; }
+    .seg.list { position: sticky; right: 0; box-shadow: -12px 0 12px var(--bg); }
+    .days-head { grid-template-columns: 134px minmax(0, 1fr) 44px; column-gap: 8px; }
+    .foot .sep { display: none; }
+    .foot .host { display: block; }
     .seg button { height: 32px; }
     .circle { width: 36px; height: 36px; }
     .hours-scroll { margin: 0 -16px; padding: 0 16px; }
@@ -268,14 +275,14 @@
   </section>
 
   <section class="tile" aria-labelledby="daysTitle">
-    <h3 class="eyebrow" id="daysTitle">5-day forecast<span class="sp"></span><span class="aside">Low · High</span></h3>
+    <div class="days-head"><h3 class="eyebrow" id="daysTitle">5-day forecast</h3><span class="ticks" id="dayTicks" aria-hidden="true"></span><span></span></div>
     <div class="days" id="days"></div>
   </section>
 
   <div class="status" id="status"><span class="dot"></span><span id="statusText" title="">Loading…</span><span aria-hidden="true">·</span><a href="https://open-meteo.com/" target="_blank" rel="noopener" title="Weather data by Open-Meteo.com">Data: Open-Meteo</a></div>
 
   <footer class="foot">
-    <a class="brand" href="https://bradcowdrey.com" target="_blank" rel="noopener">Made by Bradley Cowdrey. Free. Forever. · bradcowdrey.com ↗</a>
+    <a class="brand" href="https://bradcowdrey.com" target="_blank" rel="noopener">Made by Bradley Cowdrey. Free. Forever.<span class="sep"> · </span><span class="host">bradcowdrey.com ↗</span></a>
     <div class="share-wrap">
       <button type="button" class="pill" id="shareBtn" aria-haspopup="menu" aria-expanded="false" title="Share Two Degrees">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7.5 7.5 12 3l4.5 4.5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>
@@ -602,7 +609,7 @@
     const cur = data.current;
     const [condName, kind] = codeInfo(cur.code);
     const hours = upcoming(data);
-    const today = data.daily[0];
+    const today = { ...data.daily[0], min: Math.min(data.daily[0].min, cur.t), max: Math.max(data.daily[0].max, cur.t) };
     const wind = Math.round(cur.wind);
 
     const now = $('#now');
@@ -640,10 +647,10 @@
       return `<div class="hour${first ? ' is-now' : ''}${midnight ? ' day-start' : ''}" role="img" aria-label="${first ? 'Now' : hour12(h.time)}: ${esc(codeInfo(h.code)[0])}, ${speak(h.t)}${h.pop >= 20 ? ', ' + h.pop + ' percent chance of rain' : ''}">
         <div class="h">${first ? 'Now' : midnight ? weekday(h.time) : hour12(h.time)}</div>
         <div class="ic">${icon(h.code, h.isDay, '')}</div>
+        <div class="p">${h.pop >= 20 ? h.pop + '%' : ''}</div>
         <div class="spark"></div>
         <div class="f">${deg(h.t, u)}°</div>
         <div class="c">${deg(h.t, o)}°${o}</div>
-        <div class="p">${h.pop >= 20 ? h.pop + '%' : ''}</div>
       </div>`;
     }).join('') + `<svg class="sparkline" width="${width}" height="${SPARK_H}" viewBox="0 0 ${width} ${SPARK_H}" aria-hidden="true">
         <defs><linearGradient id="sparkFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFF1E5" stop-opacity=".16"/><stop offset="1" stop-color="#FFF1E5" stop-opacity="0"/></linearGradient></defs>
@@ -666,7 +673,9 @@
       if (at > 5 && at < 95) ticks.push([v, at]);
     }
     const tickMarks = ticks.map(([, at]) => `<s style="left:${at}%"></s>`).join('');
-    $('#days').innerHTML = days.map((d, i) => {
+    $('#days').innerHTML = days.map((d0, i) => {
+      // Today's range always includes the reading right now, so no two numbers disagree.
+      const d = i === 0 ? { ...d0, min: Math.min(d0.min, cur.t), max: Math.max(d0.max, cur.t) } : d0;
       const [name] = codeInfo(d.code);
       const dot = i === 0 ? `<u style="left:${pct(cur.t)}%" title="Now ${deg(cur.t, u)}°${u}"></u>` : '';
       return `<div class="day" role="img" aria-label="${i === 0 ? 'Today' : weekday(d.date)}: ${esc(name)}. Low ${speak(d.min)}. High ${speak(d.max)}.${d.pop >= 20 ? ' ' + d.pop + ' percent chance of rain.' : ''}">
@@ -676,8 +685,8 @@
         <span class="bar">${tickMarks}<i style="left:${pct(d.min)}%;right:${(100 - pct(d.max)).toFixed(1)}%;background:linear-gradient(90deg,${tempColor(d.min)},${tempColor(d.max)})"></i>${dot}</span>
         <span class="hi"><b>${deg(d.max, u)}°</b><span>${deg(d.max, o)}°${o}</span></span>
       </div>`;
-    }).join('') + (ticks.length ? `<div class="day axis" aria-hidden="true"><span></span><span></span><span></span>
-        <span class="ticks">${ticks.map(([v, at]) => `<span style="left:${at}%">${v}°</span>`).join('')}</span><span></span></div>` : '');
+    }).join('');
+    $('#dayTicks').innerHTML = ticks.map(([v, at]) => `<span style="left:${at}%">${v}°</span>`).join('');
 
     // Status line: where the numbers came from, and how fresh they are.
     const status = $('#status');

@@ -450,7 +450,7 @@ private struct ListControls: View {
                 withAnimation(.snappy) { editing.toggle(); if editing { adding = false } }
             }
         }
-        .padding(ui.pt(3))
+        .padding(ui.pt(2))   // 26 + 2 × 2 = 30, the chips' height
         .background(Capsule().fill(Palette.raisedTile))
         .overlay(Capsule().strokeBorder(Palette.borderStrong, lineWidth: 0.5))
         .accessibilityElement(children: .contain)
@@ -603,7 +603,7 @@ private struct NowTile: View {
     var body: some View {
         let now = forecast.now
         let unit = store.unit, other = store.unit.other
-        let today = forecast.days.first
+        let today = forecast.days.first?.including(now.temperature)
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .firstTextBaseline, spacing: ui.s) {
                 Text(city.name)
@@ -771,9 +771,20 @@ private struct HourColumn: View {
                 .font(ui.font(12, index == 0 ? .semibold : .medium))
                 .foregroundStyle(index == 0 ? Palette.cream : Palette.textMuted)
                 .frame(height: ui.pt(16))
-            WeatherSymbol(code: hour.code, isDay: hour.isDay, size: ui.pt(18))
-                .frame(width: ui.pt(26), height: ui.pt(26))
-                .padding(.top, ui.pt(4))
+            // With rain in the next 24 hours, the icon shrinks to make room for the % beneath it,
+            // in the same 30pt slot, so the sparkline below never moves.
+            if showsRain {
+                WeatherSymbol(code: hour.code, isDay: hour.isDay, size: ui.pt(15))
+                    .frame(width: ui.pt(26), height: ui.pt(20))
+                Text(hour.rainChance >= 20 ? "\(hour.rainChance)%" : " ")
+                    .font(ui.font(10, .semibold))
+                    .foregroundStyle(Palette.rain)
+                    .frame(height: ui.pt(10))
+            } else {
+                WeatherSymbol(code: hour.code, isDay: hour.isDay, size: ui.pt(18))
+                    .frame(width: ui.pt(26), height: ui.pt(26))
+                    .padding(.top, ui.pt(4))
+            }
             Color.clear.frame(height: ui.sparkHeight)
             Text("\(unit.value(hour.temperature))°")
                 .font(ui.font(15, .semibold))
@@ -781,12 +792,6 @@ private struct HourColumn: View {
             Text("\(other.value(hour.temperature))\(other.symbol)")
                 .font(ui.font(12))
                 .foregroundStyle(Palette.textMuted)
-            if showsRain {
-                Text(hour.rainChance >= 20 ? "\(hour.rainChance)%" : " ")
-                    .font(ui.font(11, .semibold))
-                    .foregroundStyle(Palette.rain)
-                    .frame(height: ui.pt(16))
-            }
         }
         .monospacedDigit()
         .frame(width: ui.hourWidth)
@@ -847,31 +852,30 @@ private struct DaysTile: View {
         let ticks = Ticks.make(low: low, high: high, unit: store.unit)
         Tile {
             VStack(alignment: .leading, spacing: ui.xs) {
-                Eyebrow(title: "5-day forecast", aside: "Low · High")
-                    .padding(.bottom, ui.xs)
+                HStack(spacing: ui.pt(10)) {
+                    Text("5-day forecast")
+                        .font(ui.eyebrow)
+                        .foregroundStyle(Palette.textMuted)
+                        .frame(width: ui.pt(52) + ui.pt(10) + ui.pt(32) + ui.pt(10) + ui.pt(48), alignment: .leading)
+                    GeometryReader { proxy in
+                        ForEach(ticks, id: \.label) { tick in
+                            Text("\(tick.label)°")
+                                .font(ui.font(11, .medium))
+                                .monospacedDigit()
+                                .foregroundStyle(Palette.textFaint)
+                                .fixedSize()
+                                .position(x: CGFloat((tick.celsius - low) / max(high - low, 1)) * proxy.size.width, y: proxy.size.height / 2)
+                        }
+                    }
+                    .frame(height: ui.pt(14))
+                    .accessibilityHidden(true)
+                    Color.clear.frame(width: ui.pt(48), height: 1)
+                }
+                .padding(.bottom, ui.xs)
                 ForEach(Array(days.enumerated()), id: \.element.id) { index, day in
                     if index > 0 { Rectangle().fill(Palette.borderStrong).frame(height: 0.5) }
-                    DayRow(day: day, isToday: index == 0, low: low, high: high, ticks: ticks.map(\.celsius),
+                    DayRow(day: index == 0 ? day.including(now) : day, isToday: index == 0, low: low, high: high, ticks: ticks.map(\.celsius),
                            now: index == 0 ? now : nil)
-                }
-                if !ticks.isEmpty {
-                    HStack(spacing: ui.pt(10)) {
-                        Color.clear.frame(width: ui.pt(52) + ui.pt(10) + ui.pt(32) + ui.pt(10) + ui.pt(48), height: 1)
-                        GeometryReader { proxy in
-                            ForEach(ticks, id: \.label) { tick in
-                                Text("\(tick.label)°")
-                                    .font(ui.font(11, .medium))
-                                    .monospacedDigit()
-                                    .foregroundStyle(Palette.textFaint)
-                                    .fixedSize()
-                                    .position(x: CGFloat((tick.celsius - low) / max(high - low, 1)) * proxy.size.width, y: proxy.size.height / 2)
-                            }
-                        }
-                        .frame(height: ui.pt(14))
-                        Color.clear.frame(width: ui.pt(48), height: 1)
-                    }
-                    .padding(.top, ui.pt(2))
-                    .accessibilityHidden(true)
                 }
             }
         }
@@ -896,15 +900,17 @@ private struct DayRow: View {
                 .font(ui.font(15, .semibold))
                 .foregroundStyle(Palette.textPrimary)
                 .frame(width: ui.pt(52), alignment: .leading)
-            VStack(spacing: ui.pt(1)) {
-                WeatherSymbol(code: day.code, isDay: true, size: ui.pt(17))
-                if day.rainChance >= 20 {
-                    Text("\(day.rainChance)%")
-                        .font(ui.font(10, .semibold))
-                        .foregroundStyle(Palette.rain)
+            WeatherSymbol(code: day.code, isDay: true, size: ui.pt(17))
+                .frame(width: ui.pt(32))
+                .overlay(alignment: .bottom) {
+                    if day.rainChance >= 20 {
+                        Text("\(day.rainChance)%")
+                            .font(ui.font(10, .semibold))
+                            .foregroundStyle(Palette.rain)
+                            .fixedSize()
+                            .offset(y: ui.pt(12))
+                    }
                 }
-            }
-            .frame(width: ui.pt(32))
             VStack(alignment: .trailing, spacing: 0) {
                 Text("\(unit.value(day.low))°").font(ui.font(15, .semibold)).foregroundStyle(Palette.textSecondary)
                 Text("\(other.value(day.low))\(other.symbol)").font(ui.font(12)).foregroundStyle(Palette.textMuted)
@@ -985,7 +991,6 @@ private struct StatusLine: View {
         .font(ui.font(12))
         .foregroundStyle(Palette.textMuted)
         .lineLimit(1)
-        .padding(.horizontal, ui.xs)
     }
 
     private var text: String {
@@ -1008,35 +1013,6 @@ private struct Eyebrow: View {
             Text(title).font(ui.eyebrow).foregroundStyle(Palette.textMuted)
             Spacer()
             Text(aside).font(ui.font(13, .medium)).monospacedDigit().foregroundStyle(Palette.textFaint)
-        }
-    }
-}
-
-/// SF Symbols tinted with the brand's warm palette: cream clouds, amber sun, soft blue rain.
-struct WeatherSymbol: View {
-    let code: Int
-    let isDay: Bool
-    let size: CGFloat
-
-    var body: some View {
-        Image(systemName: Condition.symbol(code, isDay: isDay))
-            .symbolRenderingMode(.palette)
-            .foregroundStyle(code == 0 ? accent : Self.cloud, accent)   // clear sky: the sun or moon is the only layer
-            .font(.system(size: size))
-            .accessibilityLabel(Condition.name(code))
-    }
-
-    static let cloud = Color(hex: 0xCFC6BB)
-
-    /// The symbol's second layer: sun amber, night moon, rain blue, storm amber, snow white.
-    private var accent: Color {
-        switch code {
-        case 0: return isDay ? Palette.sun : Color(hex: 0xE9DCC8)
-        case 1, 2: return isDay ? Palette.sun : Color(hex: 0xE9DCC8)
-        case 95, 96, 99: return Palette.sun
-        case _ where Condition.isSnow(code): return .white
-        case 51...82: return Palette.rain
-        default: return Self.cloud
         }
     }
 }

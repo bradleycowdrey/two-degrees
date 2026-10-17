@@ -4,3 +4,5 @@ dist/
 *.xcodeproj/
 xcuserdata/
 .DS_Store
+TwoDegrees.xcodeproj/
+build/

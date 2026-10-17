@@ -21,12 +21,14 @@ Pick which unit is large; the other always sits right next to it.
 - **Both units, always**: the current temperature, feels-like, today's range, every hour and every day, in °F and °C.
 - **Lives in the Dock**: the Dock icon shows the live reading (`57°` over `14°C`) and the sky. Right-click it for every saved city.
 - **And the menu bar**: `☁ 57° · 14°`, with the full panel one click away. Larger unit only, or icon only, if you prefer.
+- **Widgets**: small, medium and large desktop / Notification Center widgets. Each picks its own city (search any place) and which unit is large.
+- **Borrowed from Meridian**: drag the menu bar panel to tear it off into a window, window position (left, centre, right), keep on top, five sizes (⌘+ / ⌘−) and SF Pro or Inter.
 - **Next 24 hours**: a scrolling strip with a temperature line, icons, and rain chance when it's 20% or more.
-- **5-day forecast**: lows and highs in both units, on range bars drawn to one shared scale, with a dot for right now.
+- **5-day forecast**: lows and highs in both units, on range bars drawn to one shared, labelled scale (ticks every 10°F / 5°C), with a dot for right now.
 - **One plain sentence**: "Rain likely around 3 PM (60%)" or "Warming to 68°F / 20°C by 2 PM".
-- **Up to five cities**: search any place on Earth; switch with one click; right-click a city to remove it.
+- **Up to five cities**: search any place on Earth; switch with one click; Add | Edit works just like Meridian's.
 - **Share**: the same Share button as Meridian and Cowdrey.MD.
-- **The details**: five sizes (⌘+ / ⌘−), SF Pro or Inter, keep-on-top window, open at login, `F` / `C` keys to swap units, VoiceOver reads both units.
+- **The details**: open at login, `F` / `C` keys to swap units, VoiceOver reads both units.
 - **Automatic updates** from GitHub Releases, SHA-256 verified, one click to install.
 - No account, no API key, no tracking. Weather data from [Open-Meteo](https://open-meteo.com) (CC BY 4.0), refreshed every 15 minutes.
 
@@ -51,14 +53,14 @@ Two Degrees is distributed directly, not through the Mac App Store.
 
 ## Build from source
 
-Requires Xcode 15.3+ (Swift 5.10) on macOS 14+.
+Requires Xcode 16+ on macOS 14+, and [XcodeGen](https://github.com/yonaskolb/XcodeGen) for the app with its widget (`brew install xcodegen`).
 
 ```sh
 git clone https://github.com/bradleycowdrey/two-degrees.git
 cd two-degrees
-swift run                         # run in development
-scripts/build-app.sh 0.1.0        # dist/TwoDegrees.app (universal)
-scripts/make-dmg.sh 0.1.0         # dist/TwoDegrees-0.1.0.dmg
+swift run                         # run the app in development (no widget)
+scripts/build-app.sh 0.2.0        # dist/TwoDegrees.app (universal, with widget)
+scripts/make-dmg.sh 0.2.0         # dist/TwoDegrees-0.2.0.dmg
 ```
 
 ## Releasing

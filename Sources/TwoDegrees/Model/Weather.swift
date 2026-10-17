@@ -58,6 +58,14 @@ struct Forecast: Codable {
         var sunrise: Date?
         var sunset: Date?
         var id: Date { date }
+
+        /// This day with its range widened to include a reading, so today never contradicts "now".
+        func including(_ celsius: Double) -> Day {
+            var day = self
+            day.low = min(low, celsius)
+            day.high = max(high, celsius)
+            return day
+        }
     }
 
     var now: Now
