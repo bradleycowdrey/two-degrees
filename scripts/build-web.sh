@@ -4,7 +4,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 {
-  printf '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><link rel="icon" href="icon.png"></head><body>\n'
+  printf '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><link rel="icon" href="https://raw.githubusercontent.com/bradleycowdrey/two-degrees/main/docs/icon.png"></head><body>\n'
   cat docs/app.html
   printf '\n</body></html>\n'
 } > docs/index.html
