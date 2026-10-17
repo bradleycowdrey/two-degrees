@@ -17,7 +17,8 @@ enum DockTile {
             primary: store.unit.value(forecast.now.temperature),
             primaryUnit: store.unit,
             secondary: store.unit.other.value(forecast.now.temperature),
-            symbol: Condition.symbol(forecast.now.code, isDay: forecast.now.isDay)
+            code: forecast.now.code,
+            isDay: forecast.now.isDay
         )
         let host = NSHostingView(rootView: view)
         host.frame = NSRect(origin: .zero, size: tile.size)
@@ -30,7 +31,8 @@ private struct DockTileView: View {
     let primary: Int
     let primaryUnit: TempUnit
     let secondary: Int
-    let symbol: String
+    let code: Int
+    let isDay: Bool
 
     var body: some View {
         GeometryReader { proxy in
@@ -47,17 +49,15 @@ private struct DockTileView: View {
                     .frame(width: s * 0.82, height: s * 0.82)
 
                 VStack(spacing: s * 0.005) {
-                    Image(systemName: symbol)
-                        .symbolRenderingMode(.multicolor)
-                        .font(.system(size: s * 0.16))
+                    WeatherSymbol(code: code, isDay: isDay, size: s * 0.15)
                     Text("\(primary)°")
-                        .font(.system(size: s * 0.30, weight: .semibold, design: .rounded))
+                        .font(.system(size: s * 0.27, weight: .semibold, design: .rounded))
                         .tracking(-s * 0.01)
                         .foregroundStyle(.white)
                         .minimumScaleFactor(0.6)
                     Text("\(secondary)\(primaryUnit.other.symbol)")
-                        .font(.system(size: s * 0.13, weight: .medium, design: .rounded))
-                        .foregroundStyle(Palette.cream.opacity(0.75))
+                        .font(.system(size: s * 0.17, weight: .semibold, design: .rounded))
+                        .foregroundStyle(Palette.cream.opacity(0.8))
                 }
                 .monospacedDigit()
                 .lineLimit(1)

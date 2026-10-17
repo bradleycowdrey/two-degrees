@@ -301,9 +301,13 @@ private struct CityChips: View {
             }
             if store.canAdd {
                 Button { adding.toggle() } label: {
-                    Text(adding ? "Cancel" : "+ Add city").font(ui.font(13, .medium))
+                    Image(systemName: adding ? "xmark" : "plus")
+                        .font(ui.font(13, .semibold))
+                        .frame(width: ui.pt(30) - 2 * ui.pt(12))
                 }
                 .buttonStyle(ChipStyle(on: false, outlined: true))
+                .help(adding ? "Cancel" : "Add city")
+                .accessibilityLabel(adding ? "Cancel" : "Add city")
             }
         }
     }
@@ -443,10 +447,11 @@ private struct NowTile: View {
             HStack(alignment: .center, spacing: ui.pt(14)) {
                 WeatherSymbol(code: now.code, isDay: now.isDay, size: ui.pt(50))
                     .frame(width: ui.pt(64), height: ui.pt(64))
-                HStack(alignment: .firstTextBaseline, spacing: ui.pt(14)) {
+                    .accessibilityHidden(true)
+                HStack(alignment: .firstTextBaseline, spacing: ui.pt(12)) {
                     DegreeText(value: unit.value(now.temperature), unit: unit, size: ui.pt(64), weight: .semibold, color: Palette.textPrimary)
                     Rectangle().fill(Palette.borderStrong).frame(width: 1, height: ui.pt(44))
-                    DegreeText(value: other.value(now.temperature), unit: other, size: ui.pt(38), weight: .medium, color: Palette.textMuted)
+                    DegreeText(value: other.value(now.temperature), unit: other, size: ui.pt(38), weight: .medium, color: Palette.textMuted, unitColor: Palette.textMuted)
                 }
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel(Speech.temperature(now.temperature))
@@ -470,7 +475,7 @@ private struct NowTile: View {
                          sub: "\(other.value(today.low))–\(other.value(today.high))\(other.symbol)")
                 }
                 Stat(key: "Wind", value: "\(Int((now.wind * 0.621371).rounded())) mph", sub: "\(Int(now.wind.rounded())) km/h")
-                Stat(key: "Humidity", value: "\(Int(now.humidity.rounded()))%", sub: "Rain \(today?.rainChance ?? 0)%")
+                Stat(key: "Rain today", value: "\(today?.rainChance ?? 0)%", sub: "\(Int(now.humidity.rounded()))% humid")
             }
             .padding(.top, ui.l)
         }
@@ -496,6 +501,7 @@ private struct DegreeText: View {
     let size: CGFloat
     let weight: Font.Weight
     let color: Color
+    var unitColor: Color? = nil
     @Environment(\.metrics) private var ui
 
     var body: some View {
@@ -507,7 +513,7 @@ private struct DegreeText: View {
                 .foregroundStyle(color)
             Text(unit.symbol)
                 .font(ui.font(size * 0.42 / ui.scale, .medium))
-                .foregroundStyle(Palette.textSecondary)
+                .foregroundStyle(unitColor ?? Palette.textSecondary)
                 .padding(.top, size * 0.08)
         }
     }
@@ -521,10 +527,9 @@ private struct Stat: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: ui.pt(3)) {
-            Text(key.uppercased())
-                .font(ui.font(10, .semibold))
-                .tracking(0.6)
-                .foregroundStyle(Palette.textFaint)
+            Text(key)
+                .font(ui.font(12, .medium))
+                .foregroundStyle(Palette.textMuted)
             Text(value)
                 .font(ui.font(14, .semibold))
                 .monospacedDigit()
@@ -561,8 +566,9 @@ private struct HoursTile: View {
                 ScrollView(.horizontal, showsIndicators: false) {
                     ZStack(alignment: .topLeading) {
                         HStack(spacing: 0) {
+                            let anyRain = hours.contains { $0.rainChance >= 20 }
                             ForEach(Array(hours.enumerated()), id: \.element.id) { index, hour in
-                                HourColumn(hour: hour, index: index)
+                                HourColumn(hour: hour, index: index, showsRain: anyRain)
                             }
                         }
                         Sparkline(temperatures: temps, column: ui.hourWidth, height: ui.sparkHeight)
@@ -582,6 +588,7 @@ private struct HourColumn: View {
     @Environment(\.metrics) private var ui
     let hour: Forecast.Hour
     let index: Int
+    let showsRain: Bool
 
     var body: some View {
         let unit = store.unit, other = store.unit.other
@@ -602,10 +609,12 @@ private struct HourColumn: View {
             Text("\(other.value(hour.temperature))\(other.symbol)")
                 .font(ui.font(12))
                 .foregroundStyle(Palette.textMuted)
-            Text(hour.rainChance >= 20 ? "\(hour.rainChance)%" : " ")
-                .font(ui.font(11, .semibold))
-                .foregroundStyle(Palette.rain)
-                .frame(height: ui.pt(16))
+            if showsRain {
+                Text(hour.rainChance >= 20 ? "\(hour.rainChance)%" : " ")
+                    .font(ui.font(11, .semibold))
+                    .foregroundStyle(Palette.rain)
+                    .frame(height: ui.pt(16))
+            }
         }
         .monospacedDigit()
         .frame(width: ui.hourWidth)
@@ -758,7 +767,7 @@ private struct StatusLine: View {
     var body: some View {
         HStack(spacing: ui.s) {
             Circle()
-                .fill(store.isOffline || store.activeForecast == nil ? Palette.crimson : Color(hex: 0x6FD39C))
+                .fill(store.isOffline ? Palette.crimson : (store.activeForecast == nil ? Palette.textFaint : Color(hex: 0x6FD39C)))
                 .frame(width: ui.pt(7), height: ui.pt(7))
             Text(text)
             Spacer(minLength: ui.s)
@@ -794,7 +803,7 @@ private struct Eyebrow: View {
     }
 }
 
-/// SF Symbols in their own multicolour palette: yellow sun, white clouds, blue rain.
+/// SF Symbols tinted with the brand's warm palette: cream clouds, amber sun, soft blue rain.
 struct WeatherSymbol: View {
     let code: Int
     let isDay: Bool
@@ -802,9 +811,24 @@ struct WeatherSymbol: View {
 
     var body: some View {
         Image(systemName: Condition.symbol(code, isDay: isDay))
-            .symbolRenderingMode(.multicolor)
+            .symbolRenderingMode(.palette)
+            .foregroundStyle(code == 0 ? accent : Self.cloud, accent)   // clear sky: the sun or moon is the only layer
             .font(.system(size: size))
             .accessibilityLabel(Condition.name(code))
+    }
+
+    static let cloud = Color(hex: 0xCFC6BB)
+
+    /// The symbol's second layer: sun amber, night moon, rain blue, storm amber, snow white.
+    private var accent: Color {
+        switch code {
+        case 0: return isDay ? Palette.sun : Color(hex: 0xE9DCC8)
+        case 1, 2: return isDay ? Palette.sun : Color(hex: 0xE9DCC8)
+        case 95, 96, 99: return Palette.sun
+        case _ where Condition.isSnow(code): return .white
+        case 51...82: return Palette.rain
+        default: return Self.cloud
+        }
     }
 }
 

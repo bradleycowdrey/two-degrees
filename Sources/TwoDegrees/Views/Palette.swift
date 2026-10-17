@@ -13,7 +13,7 @@ enum Palette {
     static let cream = Color(hex: 0xFFF1E5)
     static let textSecondary = Color(hex: 0xE0D8D0)
     static let textMuted = Color(hex: 0xB0A898)
-    static let textFaint = Color(hex: 0x807870)
+    static let textFaint = Color(hex: 0x9A9286)
     static let crimson = Color(hex: 0x990F3D)
     /// Raised tile surface and stronger hover fill, a step up from bg on the same warm scale.
     static let raisedTile = Color(hex: 0x23201D)

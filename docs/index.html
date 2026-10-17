@@ -11,7 +11,7 @@
   :root {
     color-scheme: dark;
     --bg: #1A1816; --tile: #23201D; --raised: #1C1A18; --border: #2A2520; --border-strong: #3A3530;
-    --text: #FFFFFF; --cream: #FFF1E5; --secondary: #E0D8D0; --muted: #B0A898; --faint: #807870;
+    --text: #FFFFFF; --cream: #FFF1E5; --secondary: #E0D8D0; --muted: #B0A898; --faint: #9A9286;
     --crimson: #990F3D; --accent: #E04A7A;
     --sun: #F4B860; --moon: #E9DCC8; --cloud: #CFC6BB; --cloud-dark: #8E857B; --rain: #8DB4E2; --snow: #F4F7FB;
     --cold: #7FA7D9; --mild: #E9C98A; --warm: #F2A65A; --hot: #E04A7A;
@@ -64,6 +64,7 @@
   .chip .t { font-variant-numeric: tabular-nums; opacity: .72; font-weight: 500; }
   .chip.add { background: none; box-shadow: inset 0 0 0 1px var(--border-strong); color: var(--muted); }
   .chip.add:hover { color: var(--text); }
+  .chip.add.icon { width: 30px; padding: 0; justify-content: center; font-size: 17px; line-height: 1; }
   .chip-wrap { position: relative; display: inline-flex; }
   .chip-x { position: absolute; top: -5px; right: -5px; width: 18px; height: 18px; border: 0; border-radius: 50%; padding: 0; cursor: pointer;
     background: var(--crimson); color: #fff; font-size: 12px; line-height: 18px; display: none; }
@@ -100,22 +101,24 @@
   .place .local { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
   .reading { display: flex; align-items: center; gap: 14px; margin: 10px 0 6px; }
   .reading .big-icon { width: 64px; height: 64px; flex: none; }
-  .temps { display: flex; align-items: baseline; gap: 14px; font-variant-numeric: tabular-nums; }
+  .temps { display: flex; align-items: baseline; gap: 12px; font-variant-numeric: tabular-nums; }
   .temps .primary { font-size: 64px; font-weight: 600; letter-spacing: -.045em; line-height: 1; }
   .temps .primary sup, .temps .secondary sup { font-size: .42em; font-weight: 500; vertical-align: .95em; letter-spacing: 0; margin-left: 2px; color: var(--secondary); }
+  .temps .secondary sup { color: inherit; }
   .temps .secondary { font-size: 38px; font-weight: 500; letter-spacing: -.035em; line-height: 1; color: var(--muted); }
   .temps .divider { width: 1px; align-self: stretch; margin: 6px 0; background: var(--border-strong); }
   .cond { font-size: 17px; font-weight: 600; letter-spacing: -.015em; margin: 0; }
   .summary { font-size: 14px; color: var(--secondary); margin: 2px 0 0; text-wrap: balance; }
   .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-top: 16px; }
   .stat { background: var(--raised); border-radius: var(--r-cell); padding: 10px 10px 9px; min-width: 0; }
-  .stat .k { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--faint); }
+  .stat .k { font-size: 12px; font-weight: 500; color: var(--muted); }
   .stat .v { font-size: 14px; font-weight: 600; margin-top: 4px; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .stat .s { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
   /* Next 24 hours */
-  .hours-scroll { overflow-x: auto; margin: 0 -20px; padding: 0 20px 4px; scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent;
+  .hours-scroll { overflow-x: auto; margin: 0 -20px; padding: 0 20px; scrollbar-width: none;
     -webkit-mask-image: linear-gradient(to right, #000 88%, transparent); mask-image: linear-gradient(to right, #000 88%, transparent); }
+  .hours-scroll::-webkit-scrollbar { display: none; }
   .hours { position: relative; display: flex; width: max-content; padding-right: 32px; }
   .hour { width: 54px; flex: none; display: flex; flex-direction: column; align-items: center; font-variant-numeric: tabular-nums; }
   .hour .h { height: 16px; font-size: 12px; font-weight: 500; color: var(--muted); line-height: 16px; }
@@ -124,6 +127,7 @@
   .hour .spark { height: 40px; }
   .hour .f { font-size: 15px; font-weight: 600; line-height: 18px; }
   .hour .c { font-size: 12px; color: var(--muted); line-height: 16px; }
+  .hours.no-pop .hour .p { display: none; }
   .hour .p { height: 16px; font-size: 11px; font-weight: 600; color: var(--rain); line-height: 16px; }
   .hour.day-start::before { content: ""; position: absolute; width: 1px; top: 0; bottom: 0; margin-left: -54px; background: var(--border-strong); }
   .hour.day-start { position: relative; }
@@ -185,7 +189,11 @@
   @media (max-width: 460px) {
     .panel { padding: 25px 14px 16px; border-radius: 24px; }
     .tile { padding: 16px; }
-    .hours-scroll { margin: 0 -16px; padding: 0 16px 4px; }
+    .chip { height: 36px; }
+    .chip.add.icon { width: 36px; }
+    .seg button { height: 32px; }
+    .circle { width: 36px; height: 36px; }
+    .hours-scroll { margin: 0 -16px; padding: 0 16px; }
     .temps .primary { font-size: 54px; }
     .temps .secondary { font-size: 32px; }
     .reading .big-icon { width: 52px; height: 52px; }
@@ -392,7 +400,7 @@
       default: g = `<path d="${CLOUD}" fill="var(--cloud)"/>`;
     }
     void body;
-    return `<svg viewBox="0 0 24 24" role="img" aria-label="${esc(label || codeInfo(code)[0])}">${g}</svg>`;
+    return label === '' ? `<svg viewBox="0 0 24 24" aria-hidden="true">${g}</svg>` : `<svg viewBox="0 0 24 24" role="img" aria-label="${esc(label || codeInfo(code)[0])}">${g}</svg>`;
   }
 
   /* ---------- Time helpers. Forecast times are city-local "YYYY-MM-DDTHH:MM" strings. ---------- */
@@ -529,7 +537,7 @@
       return `<span class="chip-wrap"><button type="button" class="chip" data-i="${i}" aria-current="${i === state.active}">${esc(c.name)}${t}</button>` +
         (state.cities.length > 1 ? `<button type="button" class="chip-x" data-x="${i}" aria-label="Remove ${esc(c.name)}">×</button>` : '') + `</span>`;
     }).join('') +
-      (state.cities.length < MAX_CITIES ? `<button type="button" class="chip add" id="addBtn" aria-expanded="${!$('#search').hidden}">+ Add city</button>` : '') +
+      (state.cities.length < MAX_CITIES ? `<button type="button" class="chip add icon" id="addBtn" aria-expanded="${!$('#search').hidden}" aria-label="${$('#search').hidden ? 'Add city' : 'Cancel'}" title="${$('#search').hidden ? 'Add city' : 'Cancel'}">${$('#search').hidden ? '+' : '×'}</button>` : '') +
       (state.cities.length > 1 ? `<button type="button" class="chip add" id="editBtn" aria-pressed="${state.editing}">${state.editing ? 'Done' : 'Edit'}</button>` : '');
   }
 
@@ -552,8 +560,8 @@
     now.innerHTML = `
       <div class="place"><h2>${esc(city.name)}</h2><span class="local">${esc(city.region ? city.region + ' · ' : '')}${clock(cur.time)}</span></div>
       <div class="reading">
-        <div class="big-icon">${icon(cur.code, cur.isDay, condName)}</div>
-        <div class="temps" aria-label="${speak(cur.t)}">
+        <div class="big-icon">${icon(cur.code, cur.isDay, '')}</div>
+        <div class="temps" role="img" aria-label="${speak(cur.t)}">
           <span class="primary" aria-hidden="true">${deg(cur.t, u)}<sup>°${u}</sup></span>
           <span class="divider" aria-hidden="true"></span>
           <span class="secondary" aria-hidden="true">${deg(cur.t, o)}<sup>°${o}</sup></span>
@@ -564,8 +572,8 @@
       <div class="stats">
         <div class="stat"><div class="k">Feels like</div><div class="v">${deg(cur.feels, u)}°${u}</div><div class="s">${deg(cur.feels, o)}°${o}</div></div>
         <div class="stat"><div class="k">Today</div><div class="v">${deg(today.min, u)}–${deg(today.max, u)}°${u}</div><div class="s">${deg(today.min, o)}–${deg(today.max, o)}°${o}</div></div>
-        <div class="stat"><div class="k">Wind</div><div class="v">${Math.round(wind * 0.621371)} mph</div><div class="s">${wind} km/h</div></div>
-        <div class="stat"><div class="k">Humidity</div><div class="v">${Math.round(cur.hum)}%</div><div class="s">Rain ${today.pop}%</div></div>
+        <div class="stat"><div class="k">Wind</div><div class="v">${Math.round(cur.wind * 0.621371)} mph</div><div class="s">${wind} km/h</div></div>
+        <div class="stat"><div class="k">Rain today</div><div class="v">${today.pop}%</div><div class="s">${Math.round(cur.hum)}% humid</div></div>
       </div>`;
 
     // Next 24 hours, with a temperature line drawn to one scale across the strip.
@@ -579,7 +587,7 @@
     const width = hours.length * COL;
     $('#hours').innerHTML = hours.map((h, i) => {
       const first = i === 0, midnight = !first && h.time.slice(11, 13) === '00';
-      return `<div class="hour${first ? ' is-now' : ''}${midnight ? ' day-start' : ''}" aria-label="${first ? 'Now' : hour12(h.time)}: ${esc(codeInfo(h.code)[0])}, ${speak(h.t)}${h.pop >= 20 ? ', ' + h.pop + ' percent chance of rain' : ''}">
+      return `<div class="hour${first ? ' is-now' : ''}${midnight ? ' day-start' : ''}" role="img" aria-label="${first ? 'Now' : hour12(h.time)}: ${esc(codeInfo(h.code)[0])}, ${speak(h.t)}${h.pop >= 20 ? ', ' + h.pop + ' percent chance of rain' : ''}">
         <div class="h">${first ? 'Now' : midnight ? weekday(h.time) : hour12(h.time)}</div>
         <div class="ic">${icon(h.code, h.isDay, '')}</div>
         <div class="spark"></div>
@@ -593,6 +601,7 @@
         <path d="${path}" fill="none" stroke="var(--cream)" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" opacity=".85"/>
         ${pts.map(([x, yy], i) => `<circle cx="${x.toFixed(1)}" cy="${yy.toFixed(1)}" r="${i === 0 ? 3.6 : 2}" fill="${i === 0 ? 'var(--text)' : 'var(--cream)'}"${i === 0 ? ' stroke="var(--tile)" stroke-width="2"' : ''}/>`).join('')}
       </svg>`;
+    $('#hours').classList.toggle('no-pop', !hours.some((h) => h.pop >= 20));
     $('#hoursAside').textContent = `${deg(tMin, u)}° – ${deg(tMax, u)}°${u}`;
 
     // Five days, each range bar on one shared scale.
@@ -602,7 +611,7 @@
     $('#days').innerHTML = days.map((d, i) => {
       const [name] = codeInfo(d.code);
       const dot = i === 0 ? `<u style="left:${pct(Math.min(Math.max(cur.t, d.min), d.max))}%" title="Now"></u>` : '';
-      return `<div class="day" aria-label="${i === 0 ? 'Today' : weekday(d.date)}: ${esc(name)}. Low ${speak(d.min)}. High ${speak(d.max)}.${d.pop >= 20 ? ' ' + d.pop + ' percent chance of rain.' : ''}">
+      return `<div class="day" role="img" aria-label="${i === 0 ? 'Today' : weekday(d.date)}: ${esc(name)}. Low ${speak(d.min)}. High ${speak(d.max)}.${d.pop >= 20 ? ' ' + d.pop + ' percent chance of rain.' : ''}">
         <span class="d">${i === 0 ? 'Today' : weekday(d.date)}</span>
         <span class="ic">${icon(d.code, true, '')}</span>
         <span class="p">${d.pop >= 20 ? d.pop + '%' : ''}</span>
@@ -617,7 +626,7 @@
     status.classList.toggle('live', data.source === 'live' && !data.stale);
     $('#statusText').textContent = data.source === 'live'
       ? `${data.stale ? 'Offline, showing the forecast from' : 'Updated'} ${new Date(data.fetchedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`
-      : 'Sample forecast. Live data loads in the Mac app and the web app.';
+      : 'Sample forecast. Live data couldn’t load here.';
     document.title = `${deg(cur.t, u)}°${u} ${city.name} · Two Degrees`;
   }
 
@@ -753,9 +762,6 @@
   document.addEventListener('click', (e) => { if (!e.target.closest('.share-wrap') && !$('#shareMenu').hidden) toggleShare(false); });
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && !$('#shareMenu').hidden) { toggleShare(false); $('#shareBtn').focus(); }
-    if (e.target.closest && e.target.closest('input')) return;
-    if (e.key.toLowerCase() === 'f') setUnit('F');
-    if (e.key.toLowerCase() === 'c') setUnit('C');
   });
 
   if (navigator.geolocation && !inArtifact()) {

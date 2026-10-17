@@ -47,7 +47,7 @@ Two Degrees is distributed directly, not through the Mac App Store.
 2. Open the DMG and drag **Two Degrees** to **Applications**.
 3. First launch: if macOS says it can't verify the app, **right-click Two Degrees → Open → Open**, or run
    `xattr -dr com.apple.quarantine /Applications/TwoDegrees.app`
-4. Add your cities with **+ Add city**.
+4. Add your cities with the **+** button.
 
 ## Build from source
 
