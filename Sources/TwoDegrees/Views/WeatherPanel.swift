@@ -22,23 +22,42 @@ private struct WeatherPanelContent: View {
     @Environment(\.openWindow) private var openWindow
     let compact: Bool
     @State private var adding = false
+    @State private var editing = false
     @State private var contentHeight: CGFloat = 0
+    /// Height of the window's hidden title bar. The panel draws under it (so the crimson rule
+    /// is at the very top), and SwiftUI still adds it to the window height, so it's subtracted
+    /// at the bottom to keep the window exactly the size of the panel.
+    @State private var titleBarInset: CGFloat = 0
+    @State private var host = HostWindow()
 
     /// Tallest the scrolling body may be so the whole panel stays on screen at any size.
     private var maxBodyHeight: CGFloat {
         let screen = NSScreen.main?.visibleFrame.height ?? 800
-        return max(ui.pt(320), screen - ui.pt(compact ? 40 : 80))
+        let chrome = 3 + ui.pt(21) + ui.pt(32) + ui.pt(10)   // crimson rule + header
+        return max(ui.pt(320), screen - chrome - ui.pt(compact ? 32 : 64))
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // bradcowdrey.com's signature crimson rule.
-            Palette.crimson.frame(height: 3)
+            // Crimson rule and header together act as the window's title bar: drag anywhere
+            // that isn't a button to move the window.
+            VStack(alignment: .leading, spacing: 0) {
+                // bradcowdrey.com's signature crimson rule.
+                Palette.crimson.frame(height: 3)
+
+                header
+                    .padding(.horizontal, ui.pt(18))
+                    .padding(.top, ui.pt(21))
+                    .padding(.bottom, ui.pt(10))
+            }
+            // Window: drag to move. Menu bar panel (which macOS pins under its icon): drag to
+            // tear it off into a movable window at the same spot.
+            .background(WindowDragHandle(onTearOff: compact ? { tearOff() } : nil))
+            .help(compact ? "Drag to detach into a window" : "")
 
             ScrollView(.vertical) {
-                VStack(alignment: .leading, spacing: ui.m) {
-                    header
-                    CityChips(adding: $adding)
+                VStack(alignment: .leading, spacing: ui.pt(10)) {
+                    CityChips(adding: $adding, editing: $editing)
                     if adding {
                         Tile { CitySearchField(adding: $adding) }
                             .transition(.move(edge: .top).combined(with: .opacity))
@@ -66,9 +85,8 @@ private struct WeatherPanelContent: View {
                     StatusLine()
                     footer
                 }
-                .padding(.horizontal, ui.xl)
-                .padding(.top, ui.l + ui.xs)
-                .padding(.bottom, ui.l + ui.xs)
+                .padding(.horizontal, ui.pt(18))
+                .padding(.bottom, ui.l)
                 .background(
                     GeometryReader { proxy in
                         Color.clear.preference(key: ContentHeightKey.self, value: proxy.size.height)
@@ -79,11 +97,24 @@ private struct WeatherPanelContent: View {
             .frame(height: contentHeight > 0 ? min(contentHeight, maxBodyHeight) : nil)
             .onPreferenceChange(ContentHeightKey.self) { contentHeight = $0 }
         }
+        // Watch the panel's own size and fit the hosting window to it.
+        .onGeometryChange(for: CGSize.self) { proxy in proxy.size } action: { size in
+            fitWindow(to: size)
+        }
+        .padding(.bottom, -titleBarInset)
         .background(Palette.bg)
+        // Use the full window: the crimson rule sits at the very top, under the hidden title bar.
         .ignoresSafeArea()
         .background(Palette.bg.ignoresSafeArea())
+        .background(HostWindowReader(box: { host.isDesktop = !compact; return host }()) { window in
+            guard !compact else { return }
+            window.backgroundColor = NSColor(Palette.bg)
+            let inset = max(0, window.frame.height - window.contentLayoutRect.height)
+            if abs(inset - titleBarInset) > 0.5 { titleBarInset = inset }
+        })
         .environment(\.colorScheme, .dark)
         .animation(.snappy, value: adding)
+        .animation(.snappy, value: editing)
         .onAppear { Task { await updater.checkIfDue() } }
         .focusable()
         .focusEffectDisabled()
@@ -93,8 +124,9 @@ private struct WeatherPanelContent: View {
             return .handled
         }
         .onKeyPress(.escape) {
-            guard adding else { return .ignored }
+            guard adding || editing else { return .ignored }
             adding = false
+            editing = false
             return .handled
         }
         .onKeyPress(characters: CharacterSet(charactersIn: "+=-"), phases: .down) { press in
@@ -111,6 +143,9 @@ private struct WeatherPanelContent: View {
                 .font(ui.title)
                 .tracking(-0.2)
                 .foregroundStyle(Palette.textPrimary)
+                .lineLimit(1)
+                .fixedSize()
+                .layoutPriority(1)
             Spacer(minLength: ui.s)
             UnitToggle()
             HeaderCircleButton(symbol: "arrow.clockwise", help: "Refresh") {
@@ -118,14 +153,49 @@ private struct WeatherPanelContent: View {
             }
             .disabled(store.loading)
             if compact {
-                HeaderCircleButton(symbol: "macwindow", help: "Open as Window") {
-                    openWindow(id: "main")
-                    NSApp.activate(ignoringOtherApps: true)
-                }
+                HeaderCircleButton(symbol: "macwindow", help: "Open as Window") { tearOff() }
             }
-            MoreMenu()
+            MoreMenu(compact: compact, closeHost: { host.window?.close() })
         }
-        .padding(.bottom, ui.xs)
+    }
+
+    /// Resizes the hosting window to exactly the panel's size, keeping its top edge where it is
+    /// and the whole window on screen.
+    private func fitWindow(to size: CGSize, attempt: Int = 0) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + (attempt == 0 ? 0 : 0.1)) {
+            guard size.width > 1, size.height > 1 else { return }
+            guard let window = host.window, let content = window.contentView else {
+                // The window reference arrives a moment after first layout; try again briefly.
+                if attempt < 10 { fitWindow(to: size, attempt: attempt + 1) }
+                return
+            }
+            let chrome = CGSize(width: window.frame.width - content.bounds.width,
+                                height: window.frame.height - content.bounds.height)
+            var frame = window.frame
+            let top = frame.maxY
+            frame.size = CGSize(width: size.width + chrome.width, height: size.height + chrome.height)
+            frame.origin.y = top - frame.height
+            if let visible = (window.screen ?? NSScreen.main)?.visibleFrame {
+                frame.origin.x = min(max(frame.origin.x, visible.minX), visible.maxX - frame.width)
+                if frame.minY < visible.minY { frame.origin.y = visible.minY }
+                if frame.maxY > visible.maxY { frame.origin.y = visible.maxY - frame.height }
+            }
+            if abs(frame.width - window.frame.width) > 0.5 || abs(frame.height - window.frame.height) > 0.5
+                || abs(frame.minX - window.frame.minX) > 0.5 || abs(frame.minY - window.frame.minY) > 0.5 {
+                window.setFrame(frame, display: true)
+            }
+            host.keepOnScreen()
+        }
+    }
+
+    /// Detaches the menu bar panel into the desktop window, placed where the panel was.
+    private func tearOff() {
+        if let frame = host.window?.frame {
+            WindowPlacement.request(.topLeft(NSPoint(x: frame.minX, y: frame.maxY)))
+        }
+        openWindow(id: "main")           // placed before it's shown, then fades in
+        NSApp.activate(ignoringOtherApps: true)
+        host.window?.close()             // the panel goes away in the same beat
     }
 
     private var footer: some View {
@@ -133,8 +203,9 @@ private struct WeatherPanelContent: View {
             Link(destination: Brand.website) {
                 Text("Made by \(Brand.author). Free. Forever. · \(Brand.websiteHost) ↗")
             }
-            .font(ui.font(12))
+            .font(ui.font(11.5))
             .foregroundStyle(Palette.textMuted)
+            .lineLimit(2)
             Spacer(minLength: ui.s)
             ShareLink(
                 item: Brand.repository,
@@ -167,7 +238,7 @@ private struct UnitToggle: View {
                 let on = store.unit == unit
                 Button { store.unit = unit } label: {
                     Text(unit.symbol)
-                        .font(ui.font(13, .semibold))
+                        .font(ui.font(13, .medium))
                         .foregroundStyle(on ? Palette.bg : Palette.textSecondary)
                         .frame(width: ui.pt(44), height: ui.pt(26))
                         .background(Capsule().fill(on ? Palette.cream : .clear))
@@ -192,6 +263,10 @@ private struct MoreMenu: View {
     @EnvironmentObject private var updater: Updater
     @Environment(\.metrics) private var ui
     @Environment(\.openSettings) private var openSettings
+    @Environment(\.openWindow) private var openWindow
+    let compact: Bool
+    /// Closes the menu bar panel this menu lives in.
+    let closeHost: () -> Void
 
     var body: some View {
         Menu {
@@ -201,6 +276,8 @@ private struct MoreMenu: View {
                 Divider()
             }
             Button("Copy Current Reading") { store.copyReading() }
+            Button("Remove \(store.active.name)", role: .destructive) { store.remove(store.active) }
+                .disabled(store.cities.count < 2)
             Button("Refresh  ⌘R") { Task { await store.refresh() } }
             Divider()
             Picker("Size", selection: $store.uiSize) {
@@ -209,8 +286,30 @@ private struct MoreMenu: View {
             Picker("Font", selection: $store.appFont) {
                 ForEach(AppFont.allCases) { Text($0.label).tag($0) }
             }
+            Button("Larger  ⌘+") { store.stepSize(1) }
+                .disabled(store.uiSize.larger == nil)
+            Button("Smaller  ⌘−") { store.stepSize(-1) }
+                .disabled(store.uiSize.smaller == nil)
+            Divider()
             Toggle("Show Weather in the Dock", isOn: $store.dockShowsWeather)
             Toggle("Keep Window on Top", isOn: $store.floatOnTop)
+            if compact {
+                Button("Open as Window") {
+                    closeHost()
+                    openWindow(id: "main")
+                    NSApp.activate(ignoringOtherApps: true)
+                }
+            }
+            Menu("Window Position") {
+                ForEach(WindowPlacement.allCases) { placement in
+                    Button(placement.label) {
+                        WindowPlacement.request(.edge(placement))
+                        openWindow(id: "main")   // opens it, or brings the open one forward
+                        NSApp.activate(ignoringOtherApps: true)
+                        if compact { closeHost() }
+                    }
+                }
+            }
             Divider()
             Button("Settings…") {
                 openSettings()
@@ -276,6 +375,7 @@ private struct CityChips: View {
     @EnvironmentObject private var store: WeatherStore
     @Environment(\.metrics) private var ui
     @Binding var adding: Bool
+    @Binding var editing: Bool
 
     var body: some View {
         FlowLayout(spacing: ui.pt(6)) {
@@ -293,38 +393,111 @@ private struct CityChips: View {
                     }
                 }
                 .buttonStyle(ChipStyle(on: on))
+                .overlay(alignment: .topTrailing) {
+                    if editing && store.cities.count > 1 {
+                        Button { withAnimation(.snappy) { store.remove(city) } } label: {
+                            Image(systemName: "xmark")
+                                .font(ui.font(9, .bold))
+                                .foregroundStyle(.white)
+                                .frame(width: ui.pt(20), height: ui.pt(20))
+                                .background(Circle().fill(Palette.crimson))
+                                .contentShape(Circle())
+                        }
+                        .buttonStyle(.plain)
+                        .offset(x: ui.pt(6), y: -ui.pt(6))
+                        .help("Remove \(city.name)")
+                        .accessibilityLabel("Remove \(city.name)")
+                        .transition(.scale.combined(with: .opacity))
+                    }
+                }
                 .contextMenu {
                     Button("Remove \(city.name)", role: .destructive) { store.remove(city) }
                         .disabled(store.cities.count < 2)
                 }
                 .accessibilityAddTraits(on ? .isSelected : [])
             }
-            if store.canAdd {
-                Button { adding.toggle() } label: {
-                    Image(systemName: adding ? "xmark" : "plus")
-                        .font(ui.font(13, .semibold))
-                        .frame(width: ui.pt(30) - 2 * ui.pt(12))
-                }
-                .buttonStyle(ChipStyle(on: false, outlined: true))
-                .help(adding ? "Cancel" : "Add city")
-                .accessibilityLabel(adding ? "Cancel" : "Add city")
+            ListControls(adding: $adding, editing: $editing)
+        }
+        .padding(.top, editing ? ui.pt(6) : 0)
+    }
+}
+
+/// Meridian's Add | Edit capsule, icon-only so the city row stays on one line.
+private struct ListControls: View {
+    @EnvironmentObject private var store: WeatherStore
+    @Environment(\.metrics) private var ui
+    @Binding var adding: Bool
+    @Binding var editing: Bool
+
+    var body: some View {
+        HStack(spacing: 0) {
+            Segment(
+                symbol: adding ? "checkmark" : "plus",
+                active: adding,
+                enabled: store.canAdd || adding,
+                help: adding ? "Done adding" : (store.canAdd ? "Add a city" : "You can track up to \(WeatherStore.maxCities) cities")
+            ) {
+                withAnimation(.snappy) { adding.toggle(); if adding { editing = false } }
             }
+            Palette.borderStrong.frame(width: 1, height: ui.pt(14))
+                .opacity(adding || editing ? 0 : 1)
+            Segment(
+                symbol: editing ? "checkmark" : "pencil",
+                active: editing,
+                enabled: store.cities.count > 1 || editing,
+                help: editing ? "Done editing" : "Remove cities"
+            ) {
+                withAnimation(.snappy) { editing.toggle(); if editing { adding = false } }
+            }
+        }
+        .padding(ui.pt(3))
+        .background(Capsule().fill(Palette.raisedTile))
+        .overlay(Capsule().strokeBorder(Palette.borderStrong, lineWidth: 0.5))
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Manage cities")
+    }
+
+    private struct Segment: View {
+        @Environment(\.metrics) private var ui
+        let symbol: String
+        let active: Bool
+        let enabled: Bool
+        let help: String
+        let action: () -> Void
+        @State private var hovering = false
+
+        var body: some View {
+            Button(action: action) {
+                Image(systemName: symbol)
+                    .font(ui.font(11, .semibold))
+                    .frame(width: ui.pt(32), height: ui.pt(26))
+                    .foregroundStyle(active ? Palette.bg : (enabled ? (hovering ? Palette.textPrimary : Palette.textSecondary) : Palette.textFaint))
+                    .background(
+                        Capsule().fill(active ? Palette.cream : (hovering && enabled ? Palette.border : .clear))
+                    )
+                    .contentShape(Capsule())
+            }
+            .buttonStyle(.plain)
+            .disabled(!enabled)
+            .onHover { hovering = $0 }
+            .animation(.easeOut(duration: 0.15), value: hovering)
+            .animation(.snappy, value: active)
+            .help(help)
+            .accessibilityLabel(help)
         }
     }
 }
 
 private struct ChipStyle: ButtonStyle {
     var on: Bool
-    var outlined = false
 
     func makeBody(configuration: Configuration) -> some View {
-        ChipBody(configuration: configuration, on: on, outlined: outlined)
+        ChipBody(configuration: configuration, on: on)
     }
 
     private struct ChipBody: View {
         let configuration: ButtonStyleConfiguration
         let on: Bool
-        let outlined: Bool
         @Environment(\.metrics) private var ui
         @State private var hovering = false
 
@@ -332,9 +505,8 @@ private struct ChipStyle: ButtonStyle {
             configuration.label
                 .padding(.horizontal, ui.pt(12))
                 .frame(height: ui.pt(30))
-                .foregroundStyle(on ? Palette.bg : (hovering ? Palette.textPrimary : (outlined ? Palette.textMuted : Palette.textSecondary)))
-                .background(Capsule().fill(on ? Palette.cream : (outlined ? Color.clear : (hovering ? Palette.borderStrong : Palette.border))))
-                .overlay(Capsule().strokeBorder(outlined ? Palette.borderStrong : .clear, lineWidth: 1))
+                .foregroundStyle(on ? Palette.bg : (hovering ? Palette.textPrimary : Palette.textSecondary))
+                .background(Capsule().fill(on ? Palette.cream : (hovering ? Palette.borderStrong : Palette.border)))
                 .opacity(configuration.isPressed ? 0.8 : 1)
                 .contentShape(Capsule())
                 .onHover { hovering = $0 }
@@ -456,8 +628,8 @@ private struct NowTile: View {
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel(Speech.temperature(now.temperature))
             }
-            .padding(.top, ui.pt(10))
-            .padding(.bottom, ui.pt(6))
+            .padding(.top, ui.pt(6))
+            .padding(.bottom, ui.pt(4))
 
             Text(Condition.name(now.code))
                 .font(ui.font(17, .semibold))
@@ -477,7 +649,7 @@ private struct NowTile: View {
                 Stat(key: "Wind", value: "\(Int((now.wind * 0.621371).rounded())) mph", sub: "\(Int(now.wind.rounded())) km/h")
                 Stat(key: "Rain today", value: "\(today?.rainChance ?? 0)%", sub: "\(Int(now.humidity.rounded()))% humid")
             }
-            .padding(.top, ui.l)
+            .padding(.top, ui.m)
         }
         .padding(ui.tilePadding)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -542,7 +714,7 @@ private struct Stat: View {
         .lineLimit(1)
         .minimumScaleFactor(0.8)
         .padding(.horizontal, ui.pt(10))
-        .padding(.vertical, ui.pt(9))
+        .padding(.vertical, ui.pt(8))
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(RoundedRectangle(cornerRadius: ui.cellRadius, style: .continuous).fill(Palette.raised))
     }
@@ -561,8 +733,8 @@ private struct HoursTile: View {
         let low = temps.min() ?? 0, high = temps.max() ?? 1
         let unit = store.unit
         Tile {
-            VStack(alignment: .leading, spacing: ui.m) {
-                Eyebrow(title: "Next 24 hours", aside: "\(unit.value(low))° – \(unit.value(high))\(unit.symbol)")
+            VStack(alignment: .leading, spacing: ui.s) {
+                Eyebrow(title: "Next 24 hours", aside: "\(unit.value(low))–\(unit.value(high))\(unit.symbol) · \(unit.other.value(low))–\(unit.other.value(high))\(unit.other.symbol)")
                 ScrollView(.horizontal, showsIndicators: false) {
                     ZStack(alignment: .topLeading) {
                         HStack(spacing: 0) {
@@ -572,7 +744,7 @@ private struct HoursTile: View {
                             }
                         }
                         Sparkline(temperatures: temps, column: ui.hourWidth, height: ui.sparkHeight)
-                            .offset(y: ui.pt(16) + ui.pt(6) + ui.pt(28))
+                            .offset(y: ui.pt(16) + ui.pt(4) + ui.pt(26))
                             .allowsHitTesting(false)
                     }
                     .padding(.trailing, ui.xl)
@@ -599,9 +771,9 @@ private struct HourColumn: View {
                 .font(ui.font(12, index == 0 ? .semibold : .medium))
                 .foregroundStyle(index == 0 ? Palette.cream : Palette.textMuted)
                 .frame(height: ui.pt(16))
-            WeatherSymbol(code: hour.code, isDay: hour.isDay, size: ui.pt(19))
-                .frame(width: ui.pt(28), height: ui.pt(28))
-                .padding(.top, ui.pt(6))
+            WeatherSymbol(code: hour.code, isDay: hour.isDay, size: ui.pt(18))
+                .frame(width: ui.pt(26), height: ui.pt(26))
+                .padding(.top, ui.pt(4))
             Color.clear.frame(height: ui.sparkHeight)
             Text("\(unit.value(hour.temperature))°")
                 .font(ui.font(15, .semibold))
@@ -635,7 +807,7 @@ private struct Sparkline: View {
     var body: some View {
         Canvas { context, size in
             guard temperatures.count > 1, let low = temperatures.min(), let high = temperatures.max() else { return }
-            let pad: CGFloat = 7
+            let pad: CGFloat = 5
             let span = max(high - low, 1)
             let points = temperatures.enumerated().map { i, t in
                 CGPoint(x: CGFloat(i) * column + column / 2, y: pad + (1 - CGFloat((t - low) / span)) * (height - pad * 2))
@@ -668,15 +840,38 @@ private struct DaysTile: View {
     let forecast: Forecast
 
     var body: some View {
+        // One shared scale for all five bars (including right now), with ticks every 10°F or 5°C.
         let days = Array(forecast.days.prefix(5))
-        let low = days.map(\.low).min() ?? 0, high = days.map(\.high).max() ?? 1
+        let now = forecast.now.temperature
+        let low = min(now, days.map(\.low).min() ?? now), high = max(now, days.map(\.high).max() ?? now)
+        let ticks = Ticks.make(low: low, high: high, unit: store.unit)
         Tile {
             VStack(alignment: .leading, spacing: ui.xs) {
                 Eyebrow(title: "5-day forecast", aside: "Low · High")
+                    .padding(.bottom, ui.xs)
                 ForEach(Array(days.enumerated()), id: \.element.id) { index, day in
                     if index > 0 { Rectangle().fill(Palette.borderStrong).frame(height: 0.5) }
-                    DayRow(day: day, isToday: index == 0, low: low, high: high,
-                           now: index == 0 ? forecast.now.temperature : nil)
+                    DayRow(day: day, isToday: index == 0, low: low, high: high, ticks: ticks.map(\.celsius),
+                           now: index == 0 ? now : nil)
+                }
+                if !ticks.isEmpty {
+                    HStack(spacing: ui.pt(10)) {
+                        Color.clear.frame(width: ui.pt(52) + ui.pt(10) + ui.pt(32) + ui.pt(10) + ui.pt(48), height: 1)
+                        GeometryReader { proxy in
+                            ForEach(ticks, id: \.label) { tick in
+                                Text("\(tick.label)°")
+                                    .font(ui.font(11, .medium))
+                                    .monospacedDigit()
+                                    .foregroundStyle(Palette.textFaint)
+                                    .fixedSize()
+                                    .position(x: CGFloat((tick.celsius - low) / max(high - low, 1)) * proxy.size.width, y: proxy.size.height / 2)
+                            }
+                        }
+                        .frame(height: ui.pt(14))
+                        Color.clear.frame(width: ui.pt(48), height: 1)
+                    }
+                    .padding(.top, ui.pt(2))
+                    .accessibilityHidden(true)
                 }
             }
         }
@@ -690,6 +885,7 @@ private struct DayRow: View {
     let isToday: Bool
     let low: Double
     let high: Double
+    let ticks: [Double]
     let now: Double?
 
     var body: some View {
@@ -699,28 +895,32 @@ private struct DayRow: View {
             Text(name)
                 .font(ui.font(15, .semibold))
                 .foregroundStyle(Palette.textPrimary)
-                .frame(width: ui.pt(56), alignment: .leading)
-            WeatherSymbol(code: day.code, isDay: true, size: ui.pt(19))
-                .frame(width: ui.pt(28))
-            Text(day.rainChance >= 20 ? "\(day.rainChance)%" : "")
-                .font(ui.font(12, .semibold))
-                .foregroundStyle(Palette.rain)
-                .frame(width: ui.pt(40), alignment: .leading)
+                .frame(width: ui.pt(52), alignment: .leading)
+            VStack(spacing: ui.pt(1)) {
+                WeatherSymbol(code: day.code, isDay: true, size: ui.pt(17))
+                if day.rainChance >= 20 {
+                    Text("\(day.rainChance)%")
+                        .font(ui.font(10, .semibold))
+                        .foregroundStyle(Palette.rain)
+                }
+            }
+            .frame(width: ui.pt(32))
             VStack(alignment: .trailing, spacing: 0) {
                 Text("\(unit.value(day.low))°").font(ui.font(15, .semibold)).foregroundStyle(Palette.textSecondary)
                 Text("\(other.value(day.low))\(other.symbol)").font(ui.font(12)).foregroundStyle(Palette.textMuted)
             }
-            .frame(width: ui.pt(52), alignment: .trailing)
-            RangeBar(low: day.low, high: day.high, scaleLow: low, scaleHigh: high, now: now)
+            .frame(width: ui.pt(48), alignment: .trailing)
+            RangeBar(low: day.low, high: day.high, scaleLow: low, scaleHigh: high, ticks: ticks, now: now)
                 .frame(height: ui.pt(6))
             VStack(alignment: .leading, spacing: 0) {
                 Text("\(unit.value(day.high))°").font(ui.font(15, .semibold)).foregroundStyle(Palette.textPrimary)
                 Text("\(other.value(day.high))\(other.symbol)").font(ui.font(12)).foregroundStyle(Palette.textMuted)
             }
-            .frame(width: ui.pt(52), alignment: .leading)
+            .frame(width: ui.pt(48), alignment: .leading)
         }
         .monospacedDigit()
-        .frame(minHeight: ui.pt(52))
+        .frame(minHeight: ui.pt(44))
+        .padding(.vertical, ui.pt(4))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(name): \(Condition.name(day.code)). Low \(Speech.temperature(day.low)). High \(Speech.temperature(day.high)).\(day.rainChance >= 20 ? " \(day.rainChance) percent chance of rain." : "")")
     }
@@ -732,6 +932,7 @@ private struct RangeBar: View {
     let high: Double
     let scaleLow: Double
     let scaleHigh: Double
+    let ticks: [Double]
     let now: Double?
 
     var body: some View {
@@ -742,6 +943,11 @@ private struct RangeBar: View {
             ZStack(alignment: .leading) {
                 Capsule().fill(Palette.raised)
                     .overlay(Capsule().strokeBorder(Palette.borderStrong, lineWidth: 0.5))
+                ForEach(ticks, id: \.self) { t in
+                    Rectangle().fill(Palette.borderStrong)
+                        .frame(width: 1, height: proxy.size.height + 8)
+                        .offset(x: x(t) - 0.5)
+                }
                 Capsule()
                     .fill(LinearGradient(colors: [Palette.temperature(low), Palette.temperature(high)], startPoint: .leading, endPoint: .trailing))
                     .frame(width: max(x(high) - x(low), proxy.size.height))
@@ -751,7 +957,7 @@ private struct RangeBar: View {
                         .fill(Color.white)
                         .overlay(Circle().stroke(Palette.raisedTile, lineWidth: 2.5))
                         .frame(width: 10, height: 10)
-                        .offset(x: x(min(max(now, low), high)) - 5)
+                        .offset(x: x(now) - 5)
                 }
             }
         }
@@ -769,9 +975,12 @@ private struct StatusLine: View {
             Circle()
                 .fill(store.isOffline ? Palette.crimson : (store.activeForecast == nil ? Palette.textFaint : Color(hex: 0x6FD39C)))
                 .frame(width: ui.pt(7), height: ui.pt(7))
-            Text(text)
-            Spacer(minLength: ui.s)
-            Link("Weather data by Open-Meteo.com", destination: Brand.dataCredit)
+            Text(text).truncationMode(.tail)
+            Text("·").accessibilityHidden(true)
+            Link("Data: Open-Meteo", destination: Brand.dataCredit)
+                .help("Weather data by Open-Meteo.com")
+                .fixedSize()
+            Spacer(minLength: 0)
         }
         .font(ui.font(12))
         .foregroundStyle(Palette.textMuted)
@@ -990,6 +1199,26 @@ enum Summary {
         }
         guard let today = forecast.days.first else { return "" }
         return "Today \(dual(today.low)) to \(dual(today.high))."
+    }
+}
+
+/// Round values for the five-day scale: every 10°F or 5°C, kept clear of the bar ends.
+enum Ticks {
+    struct Tick { let label: Int; let celsius: Double }
+
+    static func make(low: Double, high: Double, unit: TempUnit) -> [Tick] {
+        let step = unit == .fahrenheit ? 10 : 5
+        let toC = { (v: Double) in unit == .fahrenheit ? (v - 32) * 5 / 9 : v }
+        let lowInUnit = unit == .fahrenheit ? low * 9 / 5 + 32 : low
+        let span = max(high - low, 1)
+        var ticks: [Tick] = []
+        var v = Int((lowInUnit / Double(step)).rounded(.up)) * step
+        while toC(Double(v)) <= high {
+            let at = (toC(Double(v)) - low) / span
+            if at > 0.05 && at < 0.95 { ticks.append(Tick(label: v, celsius: toC(Double(v)))) }
+            v += step
+        }
+        return ticks
     }
 }
 

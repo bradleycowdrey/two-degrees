@@ -140,12 +140,12 @@ struct Metrics {
     var display: Font { font(34, .semibold) }
 
     // Panel geometry
-    var tilePadding: CGFloat { pt(20) }
+    var tilePadding: CGFloat { pt(18) }
     var tileRadius: CGFloat { pt(22) }
     var cellRadius: CGFloat { pt(12) }
-    var hourWidth: CGFloat { pt(54) }
-    var sparkHeight: CGFloat { pt(40) }
-    var panelWidth: CGFloat { pt(440) }
+    var hourWidth: CGFloat { pt(48) }
+    var sparkHeight: CGFloat { pt(30) }
+    var panelWidth: CGFloat { pt(444) }
 }
 
 private struct MetricsKey: EnvironmentKey {
