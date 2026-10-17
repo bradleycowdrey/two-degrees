@@ -43,6 +43,19 @@ async function layoutProblems(page) {
         if (e.scrollWidth > e.clientWidth + 1 && getComputedStyle(e).textOverflow !== 'ellipsis') problems.push(`${sel} clipped ("${e.textContent.trim().slice(0, 30)}")`);
       }
     }
+    // Open forecast: each low and high sits right at its end of the bar, inside the row, and the scale's labels sit over its ticks.
+    for (const day of document.querySelectorAll('#days:not([hidden]) .day')) {
+      const r = (s) => day.querySelector(s).getBoundingClientRect();
+      const fill = r('.bar i'), lo = r('.lo'), hi = r('.hi'), track = r('.track'), name = day.querySelector('.d').textContent;
+      if (Math.abs(lo.right - fill.left) > 1 || Math.abs(hi.left - fill.right) > 1) problems.push(`${name}: low/high labels aren't at the ends of the bar`);
+      if (lo.left < track.left - 0.5 || hi.right > track.right + 0.5) problems.push(`${name}: a low/high label runs out of the row`);
+    }
+    const firstRow = document.querySelector('#days:not([hidden]) .day');
+    if (firstRow) {
+      const lines = [...firstRow.querySelectorAll('.bar s')].map((s) => s.getBoundingClientRect().left + 0.5);
+      const labels = [...document.querySelectorAll('#dayTicks span')].map((s) => { const b = s.getBoundingClientRect(); return b.left + b.width / 2; });
+      if (lines.length !== labels.length || labels.some((x, i) => Math.abs(x - lines[i]) > 1)) problems.push('5-day scale labels are not over their ticks');
+    }
     const range = document.querySelector('.days-head .range'), title = document.querySelector('#daysTitle');
     if (range && range.offsetParent !== null && range.getBoundingClientRect().left < title.getBoundingClientRect().right - 0.5) problems.push('5-day range runs into the "5-day forecast" title');
     if (document.documentElement.scrollWidth > innerWidth) problems.push(`page scrolls sideways by ${document.documentElement.scrollWidth - innerWidth}px`);

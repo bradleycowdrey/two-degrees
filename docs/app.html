@@ -153,16 +153,21 @@
 
   /* Five days */
   .days { display: flex; flex-direction: column; }
-  .day { display: grid; grid-template-columns: 52px 32px 48px minmax(0, 1fr) 48px; align-items: center; gap: 10px;
+  /* Each day's low and high ride the ends of its bar, so a bar reads as that day's range on the shared scale.
+     --lab is the room kept either side of the scale for a label at its far end. */
+  .day { --lab: 46px; --pad: 8px; display: grid; grid-template-columns: 52px 32px minmax(0, 1fr); align-items: center; gap: 10px;
     min-height: 48px; padding-block: 2px; border-top: 0.5px solid var(--border-strong); font-variant-numeric: tabular-nums; }
   .day:first-child { border-top: 0; }
   .day .d { font-size: 15px; font-weight: 600; }
   .day .ic { position: relative; display: flex; justify-content: center; }
   .day .ic svg { width: 24px; height: 24px; }
   .day .p { position: absolute; top: 100%; margin-top: 1px; font-size: 10px; font-weight: 600; line-height: 1; color: var(--rain); }
-  .day .lo, .day .hi { display: flex; flex-direction: column; line-height: 1.15; }
-  .day .lo { align-items: flex-end; }
-  .day .hi { align-items: flex-start; }
+  .day .track { position: relative; height: 40px; }
+  .day .bar { position: absolute; left: var(--lab); right: var(--lab); top: 50%; margin-top: -3px; background: none; box-shadow: none; }   /* no empty track: the ticks carry the scale */
+  .day .lo, .day .hi { position: absolute; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; line-height: 1.15;
+    background: var(--tile); white-space: nowrap; }   /* the tile colour hides the empty track behind the label */
+  .day .lo { align-items: flex-end; padding-right: var(--pad); }
+  .day .hi { align-items: flex-start; padding-left: var(--pad); }
   .day .lo b, .day .hi b { font-size: 15px; font-weight: 600; }
   .day .lo b { color: var(--secondary); }
   .day .lo span, .day .hi span { font-size: 12px; color: var(--muted); }
@@ -172,7 +177,7 @@
   /* The five-day forecast is an accordion, closed when the app opens. */
   .days-head { display: grid; grid-template-columns: 152px minmax(0, 1fr) 48px; column-gap: 10px; align-items: center; width: 100%;
     padding: 0; border: 0; background: none; color: inherit; text-align: left; cursor: pointer; }
-  .days-head[aria-expanded="true"] { margin-bottom: 4px; }
+  .days-head[aria-expanded="true"] { margin-bottom: 4px; grid-template-columns: 140px minmax(0, 1fr) 36px; }   /* ticks span the bars' scale */
   /* Closed, the title column only needs to fit the title, which leaves the range room on a phone. */
   .days-head[aria-expanded="false"] { grid-template-columns: max-content minmax(0, 1fr) 48px; }
   .days-head .eyebrow { margin: 0; }
@@ -236,6 +241,7 @@
     .seg.list button { width: 36px; height: 32px; }
     .seg.list { position: sticky; right: 0; box-shadow: -20px 0 14px 2px var(--bg); }
     .days-head { grid-template-columns: 134px minmax(0, 1fr) 44px; column-gap: 8px; }
+    .days-head[aria-expanded="true"] { grid-template-columns: 124px minmax(0, 1fr) 34px; }
     .days-head[aria-expanded="false"] { grid-template-columns: max-content minmax(0, 1fr) 44px; }
     .seg button { height: 32px; }
     .circle { width: 36px; height: 36px; }
@@ -244,7 +250,7 @@
     .temps .secondary { font-size: 32px; }
     .reading .big-icon { width: 52px; height: 52px; }
     .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .day { grid-template-columns: 44px 30px 44px minmax(0, 1fr) 44px; gap: 8px; }
+    .day { --lab: 42px; --pad: 6px; grid-template-columns: 44px 30px minmax(0, 1fr); gap: 8px; }
   }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
@@ -714,9 +720,9 @@
       return `<div class="day" role="img" aria-label="${i === 0 ? 'Today' : weekday(d.date)}: ${esc(name)}. Low ${speak(d.min)}. High ${speak(d.max)}.${d.pop >= 20 ? ' ' + d.pop + ' percent chance of rain.' : ''}">
         <span class="d">${i === 0 ? 'Today' : weekday(d.date)}</span>
         <span class="ic">${icon(d.code, true, '')}${d.pop >= 20 ? `<span class="p">${d.pop}%</span>` : ''}</span>
-        <span class="lo"><b>${deg(d.min, u)}°</b><span>${deg(d.min, o)}°${o}</span></span>
-        <span class="bar">${tickMarks}<i style="left:${pct(d.min)}%;right:${(100 - pct(d.max)).toFixed(1)}%;background:linear-gradient(90deg,${tempColor(d.min)},${tempColor(d.max)})"></i>${dot}</span>
-        <span class="hi"><b>${deg(d.max, u)}°</b><span>${deg(d.max, o)}°${o}</span></span>
+        <span class="track"><span class="bar">${tickMarks}<i style="left:${pct(d.min)}%;right:${(100 - pct(d.max)).toFixed(1)}%;background:linear-gradient(90deg,${tempColor(d.min)},${tempColor(d.max)})"></i>${dot}
+          <span class="lo" style="right:${(100 - pct(d.min)).toFixed(1)}%"><b>${deg(d.min, u)}°</b><span>${deg(d.min, o)}°${o}</span></span>
+          <span class="hi" style="left:${pct(d.max)}%"><b>${deg(d.max, u)}°</b><span>${deg(d.max, o)}°${o}</span></span></span></span>
       </div>`;
     }).join('');
     // Closed: the five-day range in both units. Open: the bars and their scale.

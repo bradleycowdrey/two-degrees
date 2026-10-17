@@ -984,7 +984,7 @@ private struct DaysTile: View {
                         Text("5-day forecast")
                             .font(ui.eyebrow)
                             .foregroundStyle(hovering ? Palette.textPrimary : Palette.textMuted)
-                            .frame(width: ui.pt(52) + ui.pt(10) + ui.pt(32) + ui.pt(10) + ui.pt(48), alignment: .leading)
+                            .frame(width: ui.pt(52) + ui.pt(10) + ui.pt(32) + ui.pt(10) + DayScale.labelRoom(ui) - ui.pt(10), alignment: .leading)   // ticks start where the bars' scale does
                         if open {
                             GeometryReader { proxy in
                                 ForEach(ticks, id: \.label) { tick in
@@ -1010,7 +1010,7 @@ private struct DaysTile: View {
                             .font(ui.font(11, .semibold))
                             .foregroundStyle(hovering ? Palette.textPrimary : Palette.textMuted)
                             .rotationEffect(.degrees(open ? 180 : 0))
-                            .frame(width: ui.pt(48), alignment: .trailing)
+                            .frame(width: DayScale.labelRoom(ui) - ui.pt(10), alignment: .trailing)   // and end where it does
                     }
                     .contentShape(Rectangle())
                 }
@@ -1062,18 +1062,18 @@ private struct DayRow: View {
                             .offset(y: ui.pt(12))
                     }
                 }
-            VStack(alignment: .trailing, spacing: 0) {
-                Text("\(unit.value(day.low))°").font(ui.font(15, .semibold)).foregroundStyle(Palette.textSecondary)
-                Text("\(other.value(day.low))\(other.symbol)").font(ui.font(12)).foregroundStyle(Palette.textMuted)
+            RangeBar(low: day.low, high: day.high, scaleLow: low, scaleHigh: high, ticks: ticks, now: now) {
+                VStack(alignment: .trailing, spacing: 0) {
+                    Text("\(unit.value(day.low))°").font(ui.font(15, .semibold)).foregroundStyle(Palette.textSecondary)
+                    Text("\(other.value(day.low))\(other.symbol)").font(ui.font(12)).foregroundStyle(Palette.textMuted)
+                }
+            } highLabel: {
+                VStack(alignment: .leading, spacing: 0) {
+                    Text("\(unit.value(day.high))°").font(ui.font(15, .semibold)).foregroundStyle(Palette.textPrimary)
+                    Text("\(other.value(day.high))\(other.symbol)").font(ui.font(12)).foregroundStyle(Palette.textMuted)
+                }
             }
-            .frame(width: ui.pt(48), alignment: .trailing)
-            RangeBar(low: day.low, high: day.high, scaleLow: low, scaleHigh: high, ticks: ticks, now: now)
-                .frame(height: ui.pt(6))
-            VStack(alignment: .leading, spacing: 0) {
-                Text("\(unit.value(day.high))°").font(ui.font(15, .semibold)).foregroundStyle(Palette.textPrimary)
-                Text("\(other.value(day.high))\(other.symbol)").font(ui.font(12)).foregroundStyle(Palette.textMuted)
-            }
-            .frame(width: ui.pt(48), alignment: .leading)
+            .frame(height: ui.pt(40))
         }
         .monospacedDigit()
         .frame(minHeight: ui.pt(48))
@@ -1084,30 +1084,40 @@ private struct DayRow: View {
 }
 
 /// One day's low-to-high on the shared five-day scale, coloured by temperature.
-private struct RangeBar: View {
+enum DayScale {
+    /// Room kept either side of the five-day scale for a low or high label at its far end.
+    static func labelRoom(_ ui: Metrics) -> CGFloat { ui.pt(46) }
+}
+
+/// One day's range on the shared scale, with its low and high riding the ends of the bar so the bar reads as
+/// that day's range.
+private struct RangeBar<Low: View, High: View>: View {
+    @Environment(\.metrics) private var ui
     let low: Double
     let high: Double
     let scaleLow: Double
     let scaleHigh: Double
     let ticks: [Double]
     let now: Double?
+    @ViewBuilder let lowLabel: () -> Low
+    @ViewBuilder let highLabel: () -> High
 
     var body: some View {
         GeometryReader { proxy in
-            let width = proxy.size.width
+            let room = DayScale.labelRoom(ui), gap = ui.pt(8), bar = ui.pt(6)
+            let width = max(proxy.size.width - 2 * room, 1)
             let span = max(scaleHigh - scaleLow, 1)
-            let x = { (t: Double) in CGFloat((t - scaleLow) / span) * width }
+            let x = { (t: Double) in room + CGFloat((t - scaleLow) / span) * width }
             ZStack(alignment: .leading) {
-                Capsule().fill(Palette.raised)
-                    .overlay(Capsule().strokeBorder(Palette.borderStrong, lineWidth: 0.5))
+                // No empty track: the ticks carry the scale.
                 ForEach(ticks, id: \.self) { t in
                     Rectangle().fill(Palette.borderStrong)
-                        .frame(width: 1, height: proxy.size.height + 8)
+                        .frame(width: 1, height: bar + 8)
                         .offset(x: x(t) - 0.5)
                 }
                 Capsule()
                     .fill(LinearGradient(colors: [Palette.temperature(low), Palette.temperature(high)], startPoint: .leading, endPoint: .trailing))
-                    .frame(width: max(x(high) - x(low), proxy.size.height))
+                    .frame(width: max(x(high) - x(low), bar), height: bar)
                     .offset(x: x(low))
                 if let now {
                     Circle()
@@ -1116,7 +1126,20 @@ private struct RangeBar: View {
                         .frame(width: 10, height: 10)
                         .offset(x: x(now) - 5)
                 }
+                // The tile colour behind each label hides any tick it sits on.
+                lowLabel()
+                    .fixedSize()
+                    .padding(.trailing, gap)
+                    .background(Palette.raisedTile)
+                    .frame(width: x(low), alignment: .trailing)
+                highLabel()
+                    .fixedSize()
+                    .padding(.leading, gap)
+                    .background(Palette.raisedTile)
+                    .frame(width: proxy.size.width - x(high), alignment: .leading)
+                    .offset(x: x(high))
             }
+            .frame(height: proxy.size.height)
         }
     }
 }

@@ -215,18 +215,15 @@ private struct DaysList: View {
                         .frame(width: 42, alignment: .leading)
                     WeatherSymbol(code: day.code, isDay: true, size: 13)
                         .frame(width: 20)
-                    Text("\(unit.value(day.low))°")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(Palette.textSecondary)
-                        .frame(width: 30, alignment: .trailing)
+                    // The low and high ride the ends of the bar, on one scale shared by all five days.
                     GeometryReader { proxy in
-                        let span = max(high - low, 1)
-                        let x = { (t: Double) in CGFloat((t - low) / span) * proxy.size.width }
+                        let room: CGFloat = 30, gap: CGFloat = 4
+                        let width = max(proxy.size.width - 2 * room, 1), span = max(high - low, 1)
+                        let x = { (t: Double) in room + CGFloat((t - low) / span) * width }
                         ZStack(alignment: .leading) {
-                            Capsule().fill(Palette.raisedTile)
                             Capsule()
                                 .fill(LinearGradient(colors: [Palette.temperature(day.low), Palette.temperature(day.high)], startPoint: .leading, endPoint: .trailing))
-                                .frame(width: max(x(day.high) - x(day.low), 4))
+                                .frame(width: max(x(day.high) - x(day.low), 5), height: 5)
                                 .offset(x: x(day.low))
                             if index == 0 {
                                 Circle().fill(Color.white)
@@ -234,13 +231,23 @@ private struct DaysList: View {
                                     .frame(width: 8, height: 8)
                                     .offset(x: x(now) - 4)
                             }
+                            Text("\(unit.value(day.low))°")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(Palette.textSecondary)
+                                .fixedSize()
+                                .padding(.trailing, gap)
+                                .frame(width: x(day.low), alignment: .trailing)
+                            Text("\(unit.value(day.high))°")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(Palette.textPrimary)
+                                .fixedSize()
+                                .padding(.leading, gap)
+                                .frame(width: proxy.size.width - x(day.high), alignment: .leading)
+                                .offset(x: x(day.high))
                         }
+                        .frame(height: proxy.size.height)
                     }
-                    .frame(height: 5)
-                    Text("\(unit.value(day.high))°")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(Palette.textPrimary)
-                        .frame(width: 30, alignment: .leading)
+                    .frame(height: 16)
                     Text("\(other.value(day.low))–\(other.value(day.high))\(other.symbol)")
                         .font(.system(size: 10))
                         .foregroundStyle(Palette.textMuted)
