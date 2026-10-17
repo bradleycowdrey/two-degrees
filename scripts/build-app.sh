@@ -15,12 +15,18 @@ WIDGET="$APP/Contents/PlugIns/TwoDegreesWidget.appex"
 command -v xcodegen >/dev/null || brew install xcodegen
 xcodegen generate --quiet
 
-xcodebuild -project TwoDegrees.xcodeproj -scheme TwoDegrees -configuration Release \
+LOG="$(mktemp)"
+if ! xcodebuild -project TwoDegrees.xcodeproj -scheme TwoDegrees -configuration Release \
   -derivedDataPath build -destination "generic/platform=macOS" \
   ARCHS="arm64 x86_64" ONLY_ACTIVE_ARCH=NO \
   MARKETING_VERSION="$VERSION" CURRENT_PROJECT_VERSION="$BUILD" \
   CODE_SIGN_IDENTITY="-" CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM="" \
-  -quiet build
+  build >"$LOG" 2>&1; then
+  # Surface compiler errors as GitHub annotations, then the tail of the log.
+  grep -E "(error|fatal):" "$LOG" | sort -u | head -25 | while IFS= read -r line; do echo "::error::${line}"; done
+  tail -40 "$LOG"
+  exit 1
+fi
 
 rm -rf "$APP"
 mkdir -p dist
