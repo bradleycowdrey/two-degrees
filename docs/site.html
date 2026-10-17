@@ -215,9 +215,9 @@
 
 <script>
 (() => {
-  // The app: /two-degrees/app.html on bradcowdrey.com, index.html next to this file anywhere else.
-  // Share links (?c=…) point at this page, so pass them through.
-  const onSite = /(^|\.)bradcowdrey\.com$|lovable\.app$/.test(location.hostname);
+  // The app: /two-degrees/app.html wherever this page is served at /two-degrees (bradcowdrey.com and its
+  // previews), index.html next to this file anywhere else. Share links (?c=…) point at this page, so pass them through.
+  const onSite = /^\/two-degrees(\/|$)/.test(location.pathname);
   const src = (onSite ? '/two-degrees/app.html' : 'index.html') + location.search;
   const frame = document.getElementById('app');
   frame.src = src;
