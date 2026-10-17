@@ -1,3 +1,4 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><link rel="icon" href="https://raw.githubusercontent.com/bradleycowdrey/two-degrees/main/docs/icon.png"></head><body>
 <title>Two Degrees</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <meta name="description" content="Two Degrees: weather in °F and °C at once, with the next 24 hours and a 5-day forecast. Free and open source, by Bradley Cowdrey.">
@@ -399,14 +400,16 @@
   };
 
   /* ---------- State ---------- */
+  const EMBEDDED = window.parent !== window;   // running inside the product page's frame
   const state = {
     unit: store.get('unit', defaultUnit()),
     cities: [],
     active: 0,
     data: {},
     editing: false,
-    daysOpen: false,   // closed every time the app opens
-    size: store.get('size', 'medium'),
+    daysOpen: EMBEDDED,   // expanded inside the product page's frame; the standalone app opens closed
+    // Extra large on the product page when there's room for it, unless the visitor picked a size.
+    size: store.get('size', EMBEDDED && innerWidth >= 560 ? 'extraLarge' : 'medium'),
     font: store.get('font', 'inter'),
   };
   const SIZES = [['extraSmall', 'Extra Small', 0.82], ['small', 'Small', 0.91], ['medium', 'Medium', 1], ['large', 'Large', 1.12], ['extraLarge', 'Extra Large', 1.26]];
@@ -938,3 +941,5 @@
   refreshAll();
 })();
 </script>
+
+</body></html>

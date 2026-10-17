@@ -1,4 +1,4 @@
-// Functional + layout tests for the web app (docs/index.html), run with Playwright:
+// Functional + layout tests for the web app (docs/app.html), run with Playwright:
 //   node tests/web.test.js [screenshot-dir]
 // Exercises every control at phone, tablet and desktop widths and all five sizes, checks
 // results, layout (no overlap, no clipping, no sideways scroll) and accessibility labels.
@@ -7,7 +7,7 @@ const fs = require('fs');
 let playwright;
 try { playwright = require('playwright'); } catch { playwright = require(path.join(require('child_process').execSync('npm root -g').toString().trim(), 'playwright')); }
 
-const PAGE = 'file://' + path.resolve(__dirname, '../docs/index.html');
+const PAGE = 'file://' + path.resolve(__dirname, '../docs/app.html');
 const SHOTS = process.argv[2];
 const VIEWPORTS = [['phone', 390, 844], ['tablet', 768, 1024], ['desktop', 1280, 900]];
 const SIZES = ['extraSmall', 'small', 'medium', 'large', 'extraLarge'];

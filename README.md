@@ -36,10 +36,16 @@ Native SwiftUI, universal binary (Apple silicon + Intel), macOS 14 Sonoma or lat
 
 ## Web app
 
-[`docs/index.html`](docs/index.html) (built from `docs/app.html` by `scripts/build-web.sh`) is the same panel as a single web page: live Open-Meteo data, saved cities, and a
-share link that carries your cities (`?c=Denver~39.739~-104.990|London~51.507~-0.128`). Serve the `docs/` folder with
-GitHub Pages or any static host. Where it can't reach Open-Meteo (offline, or a sandboxed preview), it says so and
-shows a labelled sample forecast.
+[bradcowdrey.com/two-degrees](https://bradcowdrey.com/two-degrees) is the product page with the real app embedded in it.
+Both come from this repo through GitHub Pages (`main` → `/docs`), so a push here updates the site:
+
+- [`docs/index.html`](docs/index.html): the product page, copied from [`web/site.html`](web/site.html).
+- [`docs/app.html`](docs/app.html): the app on its own (bradcowdrey.com/two-degrees/app), built from
+  [`web/app.html`](web/app.html). Live Open-Meteo data, saved cities, and a share link that carries your cities
+  (`?c=Denver~39.739~-104.990|London~51.507~-0.128`). Where it can't reach Open-Meteo (offline, or a sandboxed
+  preview), it says so and shows a labelled sample forecast.
+
+Edit the files in `web/`, then run `scripts/build-web.sh` to rebuild `docs/`.
 
 ## Install (sideload)
 
@@ -66,7 +72,7 @@ scripts/make-dmg.sh 0.2.0         # dist/TwoDegrees-0.2.0.dmg
 ## Testing
 
 - `swift test`: unit tests, including the updater against a stubbed network (API refused → fallback, update offered, up to date, missing or tampered checksum).
-- `node tests/web.test.js [screenshots-dir]`: drives every control of the web app at phone, tablet and desktop widths and all five sizes (Playwright).
+- `node tests/web.test.js [screenshots-dir]`: drives every control of the web app (`docs/app.html`) at phone, tablet and desktop widths and all five sizes (Playwright).
 - `TwoDegrees --selftest <dir>`: the Mac app tests itself with live data (every size and state, cities, window positions, a real update download and checksum, Dock tile and widget renders) and writes `report.txt` and screenshots.
 
 CI runs the unit and web tests on every pull request, and all three on every push to `main`; the self-test's report and screenshots are published to the `ci-shots` branch.

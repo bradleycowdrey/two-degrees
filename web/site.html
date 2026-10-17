@@ -28,8 +28,8 @@
   a { color: inherit; text-decoration: none; }
   :focus-visible { outline: 2px solid var(--cream); outline-offset: 3px; border-radius: 8px; }
   .globalnav { position: sticky; top: 0; z-index: 10; background: rgba(26,24,22,.72); backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px); border-bottom: 0.5px solid var(--border); }
-  .globalnav .in { max-width: 1024px; margin: 0 auto; padding: 0 16px; height: 48px; display: flex; align-items: center; gap: 24px; font-size: 12px; color: var(--secondary); }
-  .globalnav .brand { font-weight: 600; font-size: 14px; color: var(--text); margin-right: auto; }
+  .globalnav .in { max-width: 1024px; margin: 0 auto; padding: 0 16px; height: 48px; display: flex; align-items: center; gap: 24px; font-size: 14px; color: var(--secondary); }
+  .globalnav .brand { font-weight: 600; font-size: 16px; color: var(--text); margin-right: auto; }
   .globalnav a:hover { color: var(--text); }
   .globalnav .cta { background: #fff; color: var(--bg); border-radius: 980px; padding: 4px 12px; font-weight: 500; }
   .globalnav .cta:hover { color: var(--bg); background: var(--cream); }
@@ -71,14 +71,14 @@
   .fine { font-size: 14px; color: var(--faint); margin-top: 16px; text-wrap: balance; }
 
   /* The two numbers, big: the whole idea in one line. */
-  .pair { display: flex; justify-content: center; align-items: baseline; gap: clamp(16px, 4vw, 40px); margin: 56px 0 8px; font-variant-numeric: tabular-nums; }
-  .pair .f { font-size: clamp(88px, 18vw, 168px); font-weight: 600; letter-spacing: -.05em; line-height: 1; }
-  .pair .c { font-size: clamp(56px, 11vw, 104px); font-weight: 600; letter-spacing: -.04em; line-height: 1; color: var(--cream); opacity: .8; }
-  .pair .rule { width: 3px; align-self: stretch; margin: 12px 0; border-radius: 3px; background: var(--crimson); }
+  .pair { display: flex; justify-content: center; align-items: baseline; gap: clamp(14px, 3.5vw, 32px); margin: 40px 0 8px; font-variant-numeric: tabular-nums; }
+  .pair .f { font-size: clamp(64px, 13vw, 120px); font-weight: 600; letter-spacing: -.05em; line-height: 1; }
+  .pair .c { font-size: clamp(40px, 8vw, 74px); font-weight: 600; letter-spacing: -.04em; line-height: 1; color: var(--cream); opacity: .8; }
+  .pair .rule { width: 3px; align-self: stretch; margin: 10px 0; border-radius: 3px; background: var(--crimson); }
   .pair-cap { text-align: center; color: var(--muted); font-size: 17px; }
 
   /* Live demo: the real web app, sized to its content. */
-  .demo { margin: 72px auto 0; max-width: 600px; scroll-margin-top: 64px; }
+  .demo { margin: 48px auto 0; max-width: 600px; scroll-margin-top: 64px; }
   .demo iframe { display: block; width: 100%; height: 980px; border: 0; background: var(--bg); color-scheme: dark; transition: height .2s ease; }
   .demo-cap { text-align: center; font-size: 14px; color: var(--faint); margin-top: 4px; }
   .demo-cap a { color: var(--cream); }
@@ -101,7 +101,8 @@
   .ruler .tick.edge-l .tf, .ruler .tick.edge-l .tc, .ruler .tick.edge-l .tn { transform: translateX(-12px); }
   .ruler .tick.edge-r .tf, .ruler .tick.edge-r .tc, .ruler .tick.edge-r .tn { transform: translateX(calc(-100% + 12px)); }
 
-  .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
+  .tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+  @media (max-width: 900px) { .tiles { grid-template-columns: 1fr; } }
   .ftile { background: var(--tile); border-radius: 28px; padding: 32px; min-height: 220px; display: flex; flex-direction: column; }
   .ftile .k { color: var(--accent); font-size: 14px; font-weight: 600; margin-bottom: 8px; }
   .ftile h3 { font-size: 28px; font-weight: 600; letter-spacing: -.025em; line-height: 1.12; margin-bottom: 12px; }
@@ -110,7 +111,9 @@
   .ftile .sample b { color: var(--text); font-weight: 600; }
   .ftile .sample span { color: var(--faint); margin: 0 6px; }
 
-  .steps { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 20px; }
+  .steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; }
+  @media (max-width: 1000px) { .steps { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 560px) { .steps { grid-template-columns: 1fr; } }
   .step { background: var(--tile); border-radius: 28px; padding: 28px; }
   .step .num { font-size: 48px; font-weight: 600; letter-spacing: -.03em; color: var(--faint); line-height: 1; margin-bottom: 16px; }
   .step p { color: var(--secondary); font-size: 17px; }
@@ -127,10 +130,12 @@
   @media (max-width: 720px) {
     .hero { padding: 56px 0 32px; }
     .hero img { width: 88px; height: 88px; }
-    .demo { margin: 48px -16px 0; }
+    .demo { margin: 36px -16px 0; }
     .demo-cap { padding: 0 16px; }
     .ruler .tick.minor { display: none; }
     .globalnav .hide-s { display: none; }
+    .globalnav .in { gap: 16px; }
+    .globalnav .brand { font-size: 14px; white-space: nowrap; }
     .scale { padding: 24px 16px 20px; }
     .ruler .tick .tf { font-size: 17px; }
     .ruler .tick .tc { font-size: 14px; }
@@ -171,7 +176,7 @@
 
   <section class="demo" id="demo" aria-label="Two Degrees, live">
     <iframe id="app" title="Two Degrees weather app, live" allow="geolocation; clipboard-write; web-share" loading="eager"></iframe>
-    <p class="demo-cap">This is the real app, with live weather. Your cities stay in this browser. <a id="full" href="/two-degrees/app.html">Open it full screen ↗</a></p>
+    <p class="demo-cap">This is the real app, with live weather. Your cities stay in this browser. <a id="full" href="/two-degrees/app">Open it full screen ↗</a></p>
   </section>
 
   <h2 class="section-h" id="scale">Get a feel for the other scale.</h2>
@@ -186,7 +191,7 @@
     <div class="ftile"><div class="k">Widgets</div><h3>On your desktop, too.</h3><p>Small, medium and large widgets for the desktop and Notification Center, each with its own city.</p></div>
     <div class="ftile"><div class="k">Next 24 hours</div><h3>The day, hour by hour.</h3><p>A scrolling strip with a temperature line, the sky for each hour, and the chance of rain when it matters.</p></div>
     <div class="ftile"><div class="k">5-day forecast</div><h3>Five days on one scale.</h3><p>Lows and highs on range bars that share one labelled scale, with a dot for right now. Tap to open.</p></div>
-    <div class="ftile"><div class="k">Plain words</div><h3>One sentence says it.</h3><p>“Rain likely around 3 PM (60%).” “Warming to 68°F / 20°C by 2 PM.”</p></div>
+    <div class="ftile"><div class="k">Plain words</div><h3>One sentence tells you everything.</h3><p>“Rain likely around 3 PM (60%).” “Warming to 68°F / 20°C by 2 PM.”</p></div>
     <div class="ftile"><div class="k">Your cities</div><h3>Up to five places.</h3><p>Search anywhere on Earth, switch with one click, and share a link that opens with your cities.</p></div>
     <div class="ftile"><div class="k">Privacy</div><h3>No account. No tracking.</h3><p>Open weather data from Open-Meteo, refreshed every 15 minutes. Free and open source, forever.</p></div>
   </div>
@@ -215,10 +220,10 @@
 
 <script>
 (() => {
-  // The app: /two-degrees/app.html wherever this page is served at /two-degrees (bradcowdrey.com and its
-  // previews), index.html next to this file anywhere else. Share links (?c=…) point at this page, so pass them through.
+  // The app: /two-degrees/app wherever this page is served at /two-degrees (bradcowdrey.com, its previews and
+  // GitHub Pages), app.html next to this file anywhere else. Share links (?c=…) point at this page, so pass them through.
   const onSite = /^\/two-degrees(\/|$)/.test(location.pathname);
-  const src = (onSite ? '/two-degrees/app.html' : 'index.html') + location.search;
+  const src = (onSite ? '/two-degrees/app' : 'app.html') + location.search;
   const frame = document.getElementById('app');
   frame.src = src;
   document.getElementById('full').href = src;
