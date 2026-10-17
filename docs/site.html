@@ -45,6 +45,29 @@
   .pill:hover { background: var(--cream); }
   .textlink { color: var(--cream); font-size: 17px; }
   .textlink:hover { text-decoration: underline; }
+  .ghost { display: inline-flex; align-items: center; gap: 8px; height: 44px; padding: 0 20px; border: 0; border-radius: 980px; cursor: pointer;
+    background: var(--border); color: var(--text); font: 500 17px/1 inherit; font-family: inherit; transition: background .15s, transform .1s; }
+  .ghost:hover { background: var(--border-strong); }
+  .ghost:active { transform: scale(.97); }
+  .ghost svg { width: 17px; height: 17px; }
+  .globalnav .share { display: inline-flex; align-items: center; gap: 5px; border: 0; background: none; color: inherit; font: inherit; cursor: pointer; padding: 0; }
+  .globalnav .share:hover { color: var(--text); }
+  .globalnav .share svg { width: 13px; height: 13px; }
+  /* Share menu: the same one as in the app, Meridian and Cowdrey.MD. */
+  .share-wrap { display: inline-flex; }
+  .menu { position: absolute; z-index: 30; width: 280px; max-width: calc(100vw - 32px); padding: 6px; border-radius: 12px; text-align: left;
+    background: rgba(42,37,32,.96); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+    box-shadow: 0 0 0 0.5px var(--border-strong), 0 12px 32px rgba(0,0,0,.5); font-size: 13px; letter-spacing: 0; }
+  .menu[hidden] { display: none; }
+  .menu .mh { padding: 6px 10px 2px; font-weight: 600; color: var(--text); }
+  .menu p { padding: 2px 10px 8px; color: var(--muted); font-size: 12.5px; line-height: 1.45; }
+  .menu button { display: flex; align-items: center; gap: 10px; width: 100%; padding: 7px 10px; border: 0; border-radius: 6px; background: none;
+    color: var(--text); font: 400 13px/1.3 inherit; font-family: inherit; cursor: pointer; text-align: left; }
+  .menu button:hover, .menu button:focus-visible { background: #0A64D2; outline: none; }
+  .menu button svg { width: 15px; height: 15px; color: var(--secondary); flex: none; }
+  .toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 40;
+    padding: 9px 16px; border-radius: 980px; background: var(--cream); color: var(--bg); font-size: 13px; font-weight: 600; box-shadow: 0 10px 30px rgba(0,0,0,.4); }
+  .toast[hidden] { display: none; }
   .fine { font-size: 14px; color: var(--faint); margin-top: 16px; text-wrap: balance; }
 
   /* The two numbers, big: the whole idea in one line. */
@@ -125,6 +148,7 @@
   <a class="hide-s" href="#features">Features</a>
   <a class="hide-s" href="#install">Install</a>
   <a href="https://github.com/bradleycowdrey/two-degrees">Source</a>
+  <span class="share-wrap"><button type="button" class="share" aria-haspopup="menu" aria-expanded="false" title="Share Two Degrees"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7.5 7.5 12 3l4.5 4.5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>Share</button></span>
   <a class="cta" href="https://github.com/bradleycowdrey/two-degrees/releases/latest/download/TwoDegrees.dmg">Download</a>
 </div></nav>
 
@@ -136,6 +160,7 @@
     <p class="sub">Two scales. One forecast. Right in your Dock.</p>
     <div class="actions">
       <a class="pill" href="https://github.com/bradleycowdrey/two-degrees/releases/latest/download/TwoDegrees.dmg">Download</a>
+      <span class="share-wrap"><button type="button" class="ghost" aria-haspopup="menu" aria-expanded="false" title="Share Two Degrees"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7.5 7.5 12 3l4.5 4.5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>Share</button></span>
       <a class="textlink" href="#demo">Try it below ›</a>
     </div>
     <p class="fine">macOS 14 or later · Apple silicon and Intel · Open source</p>
@@ -178,12 +203,15 @@
     <h2>The weather, in both.</h2>
     <div class="actions">
       <a class="pill" href="https://github.com/bradleycowdrey/two-degrees/releases/latest/download/TwoDegrees.dmg">Download for Mac</a>
+      <span class="share-wrap"><button type="button" class="ghost" aria-haspopup="menu" aria-expanded="false" title="Share Two Degrees"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7.5 7.5 12 3l4.5 4.5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>Share</button></span>
       <a class="textlink" href="https://github.com/bradleycowdrey/two-degrees">View the source ›</a>
     </div>
   </section>
 
   <footer><div><div class="bar"></div>© 2026 Bradley Cowdrey</div><span>Free and open source · <a href="https://github.com/bradleycowdrey/two-degrees">GitHub</a> · Weather data by <a href="https://open-meteo.com/">Open-Meteo</a></span></footer>
 </main>
+<div class="menu" id="shareMenu" role="menu" aria-label="Share Two Degrees" hidden></div>
+<div class="toast" id="toast" role="status" hidden></div>
 
 <script>
 (() => {
@@ -199,6 +227,73 @@
     if (e.source === frame.contentWindow && Number.isFinite(h) && h > 200) frame.style.height = h + 'px';
   });
   if (new URLSearchParams(location.search).has('c')) document.getElementById('demo').scrollIntoView();
+
+  // Share: the same menu as the app, Meridian and Cowdrey.MD.
+  const PAGE_URL = 'https://bradcowdrey.com/two-degrees';
+  const MAC_URL = 'https://github.com/bradleycowdrey/two-degrees/releases/latest/download/TwoDegrees.dmg';
+  const SHARE_TEXT = 'Two Degrees: the weather in °F and °C at once, with the next 24 hours and five days ahead. Free and open source, by Bradley Cowdrey.';
+  const svg = (d) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+  const ICON = {
+    share: svg('<path d="M12 3v12M7.5 7.5 12 3l4.5 4.5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/>'),
+    link: svg('<path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/>'),
+    mac: svg('<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M2 20h20"/>'),
+    msg: svg('<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 9h8M8 13h5"/>'),
+  };
+  const toastEl = document.getElementById('toast');
+  const toast = (text) => { toastEl.textContent = text; toastEl.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => (toastEl.hidden = true), 2200); };
+  async function copyText(text, done) {
+    try { await navigator.clipboard.writeText(text); toast(done); }
+    catch {
+      const ta = document.createElement('textarea');
+      ta.value = text; ta.setAttribute('readonly', ''); ta.style.cssText = 'position:fixed;opacity:0';
+      document.body.appendChild(ta); ta.select();
+      let ok = false; try { ok = document.execCommand('copy'); } catch {}
+      ta.remove();
+      toast(ok ? done : 'Copy didn’t work here. The link is ' + text);
+    }
+  }
+  // One menu, placed under whichever Share button opened it and kept on screen.
+  const menu = document.getElementById('shareMenu');
+  const buttons = [...document.querySelectorAll('.share-wrap button')];
+  let opener = null;
+  function closeMenu(refocus) {
+    if (menu.hidden) return;
+    menu.hidden = true;
+    opener.setAttribute('aria-expanded', 'false');
+    if (refocus) opener.focus();
+  }
+  function openMenu(btn) {
+    opener = btn;
+    menu.innerHTML = `<div class="mh">Share Two Degrees</div><p>${SHARE_TEXT}</p>` +
+      (typeof navigator.share === 'function' ? `<button type="button" role="menuitem" data-share="native">${ICON.share}<span>Share…</span></button>` : '') +
+      `<button type="button" role="menuitem" data-share="web">${ICON.link}<span>Copy link to this page</span></button>` +
+      `<button type="button" role="menuitem" data-share="mac">${ICON.mac}<span>Copy Mac download link</span></button>` +
+      `<button type="button" role="menuitem" data-share="message">${ICON.msg}<span>Copy a message to send</span></button>`;
+    menu.hidden = false;
+    const r = btn.getBoundingClientRect(), w = menu.offsetWidth, vw = document.documentElement.clientWidth;
+    const left = Math.min(Math.max(16, r.left + r.width / 2 - w / 2), vw - 16 - w);
+    menu.style.left = left + scrollX + 'px';
+    menu.style.top = r.bottom + 8 + scrollY + 'px';
+    btn.setAttribute('aria-expanded', 'true');
+    menu.querySelector('button').focus({ preventScroll: true });
+  }
+  for (const btn of buttons) btn.addEventListener('click', () => {
+    const again = !menu.hidden && opener === btn;
+    closeMenu();
+    if (!again) openMenu(btn);
+  });
+  menu.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-share]'); if (!b) return;
+    closeMenu(true);
+    const kind = b.dataset.share;
+    if (kind === 'native') navigator.share({ title: 'Two Degrees', text: SHARE_TEXT, url: PAGE_URL }).catch(() => {});
+    if (kind === 'web') copyText(PAGE_URL, 'Link copied');
+    if (kind === 'mac') copyText(MAC_URL, 'Mac download link copied');
+    if (kind === 'message') copyText(`${SHARE_TEXT}\n\nIn your browser: ${PAGE_URL}\nFor Mac: ${MAC_URL}`, 'Message copied, ready to paste');
+  });
+  document.addEventListener('click', (e) => { if (!e.target.closest('.share-wrap, #shareMenu')) closeMenu(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeMenu(true); });
+  addEventListener('resize', () => closeMenu());
 
   // The ruler: 14°F to 104°F, with the Celsius it matches underneath.
   const MIN = 14, MAX = 104;
