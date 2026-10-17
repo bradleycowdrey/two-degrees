@@ -17,6 +17,16 @@ enum SelfTest {
     nonisolated static var isActive: Bool { outputDir != nil }
 
     private static var started = false
+    /// The panel's own measurements, reported by WeatherPanel as it lays out.
+    private static var contentHeight: CGFloat = 0
+    private static var maxBodyHeight: CGFloat = 0
+    private static var panelWidth: CGFloat = 0
+
+    static func panelMeasured(content: CGFloat, maxBody: CGFloat, width: CGFloat) {
+        contentHeight = content
+        maxBodyHeight = maxBody
+        panelWidth = width
+    }
     private static var lines: [String] = []
     private static var failures = 0
 
@@ -44,9 +54,8 @@ enum SelfTest {
             if let f {
                 check(f.upcomingHours.count == 24, "\(city.name): 24 upcoming hours (got \(f.upcomingHours.count))")
                 check(f.days.count >= 5, "\(city.name): at least 5 days (got \(f.days.count))")
-                let t = f.now.temperature
-                check(TempUnit.fahrenheit.value(t) == Int((t * 9 / 5 + 32).rounded()), "\(city.name): °F conversion")
-                check((-60...60).contains(t), "\(city.name): plausible temperature \(t)°C")
+                check((-60...60).contains(f.now.temperature), "\(city.name): plausible temperature \(f.now.temperature)°C")
+                check(f.days.allSatisfy { $0.low <= $0.high }, "\(city.name): every day's low is at or below its high")
             }
         }
 
@@ -143,31 +152,33 @@ enum SelfTest {
         snapshot(host: host, dir: dir, name: "update-4-error.png")
         updater.selfTestShow(phase: .idle, notice: nil)
 
-        // 7. Dock tile and widgets, rendered offscreen at 2x.
+        // 7. Dock tile and widgets, rendered offscreen at 2x; each must have real content.
         if let forecast = store.activeForecast {
-            render(DockTileView(primary: store.unit.value(forecast.now.temperature), primaryUnit: store.unit,
-                                secondary: store.unit.other.value(forecast.now.temperature), code: forecast.now.code, isDay: forecast.now.isDay)
-                .frame(width: 128, height: 128), dir: dir, name: "dock-tile.png")
+            for (t, name) in [(forecast.now.temperature, "dock-tile.png"), (-23.4, "dock-tile-negative.png"), (40.6, "dock-tile-105F.png")] {
+                let ok = render(DockTileView(primary: TempUnit.fahrenheit.value(t), primaryUnit: .fahrenheit,
+                                             secondary: TempUnit.celsius.value(t), code: forecast.now.code, isDay: forecast.now.isDay)
+                    .frame(width: 128, height: 128), dir: dir, name: name)
+                check(ok, "Dock tile renders \(TempUnit.fahrenheit.value(t))°F / \(TempUnit.celsius.value(t))°C (\(name))")
+            }
             let entry = WeatherEntry(date: Date(), city: store.active, unit: store.unit, forecast: forecast)
+            var offline = entry
+            offline.failed = true
             let sizes: [(WidgetFamily, CGSize, String)] = [
                 (.systemSmall, CGSize(width: 170, height: 170), "small"),
                 (.systemMedium, CGSize(width: 364, height: 170), "medium"),
                 (.systemLarge, CGSize(width: 364, height: 382), "large"),
             ]
             for (family, size, name) in sizes {
-                render(WidgetView(entry: entry, family: family)
-                    .padding(16)
-                    .frame(width: size.width, height: size.height)
-                    .background(WidgetBackground())
-                    .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous)),
-                       dir: dir, name: "widget-\(name).png")
+                for (variant, e) in [("", entry), ("-offline", offline)] {
+                    let ok = render(WidgetView(entry: e, family: family)
+                        .padding(16)
+                        .frame(width: size.width, height: size.height)
+                        .background(WidgetBackground())
+                        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous)),
+                                    dir: dir, name: "widget-\(name)\(variant).png")
+                    check(ok, "\(name) widget\(variant.isEmpty ? "" : " (offline)") renders")
+                }
             }
-            var offline = entry
-            offline.failed = true
-            render(WidgetView(entry: offline, family: .systemSmall).padding(16).frame(width: 170, height: 170)
-                .background(WidgetBackground()).clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous)),
-                   dir: dir, name: "widget-small-offline.png")
-            check(true, "dock tile and widgets rendered")
         } else {
             check(false, "dock tile and widgets: no forecast")
         }
@@ -185,27 +196,22 @@ enum SelfTest {
         NSApp.terminate(nil)
     }
 
+    /// The window must be exactly the panel's width, fully on screen, and only scroll when the
+    /// panel is taller than the screen allows.
     private static func layoutCheck(host: HostWindow, screen: CGRect, label: String) {
         guard let window = host.window, let content = window.contentView else {
             check(false, "\(label): no window")
             return
         }
-        // The SwiftUI hosting view reports the panel's ideal size; the window must match its width
-        // (taller panels scroll inside the window when the screen is short) and stay on screen.
-        func hosting(_ view: NSView) -> NSView? {
-            if String(describing: type(of: view)).contains("HostingView") { return view }
-            for sub in view.subviews { if let found = hosting(sub) { return found } }
-            return nil
-        }
-        let measured = hosting(content) ?? content
-        measured.layoutSubtreeIfNeeded()
-        let fit = measured.fittingSize
         let bounds = content.bounds
-        let widthOK = fit.width < 1 || abs(fit.width - bounds.width) <= 1
+        let widthOK = panelWidth > 0 && abs(panelWidth - bounds.width) <= 1
         let onScreen = screen.isEmpty || screen.insetBy(dx: -1, dy: -1).contains(window.frame)
-        let scrolls = fit.height > bounds.height + 1
-        check(widthOK && onScreen,
-              "\(label): window \(Int(window.frame.width))x\(Int(window.frame.height)), panel wants \(Int(fit.width))x\(Int(fit.height))\(scrolls ? " (scrolls)" : "")\(widthOK ? "" : " WIDTH MISMATCH")\(onScreen ? "" : " OFFSCREEN")")
+        let scrolls = contentHeight > maxBodyHeight + 1
+        let screenFull = window.frame.height >= screen.height - 80
+        check(widthOK && onScreen && contentHeight > 0 && (!scrolls || screenFull),
+              "\(label): window \(Int(window.frame.width))x\(Int(window.frame.height)), panel \(Int(panelWidth)) wide, content \(Int(contentHeight)) tall"
+              + (scrolls ? " (scrolls: screen allows \(Int(maxBodyHeight)))" : " (fits)")
+              + (widthOK ? "" : " WIDTH MISMATCH") + (onScreen ? "" : " OFFSCREEN"))
     }
 
     private static func snapshot(host: HostWindow, dir: URL, name: String) {
@@ -215,11 +221,23 @@ enum SelfTest {
         try? rep.representation(using: .png, properties: [:])?.write(to: dir.appendingPathComponent(name))
     }
 
-    private static func render<V: View>(_ view: V, dir: URL, name: String) {
+    /// Renders offscreen at 2x, saves the PNG, and returns whether it has real content
+    /// (more than one colour), so a blank render fails.
+    @discardableResult
+    private static func render<V: View>(_ view: V, dir: URL, name: String) -> Bool {
         let renderer = ImageRenderer(content: view.environment(\.colorScheme, .dark))
         renderer.scale = 2
-        guard let image = renderer.nsImage, let tiff = image.tiffRepresentation,
-              let png = NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:]) else { return }
+        guard let cg = renderer.cgImage else { return false }
+        let rep = NSBitmapImageRep(cgImage: cg)
+        guard let png = rep.representation(using: .png, properties: [:]) else { return false }
         try? png.write(to: dir.appendingPathComponent(name))
+        var colours = Set<UInt32>()
+        for y in stride(from: 0, to: rep.pixelsHigh, by: max(1, rep.pixelsHigh / 24)) {
+            for x in stride(from: 0, to: rep.pixelsWide, by: max(1, rep.pixelsWide / 24)) {
+                guard let c = rep.colorAt(x: x, y: y)?.usingColorSpace(.sRGB) else { continue }
+                colours.insert(UInt32(c.redComponent * 255) << 16 | UInt32(c.greenComponent * 255) << 8 | UInt32(c.blueComponent * 255))
+            }
+        }
+        return colours.count > 3
     }
 }

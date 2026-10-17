@@ -63,6 +63,14 @@ scripts/build-app.sh 0.2.0        # dist/TwoDegrees.app (universal, with widget)
 scripts/make-dmg.sh 0.2.0         # dist/TwoDegrees-0.2.0.dmg
 ```
 
+## Testing
+
+- `swift test`: unit tests, including the updater against a stubbed network (API refused → fallback, update offered, up to date, missing or tampered checksum).
+- `node tests/web.test.js [screenshots-dir]`: drives every control of the web app at phone, tablet and desktop widths and all five sizes (Playwright).
+- `TwoDegrees --selftest <dir>`: the Mac app tests itself with live data (every size and state, cities, window positions, a real update download and checksum, Dock tile and widget renders) and writes `report.txt` and screenshots.
+
+CI runs the unit and web tests on every pull request, and all three on every push to `main`; the self-test's report and screenshots are published to the `ci-shots` branch.
+
 ## Releasing
 
 Bump the number in `VERSION` and push to `main`. GitHub Actions builds a universal app, packages a DMG and publishes it as release `v<VERSION>`, plus a stable `TwoDegrees.dmg` that the download links always point to.

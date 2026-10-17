@@ -377,7 +377,9 @@
 
   /* ---------- Units ---------- */
   const toF = (c) => c * 9 / 5 + 32;
-  const deg = (c, unit) => Math.round(unit === 'F' ? toF(c) : c);
+  // Halves round away from zero (-2.5 → -3), the same as the Mac app.
+  const roundAway = (x) => Math.sign(x) * Math.round(Math.abs(x));
+  const deg = (c, unit) => roundAway(unit === 'F' ? toF(c) : c);
   const other = (u) => (u === 'F' ? 'C' : 'F');
   const defaultUnit = () => {
     const lang = (navigator.language || 'en-US').toUpperCase();
@@ -912,6 +914,7 @@
   });
 
   setInterval(() => { state.cities.forEach((c) => { const d = state.data[keyOf(c)]; if (d && d.source === 'live' && Date.now() - d.fetchedAt > CACHE_MS) delete state.data[keyOf(c)]; }); refreshAll(); }, 15 * 60 * 1000);
+  window.__twoDegreesTest = { deg };   // read by tests/web.test.js
   applyLook();
   render();
   refreshAll();

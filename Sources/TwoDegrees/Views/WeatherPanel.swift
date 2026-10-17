@@ -101,7 +101,10 @@ private struct WeatherPanelContent: View {
             }
             .scrollBounceBehavior(.basedOnSize)
             .frame(height: contentHeight > 0 ? min(contentHeight, maxBodyHeight) : nil)
-            .onPreferenceChange(ContentHeightKey.self) { contentHeight = $0 }
+            .onPreferenceChange(ContentHeightKey.self) { height in
+                contentHeight = height
+                if SelfTest.isActive && !compact { SelfTest.panelMeasured(content: height, maxBody: maxBodyHeight, width: ui.panelWidth + 2 * ui.xl) }
+            }
         }
         // Watch the panel's own size and fit the hosting window to it.
         .onGeometryChange(for: CGSize.self) { proxy in proxy.size } action: { size in

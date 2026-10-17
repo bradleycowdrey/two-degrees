@@ -41,12 +41,16 @@ final class Updater: ObservableObject {
     @Published var automatic: Bool { didSet { UserDefaults.standard.set(automatic, forKey: "updates.automatic") } }
 
     let currentVersion: String
+    /// Swapped for a stubbed session in unit tests.
+    var session: URLSession = .shared
+    /// Set when the user asks while an automatic check is already running, so its result is shown.
+    private var userWaiting = false
     private var timer: Timer?
     /// Automatic checks run once a day (manual checks any time).
     private static let interval: TimeInterval = 24 * 3600
 
-    private init() {
-        currentVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.0.0"
+    init(currentVersion: String? = nil) {
+        self.currentVersion = currentVersion ?? Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.0.0"
         automatic = UserDefaults.standard.object(forKey: "updates.automatic") as? Bool ?? true
         lastChecked = UserDefaults.standard.object(forKey: "updates.lastChecked") as? Date
     }
@@ -76,10 +80,15 @@ final class Updater: ObservableObject {
     // MARK: Check
 
     func check(userInitiated: Bool) async {
-        guard !isBusy else { return }
+        if isBusy {
+            // Never drop a request the user made: show "Checking…" and report this check's result.
+            if userInitiated && phase == .checking { userChecking = true; userWaiting = true; notice = nil }
+            return
+        }
+        let pending = latest
         phase = .checking
         if userInitiated { userChecking = true; notice = nil }
-        defer { userChecking = false }
+        defer { userChecking = false; userWaiting = false }
         do {
             // The API gives release notes and exact asset names, but it rate-limits unsigned
             // requests (60 an hour per network). If it refuses, read the version from the public
@@ -94,6 +103,7 @@ final class Updater: ObservableObject {
             lastChecked = Date()
             UserDefaults.standard.set(lastChecked, forKey: "updates.lastChecked")
 
+            let announce = userInitiated || userWaiting
             if Self.isNewer(release.version, than: currentVersion) {
                 latest = release
                 phase = .available
@@ -101,11 +111,12 @@ final class Updater: ObservableObject {
             } else {
                 latest = nil
                 phase = .upToDate
-                if userInitiated { post("You’re up to date. Two Degrees \(currentVersion) is the newest version.") }
+                if announce { post("You’re up to date. Two Degrees \(currentVersion) is the newest version.") }
             }
         } catch {
-            phase = .failed(error.localizedDescription)
-            if userInitiated { post("Couldn’t check for updates. \(error.localizedDescription)", error: true) }
+            // A failed re-check never hides an update that was already found.
+            phase = pending != nil ? .available : .failed(error.localizedDescription)
+            if userInitiated || userWaiting { post("Couldn’t check for updates. \(error.localizedDescription)", error: true) }
         }
     }
 
@@ -113,7 +124,7 @@ final class Updater: ObservableObject {
         var request = URLRequest(url: Brand.releasesAPI, timeoutInterval: 20)
         request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
         request.setValue("TwoDegrees/\(currentVersion)", forHTTPHeaderField: "User-Agent")
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await session.data(for: request)
         let status = (response as? HTTPURLResponse)?.statusCode ?? 0
         guard status == 200 else { throw UpdateError.status(status) }
         return try Self.parse(data)
@@ -124,7 +135,7 @@ final class Updater: ObservableObject {
     private func fetchFromLatestRedirect() async throws -> Release {
         var request = URLRequest(url: Brand.repository.appendingPathComponent("releases/latest"), timeoutInterval: 20)
         request.httpMethod = "HEAD"
-        let (_, response) = try await URLSession.shared.data(for: request)
+        let (_, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse else { throw UpdateError.server }
         guard http.statusCode == 200, let final = http.url else { throw UpdateError.status(http.statusCode) }
         return try Self.release(fromTagPage: final)
@@ -146,27 +157,7 @@ final class Updater: ObservableObject {
         let target = Bundle.main.bundleURL
         phase = .downloading
         do {
-            let work = FileManager.default.temporaryDirectory
-                .appendingPathComponent("TwoDegreesUpdate-\(UUID().uuidString)", isDirectory: true)
-            try FileManager.default.createDirectory(at: work, withIntermediateDirectories: true)
-
-            let (downloaded, response) = try await URLSession.shared.download(from: release.dmg)
-            guard (response as? HTTPURLResponse)?.statusCode == 200 else { throw UpdateError.download }
-            let dmg = work.appendingPathComponent("TwoDegrees.dmg")
-            try FileManager.default.moveItem(at: downloaded, to: dmg)
-
-            if let checksumURL = release.sha256 {
-                let (checksum, _) = try await URLSession.shared.data(from: checksumURL)
-                let expected = String(decoding: checksum, as: UTF8.self)
-                    .split(whereSeparator: \.isWhitespace).first.map { $0.lowercased() } ?? ""
-                guard try Self.sha256(of: dmg) == expected else { throw UpdateError.checksum }
-            }
-
-            phase = .installing
-            let staged = try await Self.extractApp(from: dmg, into: work)
-            let stagedVersion = Bundle(url: staged)?.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
-            guard stagedVersion == release.version else { throw UpdateError.wrongVersion }
-
+            let (staged, dmg, work) = try await stage(release) { self.phase = .installing }
             guard FileManager.default.isWritableFile(atPath: target.deletingLastPathComponent().path) else {
                 // Can't replace in place (e.g. read-only location): hand the DMG to Finder instead.
                 NSWorkspace.shared.open(dmg)
@@ -179,6 +170,37 @@ final class Updater: ObservableObject {
             phase = .failed(error.localizedDescription)
             post("Update failed. \(error.localizedDescription)", error: true)
         }
+    }
+
+    /// Download → verify SHA-256 (required) → unpack → confirm the version. Shared by install()
+    /// and the self-test, so CI exercises the real path. Returns the staged app, the DMG and the
+    /// scratch folder.
+    func stage(_ release: Release, unpacking: () -> Void = {}) async throws -> (URL, URL, URL) {
+        let work = FileManager.default.temporaryDirectory
+            .appendingPathComponent("TwoDegreesUpdate-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: work, withIntermediateDirectories: true)
+
+        let (downloaded, response) = try await session.download(from: release.dmg)
+        guard (response as? HTTPURLResponse)?.statusCode == 200 else { throw UpdateError.download }
+        let dmg = work.appendingPathComponent("TwoDegrees.dmg")
+        try FileManager.default.moveItem(at: downloaded, to: dmg)
+
+        guard let checksumURL = release.sha256 else { throw UpdateError.noChecksum }
+        let (checksum, checksumResponse) = try await session.data(from: checksumURL)
+        guard (checksumResponse as? HTTPURLResponse)?.statusCode == 200 else { throw UpdateError.noChecksum }
+        let expected = Self.expectedChecksum(checksum)
+        guard expected.count == 64, try Self.sha256(of: dmg) == expected else { throw UpdateError.checksum }
+
+        unpacking()
+        let staged = try await Self.extractApp(from: dmg, into: work)
+        let stagedVersion = Bundle(url: staged)?.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
+        guard stagedVersion == release.version else { throw UpdateError.wrongVersion }
+        return (staged, dmg, work)
+    }
+
+    /// The first word of a `shasum -a 256` line, lowercased.
+    nonisolated static func expectedChecksum(_ data: Data) -> String {
+        String(decoding: data, as: UTF8.self).split(whereSeparator: \.isWhitespace).first.map { $0.lowercased() } ?? ""
     }
 
     /// Hands off to a shell helper that waits for us to quit, swaps the bundle (rolling back on
@@ -333,26 +355,9 @@ final class Updater: ObservableObject {
     func selfTestStage() async -> String {
         guard let release = latest else { return "no update to stage" }
         do {
-            let work = FileManager.default.temporaryDirectory
-                .appendingPathComponent("TwoDegreesSelfTest-\(UUID().uuidString)", isDirectory: true)
-            try FileManager.default.createDirectory(at: work, withIntermediateDirectories: true)
-            let (downloaded, response) = try await URLSession.shared.download(from: release.dmg)
-            guard (response as? HTTPURLResponse)?.statusCode == 200 else { throw UpdateError.download }
-            let dmg = work.appendingPathComponent("TwoDegrees.dmg")
-            try FileManager.default.moveItem(at: downloaded, to: dmg)
-            var checksumNote = "no checksum published"
-            if let checksumURL = release.sha256 {
-                let (checksum, _) = try await URLSession.shared.data(from: checksumURL)
-                let expected = String(decoding: checksum, as: UTF8.self)
-                    .split(whereSeparator: \.isWhitespace).first.map { $0.lowercased() } ?? ""
-                guard try Self.sha256(of: dmg) == expected else { throw UpdateError.checksum }
-                checksumNote = "checksum OK"
-            }
-            let staged = try await Self.extractApp(from: dmg, into: work)
-            let stagedVersion = Bundle(url: staged)?.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
-            guard stagedVersion == release.version else { throw UpdateError.wrongVersion }
+            let (staged, _, _) = try await stage(release)
             let widget = FileManager.default.fileExists(atPath: staged.appendingPathComponent("Contents/PlugIns/TwoDegreesWidget.appex").path)
-            return "PASS staged \(release.version): \(checksumNote), app version matches, widget \(widget ? "present" : "MISSING")"
+            return "PASS staged \(release.version) through the real install path: checksum OK, version matches, widget \(widget ? "present" : "MISSING")"
         } catch {
             return "FAIL \(error.localizedDescription)"
         }
@@ -374,6 +379,7 @@ final class Updater: ObservableObject {
 enum UpdateError: LocalizedError {
     case server, download, checksum, noDownload, noApp, wrongVersion
     case status(Int)
+    case noChecksum
     case tool(String, Int32)
 
     var errorDescription: String? {
@@ -381,6 +387,7 @@ enum UpdateError: LocalizedError {
         case .server: return "GitHub didn’t respond. Check your internet connection and try again."
         case .status(let code): return "GitHub answered with an error (HTTP \(code)). Try again in a little while."
         case .download: return "The download didn’t finish."
+        case .noChecksum: return "The release has no checksum to verify the download against, so it wasn’t installed."
         case .checksum: return "The download didn’t match its published checksum, so it wasn’t installed."
         case .noDownload: return "The latest release has no Mac download yet."
         case .noApp: return "The download didn’t contain Two Degrees."

@@ -76,8 +76,10 @@ struct Forecast: Codable {
 
     /// The next 24 hours starting with the current one.
     var upcomingHours: [Hour] {
+        // The first hour at or after the start of the current hour (never midnight by accident).
         let calendar = Forecast.localCalendar
-        let start = hours.firstIndex { calendar.isDate($0.time, equalTo: now.time, toGranularity: .hour) } ?? 0
+        let hourStart = calendar.dateInterval(of: .hour, for: now.time)?.start ?? now.time
+        let start = hours.firstIndex { $0.time >= hourStart } ?? hours.count
         return Array(hours.dropFirst(start).prefix(24))
     }
 
@@ -151,6 +153,9 @@ enum Condition {
 
 /// Open-Meteo: free, open source, no key. https://open-meteo.com
 enum OpenMeteo {
+    /// Swapped for a stubbed session in unit tests.
+    nonisolated(unsafe) static var session: URLSession = .shared
+
     static func forecast(for city: City) async throws -> Forecast {
         var components = URLComponents(string: "https://api.open-meteo.com/v1/forecast")!
         components.queryItems = [
@@ -164,14 +169,17 @@ enum OpenMeteo {
         ]
         var request = URLRequest(url: components.url!, timeoutInterval: 20)
         request.setValue("TwoDegrees", forHTTPHeaderField: "User-Agent")
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await session.data(for: request)
         guard (response as? HTTPURLResponse)?.statusCode == 200 else { throw URLError(.badServerResponse) }
         return try decodeForecast(data)
     }
 
     /// Open-Meteo's forecast JSON → Forecast (separate so it can be unit tested).
     static func decodeForecast(_ data: Data) throws -> Forecast {
-        try JSONDecoder().decode(Response.self, from: data).forecast()
+        let raw = try JSONDecoder().decode(Response.self, from: data)
+        // Without a readable "now", every time on screen would be wrong: refuse the response.
+        guard OpenMeteo.date(raw.current.time) != nil else { throw URLError(.cannotParseResponse) }
+        return raw.forecast()
     }
 
     static func search(_ query: String) async throws -> [City] {
@@ -181,7 +189,7 @@ enum OpenMeteo {
             .init(name: "count", value: "8"),
             .init(name: "language", value: Locale.current.language.languageCode?.identifier ?? "en"),
         ]
-        let (data, _) = try await URLSession.shared.data(from: components.url!)
+        let (data, _) = try await session.data(from: components.url!)
         let raw = try JSONDecoder().decode(SearchResponse.self, from: data)
         return (raw.results ?? []).map {
             City(name: $0.name, region: [$0.admin1, $0.country].compactMap { $0 }.joined(separator: ", "),

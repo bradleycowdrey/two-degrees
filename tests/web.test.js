@@ -132,6 +132,13 @@ async function setSize(page, size) {
     const copied = await page.evaluate(() => navigator.clipboard.readText()).catch(() => '');
     check(/two-degrees\?c=/.test(copied), t(`copied link carries the cities (${copied.slice(0, 60)}…)`));
     await page.click('#shareBtn');
+    await page.click('[data-share="mac"]');
+    check(/releases\/latest\/download\/TwoDegrees\.dmg$/.test(await page.evaluate(() => navigator.clipboard.readText()).catch(() => '')), t('Copy Mac download link'));
+    await page.click('#shareBtn');
+    await page.click('[data-share="message"]');
+    const message = await page.evaluate(() => navigator.clipboard.readText()).catch(() => '');
+    check(message.includes('°F and °C') && message.includes('two-degrees?c=') && message.includes('TwoDegrees.dmg'), t('Copy a message to send'));
+    await page.click('#shareBtn');
     await page.keyboard.press('Escape');
     check(await page.isHidden('#shareMenu'), t('Escape closes the Share menu'));
 
@@ -145,6 +152,7 @@ async function setSize(page, size) {
     check(await page.evaluate(() => document.querySelector('.panel').classList.contains('system')), t('Font: System applies'));
     await page.click('#moreBtn');
     await page.click('[data-font="inter"]');
+    check(!(await page.evaluate(() => document.querySelector('.panel').classList.contains('system'))), t('Font: Inter applies'));
     for (const [i, size] of SIZES.entries()) {
       await setSize(page, size);
       for (const open of [false, true]) {
@@ -165,6 +173,25 @@ async function setSize(page, size) {
     check(await page.getAttribute('#daysToggle', 'aria-expanded') === 'false', t('forecast is closed again after a reload'));
 
     check(errors.length === 0, t(`no script errors${errors.length ? ': ' + errors.join(' | ') : ''}`));
+    await context.close();
+  }
+
+  // Rounding matches the Mac app: halves round away from zero.
+  {
+    const { context, page } = await fresh(browser, 1280, 900);
+    const r = await page.evaluate(() => [__twoDegreesTest.deg(-2.5, 'C'), __twoDegreesTest.deg(2.5, 'C'), __twoDegreesTest.deg(-19.7, 'F'), __twoDegreesTest.deg(37, 'F')]);
+    check(JSON.stringify(r) === '[-3,3,-3,99]', `rounding matches the Mac app (${r})`);
+    await context.close();
+  }
+
+  // Malformed shared links: bad numbers and empty names are skipped, more than 5 cities are cut,
+  // and names are shown as text, never run as HTML.
+  {
+    const bad = '?c=' + encodeURIComponent('Nowhere~abc~1|~10~10|<img src=x onerror=window.pwned=1>~1~1|A~1~1|B~2~2|C~3~3|D~4~4|E~5~5');
+    const { context, page } = await fresh(browser, 1280, 900, bad);
+    const chips = await page.$$eval('.chip[data-i]', (els) => els.map((e) => e.textContent.trim()));
+    check(chips.length === 5, `malformed link: keeps at most 5 valid cities (${chips.length})`);
+    check(!(await page.evaluate(() => window.pwned)) && chips[0].startsWith('<img'), 'malformed link: a city name with HTML is shown as text');
     await context.close();
   }
 
