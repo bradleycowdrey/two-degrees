@@ -16,16 +16,23 @@ struct TwoDegreesWidget: Widget {
     var body: some WidgetConfiguration {
         AppIntentConfiguration(kind: "TwoDegreesWidget", intent: WidgetSettings.self, provider: Provider()) { entry in
             WidgetView(entry: entry)
-                .containerBackground(for: .widget) {
-                    ZStack(alignment: .top) {
-                        Palette.bg
-                        Palette.crimson.frame(height: 3)
-                    }
-                }
+                .containerBackground(for: .widget) { WidgetBackground() }
         }
         .configurationDisplayName("Two Degrees")
         .description("The weather in °F and °C at once.")
         .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
+    }
+}
+
+/// Warm near-black with the crimson rule; the rule steps aside in tinted and clear modes.
+struct WidgetBackground: View {
+    @Environment(\.widgetRenderingMode) private var mode
+
+    var body: some View {
+        ZStack(alignment: .top) {
+            Palette.bg
+            if mode == .fullColor { Palette.crimson.frame(height: 3) }
+        }
     }
 }
 
@@ -132,10 +139,16 @@ struct Provider: AppIntentTimelineProvider {
     private func entry(for configuration: WidgetSettings) async -> WeatherEntry {
         let city = configuration.city?.city ?? WidgetDefaults.cities[0]
         let unit = configuration.unit.unit
+        let key = "forecast." + city.id
         do {
             let forecast = try await OpenMeteo.forecast(for: city)
+            if let data = try? JSONEncoder().encode(forecast) { UserDefaults.standard.set(data, forKey: key) }
             return WeatherEntry(date: Date(), city: city, unit: unit, forecast: forecast)
         } catch {
+            // Offline: show the last good forecast, clearly labelled with its time.
+            if let data = UserDefaults.standard.data(forKey: key), let saved = try? JSONDecoder().decode(Forecast.self, from: data) {
+                return WeatherEntry(date: Date(), city: city, unit: unit, forecast: saved, failed: true)
+            }
             return WeatherEntry(date: Date(), city: city, unit: unit, forecast: .placeholder, isPlaceholder: true, failed: true)
         }
     }
@@ -144,16 +157,24 @@ struct Provider: AppIntentTimelineProvider {
 extension Forecast {
     /// Shape-only data for the widget gallery and loading state (shown redacted).
     static var placeholder: Forecast {
-        let start = Forecast.localCalendar.startOfDay(for: Date())
-        let hours = (0..<48).map { i in
-            Forecast.Hour(time: start.addingTimeInterval(Double(i) * 3600), temperature: 14 + 5 * sin(Double(i - 9) / 24 * 2 * .pi),
-                          code: i % 7 == 0 ? 2 : 1, rainChance: 0, isDay: (7..<19).contains(i % 24))
+        let start: Date = Forecast.localCalendar.startOfDay(for: Date())
+        var hours: [Forecast.Hour] = []
+        for i in 0..<48 {
+            let phase: Double = Double(i - 9) / 24.0 * 2.0 * Double.pi
+            let temperature: Double = 14.0 + 5.0 * sin(phase)
+            let time: Date = start.addingTimeInterval(Double(i) * 3600.0)
+            let isDay: Bool = (7..<19).contains(i % 24)
+            hours.append(Forecast.Hour(time: time, temperature: temperature, code: 1, rainChance: 0, isDay: isDay))
         }
-        let days = (0..<6).map { i in
-            Forecast.Day(date: start.addingTimeInterval(Double(i) * 86400), code: [1, 2, 3, 61, 1, 2][i],
-                         high: 19 + Double(i % 3), low: 9 + Double(i % 2), rainChance: i == 3 ? 60 : 0, sunrise: nil, sunset: nil)
+        let codes: [Int] = [1, 2, 3, 61, 1, 2]
+        var days: [Forecast.Day] = []
+        for i in 0..<6 {
+            let date: Date = start.addingTimeInterval(Double(i) * 86400.0)
+            let high: Double = 19.0 + Double(i % 3)
+            let low: Double = 9.0 + Double(i % 2)
+            days.append(Forecast.Day(date: date, code: codes[i], high: high, low: low, rainChance: i == 3 ? 60 : 0, sunrise: nil, sunset: nil))
         }
-        let now = Forecast.Now(time: start.addingTimeInterval(14 * 3600), temperature: 18, feelsLike: 17, humidity: 60, wind: 12, code: 1, isDay: true)
+        let now = Forecast.Now(time: start.addingTimeInterval(14.0 * 3600.0), temperature: 18, feelsLike: 17, humidity: 60, wind: 12, code: 1, isDay: true)
         return Forecast(now: now, hours: hours, days: days, timeZone: "UTC", fetchedAt: Date())
     }
 }
@@ -199,6 +220,7 @@ private struct NowBlock: View {
                     .font(.system(size: big, weight: .semibold))
                     .tracking(-big * 0.03)
                     .foregroundStyle(Palette.textPrimary)
+                    .widgetAccentable()
                 Text("\(other.value(now.temperature))\(other.symbol)")
                     .font(.system(size: big * 0.45, weight: .medium))
                     .foregroundStyle(Palette.textMuted)
@@ -212,7 +234,12 @@ private struct NowBlock: View {
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(Palette.textSecondary)
                 .lineLimit(1)
-            if let today = entry.forecast.days.first?.including(now.temperature) {
+            if entry.failed && !entry.isPlaceholder {
+                Text("Offline · from \(entry.forecast.fetchedAt.formatted(date: .omitted, time: .shortened))")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(Palette.textMuted)
+                    .lineLimit(1)
+            } else if let today = entry.forecast.days.first?.including(now.temperature) {
                 Text("\(unit.value(today.low))–\(unit.value(today.high))\(unit.symbol) · \(other.value(today.low))–\(other.value(today.high))\(other.symbol)")
                     .font(.system(size: 11, weight: .medium))
                     .monospacedDigit()
@@ -284,6 +311,8 @@ private struct HoursRow: View {
                 .monospacedDigit()
                 .lineLimit(1)
                 .frame(maxWidth: .infinity)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("\(index == 0 ? "Now" : Forecast.format(hour.time, "j")): \(Condition.name(hour.code)), \(TempUnit.fahrenheit.value(hour.temperature)) degrees Fahrenheit, \(TempUnit.celsius.value(hour.temperature)) Celsius")
             }
         }
     }
@@ -291,6 +320,13 @@ private struct HoursRow: View {
 
 private struct DaysList: View {
     let entry: WeatherEntry
+
+    static func speech(_ day: Forecast.Day, isToday: Bool) -> String {
+        let name = isToday ? "Today" : Forecast.format(day.date, "EEEE")
+        let low = "\(TempUnit.fahrenheit.value(day.low)) degrees Fahrenheit, \(TempUnit.celsius.value(day.low)) Celsius"
+        let high = "\(TempUnit.fahrenheit.value(day.high)) degrees Fahrenheit, \(TempUnit.celsius.value(day.high)) Celsius"
+        return "\(name): \(Condition.name(day.code)). Low \(low). High \(high)."
+    }
 
     var body: some View {
         let unit = entry.unit, other = entry.unit.other
@@ -340,6 +376,8 @@ private struct DaysList: View {
                 }
                 .monospacedDigit()
                 .lineLimit(1)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(DaysList.speech(day, isToday: index == 0))
             }
         }
     }
