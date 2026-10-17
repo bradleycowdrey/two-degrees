@@ -33,7 +33,7 @@ private struct WeatherPanelContent: View {
     /// Tallest the scrolling body may be so the whole panel stays on screen at any size.
     private var maxBodyHeight: CGFloat {
         let screen = NSScreen.main?.visibleFrame.height ?? 800
-        let chrome = 3 + ui.pt(21) + ui.pt(32) + ui.pt(10)   // crimson rule + header
+        let chrome = 3 + ui.pt(compact ? 21 : 34) + ui.pt(32) + ui.pt(10)   // crimson rule + header
         return max(ui.pt(320), screen - chrome - ui.pt(compact ? 32 : 64))
     }
 
@@ -47,7 +47,8 @@ private struct WeatherPanelContent: View {
 
                 header
                     .padding(.horizontal, ui.pt(18))
-                    .padding(.top, ui.pt(21))
+                    // The window's traffic lights sit in the band above the header.
+                    .padding(.top, compact ? ui.pt(21) : ui.pt(34))
                     .padding(.bottom, ui.pt(10))
             }
             // Window: drag to move. Menu bar panel (which macOS pins under its icon): drag to
@@ -653,15 +654,18 @@ private struct NowTile: View {
         }
         .padding(ui.tilePadding)
         .frame(maxWidth: .infinity, alignment: .leading)
+        // The glow is an overlay, so its fixed size can never change the tile's size.
         .background(
-            ZStack(alignment: .topTrailing) {
-                RoundedRectangle(cornerRadius: ui.tileRadius, style: .continuous).fill(Palette.raisedTile)
-                Circle()
-                    .fill(RadialGradient(colors: [Glow.color(code: now.code, isDay: now.isDay), .clear], center: .center, startRadius: 0, endRadius: ui.pt(160)))
-                    .frame(width: ui.pt(320), height: ui.pt(320))
-                    .offset(x: ui.pt(110), y: -ui.pt(150))
-            }
-            .clipShape(RoundedRectangle(cornerRadius: ui.tileRadius, style: .continuous))
+            RoundedRectangle(cornerRadius: ui.tileRadius, style: .continuous)
+                .fill(Palette.raisedTile)
+                .overlay(alignment: .topTrailing) {
+                    Circle()
+                        .fill(RadialGradient(colors: [Glow.color(code: now.code, isDay: now.isDay), .clear], center: .center, startRadius: 0, endRadius: ui.pt(160)))
+                        .frame(width: ui.pt(320), height: ui.pt(320))
+                        .offset(x: ui.pt(110), y: -ui.pt(150))
+                        .allowsHitTesting(false)
+                }
+                .clipShape(RoundedRectangle(cornerRadius: ui.tileRadius, style: .continuous))
         )
     }
 }
