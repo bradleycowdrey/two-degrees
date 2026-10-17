@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# Builds TwoDegrees.app (universal: Apple silicon + Intel) into ./dist.
+# Usage: scripts/build-app.sh [version]
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+VERSION="${1:-${VERSION:-0.1.0}}"
+VERSION="${VERSION##*v}"  # "v0.1.0" or "two-degrees-v0.1.0" -> "0.1.0"
+BUILD="$(git rev-list --count HEAD 2>/dev/null || echo 1)"
+APP="dist/TwoDegrees.app"
+
+swift build -c release --arch arm64 --arch x86_64
+BIN="$(swift build -c release --arch arm64 --arch x86_64 --show-bin-path)/TwoDegrees"
+
+rm -rf "$APP"
+mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+cp "$BIN" "$APP/Contents/MacOS/TwoDegrees"
+sed -e "s/__VERSION__/$VERSION/" -e "s/__BUILD__/$BUILD/" Resources/Info.plist > "$APP/Contents/Info.plist"
+# Bundled fonts (Inter, SIL Open Font License) for the Font setting.
+cp -R Resources/Fonts "$APP/Contents/Resources/Fonts"
+
+# Icon: 1024px PNG -> .icns
+ICONSET="$(mktemp -d)/AppIcon.iconset"
+mkdir -p "$ICONSET"
+for size in 16 32 128 256 512; do
+  sips -z $size $size Resources/AppIcon.png --out "$ICONSET/icon_${size}x${size}.png" >/dev/null
+  sips -z $((size * 2)) $((size * 2)) Resources/AppIcon.png --out "$ICONSET/icon_${size}x${size}@2x.png" >/dev/null
+done
+iconutil -c icns "$ICONSET" -o "$APP/Contents/Resources/AppIcon.icns"
+
+# Sign with a Developer ID if one is configured, otherwise ad-hoc (fine for sideloading).
+IDENTITY="${CODESIGN_IDENTITY:--}"
+if [[ "$IDENTITY" == "-" ]]; then TIMESTAMP="--timestamp=none"; else TIMESTAMP="--timestamp"; fi
+codesign --force --deep --options runtime "$TIMESTAMP" --sign "$IDENTITY" "$APP"
+codesign --verify --verbose "$APP"
+
+echo "Built $APP ($VERSION build $BUILD)"

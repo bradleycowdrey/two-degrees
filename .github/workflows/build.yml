@@ -1,0 +1,21 @@
+name: Build
+
+# main is built by release.yml; this checks pull requests.
+on:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Build app
+        run: scripts/build-app.sh 0.0.0-dev
+      - name: Package DMG
+        run: scripts/make-dmg.sh 0.0.0-dev
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TwoDegrees-dev
+          path: dist/*.dmg

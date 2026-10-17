@@ -1,0 +1,74 @@
+name: Release
+
+# Every push to main builds the app and publishes the DMG on GitHub Releases as v<VERSION>,
+# plus a stable TwoDegrees.dmg so https://github.com/bradleycowdrey/two-degrees/releases/latest/download/TwoDegrees.dmg
+# always serves the newest build. Bump VERSION for a new release; pushing again with the same
+# VERSION replaces that release's files.
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-15
+    env:
+      HAS_SIGNING_CERT: ${{ secrets.DEVELOPER_ID_P12 != '' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Optional: Developer ID signing + notarization removes the Gatekeeper warning.
+      # Add these repository secrets to enable it; without them the app is ad-hoc signed.
+      - name: Import signing certificate
+        if: env.HAS_SIGNING_CERT == 'true'
+        env:
+          P12: ${{ secrets.DEVELOPER_ID_P12 }}
+          P12_PASSWORD: ${{ secrets.DEVELOPER_ID_P12_PASSWORD }}
+        run: |
+          KEYCHAIN="$RUNNER_TEMP/build.keychain"
+          echo "$P12" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security create-keychain -p ci "$KEYCHAIN"
+          security set-keychain-settings "$KEYCHAIN"
+          security unlock-keychain -p ci "$KEYCHAIN"
+          security import "$RUNNER_TEMP/cert.p12" -k "$KEYCHAIN" -P "$P12_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k ci "$KEYCHAIN"
+          security list-keychains -d user -s "$KEYCHAIN"
+
+      - name: Work out version
+        run: |
+          if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
+            echo "TAG=$GITHUB_REF_NAME" >> "$GITHUB_ENV"
+          else
+            echo "TAG=v$(tr -d '[:space:]' < VERSION)" >> "$GITHUB_ENV"
+          fi
+
+      - name: Build and package
+        env:
+          CODESIGN_IDENTITY: ${{ secrets.CODESIGN_IDENTITY }}
+          NOTARY_APPLE_ID: ${{ secrets.NOTARY_APPLE_ID }}
+          NOTARY_PASSWORD: ${{ secrets.NOTARY_PASSWORD }}
+          NOTARY_TEAM_ID: ${{ secrets.NOTARY_TEAM_ID }}
+        run: |
+          scripts/build-app.sh "$TAG"
+          scripts/make-dmg.sh "$TAG"
+          cp dist/TwoDegrees-*.dmg dist/TwoDegrees.dmg
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            # Never replace a published version's files; bump VERSION to release new code.
+            echo "Release $TAG already exists; not overwriting it."
+          else
+            gh release create "$TAG" dist/*.dmg dist/*.sha256 \
+              --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --latest \
+              --title "Two Degrees ${TAG##*v}" \
+              --notes "Download the DMG, open it and drag Two Degrees into Applications. First launch: right-click Two Degrees, then Open. Made by Bradley Cowdrey · bradcowdrey.com"
+          fi

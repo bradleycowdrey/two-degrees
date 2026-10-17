@@ -1,0 +1,781 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><link rel="icon" href="icon.png"></head><body>
+<title>Two Degrees</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Two Degrees: weather in °F and °C at once, with the next 24 hours and a 5-day forecast. Free and open source, by Bradley Cowdrey.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  /* One Meridian-style panel, centred: header, now, next 24 hours, five days, footer.
+     bradcowdrey.com colours (warm near-black, cream, crimson), committed to one dark look. */
+  :root {
+    color-scheme: dark;
+    --bg: #1A1816; --tile: #23201D; --raised: #1C1A18; --border: #2A2520; --border-strong: #3A3530;
+    --text: #FFFFFF; --cream: #FFF1E5; --secondary: #E0D8D0; --muted: #B0A898; --faint: #807870;
+    --crimson: #990F3D; --accent: #E04A7A;
+    --sun: #F4B860; --moon: #E9DCC8; --cloud: #CFC6BB; --cloud-dark: #8E857B; --rain: #8DB4E2; --snow: #F4F7FB;
+    --cold: #7FA7D9; --mild: #E9C98A; --warm: #F2A65A; --hot: #E04A7A;
+    --font: Inter, -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+    --r-panel: 28px; --r-tile: 22px; --r-cell: 12px;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html { -webkit-font-smoothing: antialiased; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 400 15px/1.4 var(--font); letter-spacing: -.01em;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 32px 48px;
+  }
+  button { font: inherit; color: inherit; }
+  a { color: inherit; text-decoration: none; }
+  :focus-visible { outline: 2px solid var(--cream); outline-offset: 2px; border-radius: 8px; }
+
+  .panel {
+    position: relative; overflow: hidden; width: 100%; max-width: 480px; margin: 0 auto;
+    background: var(--bg); border-radius: var(--r-panel);
+    box-shadow: 0 0 0 0.5px var(--border-strong), 0 40px 100px rgba(0,0,0,.55);
+    padding: 27px 20px 20px; display: flex; flex-direction: column; gap: 12px;
+  }
+  .panel::before { content: ""; position: absolute; inset: 0 0 auto; height: 3px; background: var(--crimson); }
+
+  /* Header */
+  .hdr { display: flex; align-items: center; gap: 12px; padding: 0 4px 4px; }
+  .hdr h1 { margin: 0; font-size: 19px; font-weight: 600; letter-spacing: -.02em; }
+  .hdr .sp { flex: 1; }
+  .mark { width: 28px; height: 28px; flex: none; }
+  .seg { display: flex; padding: 3px; border-radius: 980px; background: var(--tile); box-shadow: inset 0 0 0 0.5px var(--border-strong); }
+  .seg button { height: 26px; min-width: 44px; padding: 0 10px; border: 0; border-radius: 980px; background: none; color: var(--secondary);
+    font-size: 13px; font-weight: 600; cursor: pointer; transition: background .15s, color .15s; }
+  .seg button:hover { background: var(--border); color: var(--text); }
+  .seg button[aria-pressed="true"] { background: var(--cream); color: var(--bg); }
+  .circle { width: 32px; height: 32px; flex: none; display: grid; place-items: center; border: 0; border-radius: 50%; cursor: pointer;
+    background: var(--tile); box-shadow: inset 0 0 0 0.5px var(--border-strong); color: var(--secondary); transition: background .15s, color .15s; }
+  .circle:hover { background: var(--border); color: var(--text); }
+  .circle svg { width: 16px; height: 16px; }
+
+  /* Cities */
+  .cities { display: flex; gap: 6px; flex-wrap: wrap; padding: 0 2px; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; border: 0; border-radius: 980px; cursor: pointer;
+    background: var(--border); color: var(--secondary); font-size: 13px; font-weight: 500; transition: background .15s, color .15s; }
+  .chip:hover { background: var(--border-strong); color: var(--text); }
+  .chip[aria-current="true"] { background: var(--cream); color: var(--bg); font-weight: 600; }
+  .chip .t { font-variant-numeric: tabular-nums; opacity: .72; font-weight: 500; }
+  .chip.add { background: none; box-shadow: inset 0 0 0 1px var(--border-strong); color: var(--muted); }
+  .chip.add:hover { color: var(--text); }
+  .chip-wrap { position: relative; display: inline-flex; }
+  .chip-x { position: absolute; top: -5px; right: -5px; width: 18px; height: 18px; border: 0; border-radius: 50%; padding: 0; cursor: pointer;
+    background: var(--crimson); color: #fff; font-size: 12px; line-height: 18px; display: none; }
+  .cities.editing .chip-x { display: block; }
+
+  .search { display: flex; flex-direction: column; gap: 6px; }
+  .search .box { display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 14px; border-radius: var(--r-cell);
+    background: var(--bg); color: var(--faint); border: 1px solid var(--border-strong); }
+  .search .box:focus-within { border-color: var(--muted); }
+  .search input { flex: 1; min-width: 0; background: none; border: 0; outline: 0; color: var(--text); font: 400 15px var(--font); }
+  .search input::placeholder { color: var(--faint); }
+  .results { display: flex; flex-direction: column; max-height: 216px; overflow: auto; }
+  .result { display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 6px 12px; border: 0; border-radius: var(--r-cell);
+    background: none; text-align: left; cursor: pointer; }
+  .result:hover, .result:focus-visible { background: var(--border); }
+  .result .n { font-size: 15px; font-weight: 600; line-height: 1.2; }
+  .result .r { font-size: 13px; color: var(--muted); line-height: 1.25; }
+  .result .sp { flex: 1; }
+  .result .plus { color: var(--muted); font-size: 18px; }
+  .hint { font-size: 13px; color: var(--muted); padding: 4px 12px; }
+
+  /* Tiles */
+  .tile { background: var(--tile); border-radius: var(--r-tile); padding: 20px; min-width: 0; }
+  .eyebrow { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--muted); margin: 0 0 12px; }
+  .eyebrow .sp { flex: 1; }
+  .eyebrow .aside { font-weight: 500; color: var(--faint); font-variant-numeric: tabular-nums; }
+
+  /* Now */
+  .now { position: relative; overflow: hidden; isolation: isolate; }
+  .now::after { content: ""; position: absolute; z-index: -1; width: 320px; height: 320px; right: -110px; top: -150px; border-radius: 50%;
+    background: radial-gradient(circle, var(--glow, rgba(244,184,96,.16)), transparent 68%); }
+  .place { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+  .place h2 { margin: 0; font-size: 21px; font-weight: 600; letter-spacing: -.02em; }
+  .place .local { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .reading { display: flex; align-items: center; gap: 14px; margin: 10px 0 6px; }
+  .reading .big-icon { width: 64px; height: 64px; flex: none; }
+  .temps { display: flex; align-items: baseline; gap: 14px; font-variant-numeric: tabular-nums; }
+  .temps .primary { font-size: 64px; font-weight: 600; letter-spacing: -.045em; line-height: 1; }
+  .temps .primary sup, .temps .secondary sup { font-size: .42em; font-weight: 500; vertical-align: .95em; letter-spacing: 0; margin-left: 2px; color: var(--secondary); }
+  .temps .secondary { font-size: 38px; font-weight: 500; letter-spacing: -.035em; line-height: 1; color: var(--muted); }
+  .temps .divider { width: 1px; align-self: stretch; margin: 6px 0; background: var(--border-strong); }
+  .cond { font-size: 17px; font-weight: 600; letter-spacing: -.015em; margin: 0; }
+  .summary { font-size: 14px; color: var(--secondary); margin: 2px 0 0; text-wrap: balance; }
+  .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-top: 16px; }
+  .stat { background: var(--raised); border-radius: var(--r-cell); padding: 10px 10px 9px; min-width: 0; }
+  .stat .k { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--faint); }
+  .stat .v { font-size: 14px; font-weight: 600; margin-top: 4px; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .stat .s { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* Next 24 hours */
+  .hours-scroll { overflow-x: auto; margin: 0 -20px; padding: 0 20px 4px; scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent;
+    -webkit-mask-image: linear-gradient(to right, #000 88%, transparent); mask-image: linear-gradient(to right, #000 88%, transparent); }
+  .hours { position: relative; display: flex; width: max-content; padding-right: 32px; }
+  .hour { width: 54px; flex: none; display: flex; flex-direction: column; align-items: center; font-variant-numeric: tabular-nums; }
+  .hour .h { height: 16px; font-size: 12px; font-weight: 500; color: var(--muted); line-height: 16px; }
+  .hour.is-now .h { color: var(--cream); font-weight: 600; }
+  .hour .ic { width: 28px; height: 28px; margin-top: 6px; }
+  .hour .spark { height: 40px; }
+  .hour .f { font-size: 15px; font-weight: 600; line-height: 18px; }
+  .hour .c { font-size: 12px; color: var(--muted); line-height: 16px; }
+  .hour .p { height: 16px; font-size: 11px; font-weight: 600; color: var(--rain); line-height: 16px; }
+  .hour.day-start::before { content: ""; position: absolute; width: 1px; top: 0; bottom: 0; margin-left: -54px; background: var(--border-strong); }
+  .hour.day-start { position: relative; }
+  .hour.day-start::before { left: 0; margin-left: 0; }
+  .sparkline { position: absolute; left: 0; top: 50px; height: 40px; pointer-events: none; overflow: visible; }
+
+  /* Five days */
+  .days { display: flex; flex-direction: column; }
+  .day { display: grid; grid-template-columns: 56px 28px 40px 52px minmax(0, 1fr) 52px; align-items: center; gap: 10px;
+    min-height: 54px; border-top: 0.5px solid var(--border-strong); font-variant-numeric: tabular-nums; }
+  .day:first-child { border-top: 0; }
+  .day .d { font-size: 15px; font-weight: 600; }
+  .day .ic { width: 28px; height: 28px; }
+  .day .p { font-size: 12px; font-weight: 600; color: var(--rain); }
+  .day .lo, .day .hi { display: flex; flex-direction: column; line-height: 1.15; }
+  .day .lo { align-items: flex-end; }
+  .day .hi { align-items: flex-start; }
+  .day .lo b, .day .hi b { font-size: 15px; font-weight: 600; }
+  .day .lo b { color: var(--secondary); }
+  .day .lo span, .day .hi span { font-size: 12px; color: var(--muted); }
+  .bar { position: relative; height: 6px; border-radius: 6px; background: var(--raised); box-shadow: inset 0 0 0 0.5px var(--border-strong); }
+  .bar i { position: absolute; top: 0; bottom: 0; border-radius: 6px; }
+  .bar u { position: absolute; top: 50%; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%; background: var(--text); box-shadow: 0 0 0 2.5px var(--tile); }
+
+  /* Footer */
+  .status { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 0 4px; font-size: 12px; color: var(--muted); }
+  .status .st { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+  .status .dot { align-self: center; width: 7px; height: 7px; border-radius: 50%; background: var(--crimson); flex: none; }
+  .status.live .dot { background: #6FD39C; }
+  .status .sp { flex: 1; }
+  .status a { text-decoration: underline; text-decoration-color: var(--border-strong); text-underline-offset: 2px; }
+  .status a:hover { color: var(--text); }
+  .foot { display: flex; align-items: center; gap: 12px; padding: 4px 4px 0; }
+  .foot .brand { flex: 1; min-width: 0; font-size: 12px; color: var(--muted); }
+  .foot .brand:hover { color: var(--text); }
+  .pill { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 14px; border: 0; border-radius: 980px; cursor: pointer;
+    background: var(--border); color: var(--text); font-size: 13px; font-weight: 600; transition: background .15s, transform .1s; flex: none; }
+  .pill:hover { background: var(--border-strong); }
+  .pill:active { transform: scale(.97); }
+  .pill svg { width: 14px; height: 14px; }
+
+  .share-wrap { position: relative; }
+  .menu { position: absolute; right: 0; bottom: 38px; z-index: 5; width: 270px; padding: 6px; border-radius: 12px;
+    background: rgba(42,37,32,.96); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+    box-shadow: 0 0 0 0.5px var(--border-strong), 0 12px 32px rgba(0,0,0,.5); font-size: 13px; }
+  .menu .mh { padding: 6px 10px 2px; font-weight: 600; }
+  .menu p { margin: 0; padding: 2px 10px 8px; color: var(--muted); font-size: 12.5px; line-height: 1.45; }
+  .menu button { display: flex; align-items: center; gap: 10px; width: 100%; padding: 7px 10px; border: 0; border-radius: 6px; background: none;
+    color: var(--text); font-size: 13px; cursor: pointer; text-align: left; }
+  .menu button:hover, .menu button:focus-visible { background: #0A64D2; outline: none; }
+  .menu button svg { width: 15px; height: 15px; color: var(--secondary); flex: none; }
+  .toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 20;
+    padding: 9px 16px; border-radius: 980px; background: var(--cream); color: var(--bg); font-size: 13px; font-weight: 600;
+    box-shadow: 0 10px 30px rgba(0,0,0,.4); transition: opacity .2s, transform .2s; }
+  .toast[hidden] { display: block !important; opacity: 0; transform: translate(-50%, 8px); pointer-events: none; }
+
+  .skeleton { color: var(--faint); font-size: 14px; padding: 8px 0; }
+
+  @media (max-width: 460px) {
+    .panel { padding: 25px 14px 16px; border-radius: 24px; }
+    .tile { padding: 16px; }
+    .hours-scroll { margin: 0 -16px; padding: 0 16px 4px; }
+    .temps .primary { font-size: 54px; }
+    .temps .secondary { font-size: 32px; }
+    .reading .big-icon { width: 52px; height: 52px; }
+    .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .day { grid-template-columns: 46px 26px 34px 44px minmax(0, 1fr) 44px; gap: 8px; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<main class="panel" aria-labelledby="appName">
+  <header class="hdr">
+    <svg class="mark" viewBox="0 0 28 28" aria-hidden="true">
+      <rect width="28" height="28" rx="7.3" fill="#222018"/>
+      <circle cx="10.4" cy="11.6" r="4.6" fill="none" stroke="#FFF1E5" stroke-width="2.4"/>
+      <circle cx="18.6" cy="16.4" r="3.4" fill="none" stroke="#E04A7A" stroke-width="2.2"/>
+    </svg>
+    <h1 id="appName">Two Degrees</h1>
+    <span class="sp"></span>
+    <div class="seg" role="group" aria-label="Larger unit">
+      <button type="button" id="unitF" aria-pressed="true" title="Show °F large">°F</button>
+      <button type="button" id="unitC" aria-pressed="false" title="Show °C large">°C</button>
+    </div>
+    <button type="button" class="circle" id="locateBtn" title="Use my location" aria-label="Use my location" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="6.5"/><circle cx="12" cy="12" r="2" fill="currentColor"/></svg>
+    </button>
+  </header>
+
+  <nav class="cities" id="cities" aria-label="Saved cities"></nav>
+
+  <section class="tile search" id="search" hidden aria-label="Add a city">
+    <div class="box">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input id="searchInput" type="search" placeholder="Add a city" autocomplete="off" spellcheck="false" aria-label="City name">
+    </div>
+    <div class="results" id="results" role="listbox" aria-label="Matching cities"></div>
+  </section>
+
+  <section class="tile now" id="now" aria-live="polite"><div class="skeleton">Loading the forecast…</div></section>
+
+  <section class="tile" aria-labelledby="hoursTitle">
+    <h3 class="eyebrow" id="hoursTitle">Next 24 hours<span class="sp"></span><span class="aside" id="hoursAside"></span></h3>
+    <div class="hours-scroll" tabindex="0" aria-label="Hourly forecast, scroll sideways">
+      <div class="hours" id="hours"></div>
+    </div>
+  </section>
+
+  <section class="tile" aria-labelledby="daysTitle">
+    <h3 class="eyebrow" id="daysTitle">5-day forecast<span class="sp"></span><span class="aside">Low · High</span></h3>
+    <div class="days" id="days"></div>
+  </section>
+
+  <div class="status" id="status"><span class="st"><span class="dot"></span><span id="statusText">Loading…</span></span><span class="sp"></span>
+    <a href="https://open-meteo.com/" target="_blank" rel="noopener">Weather data by Open-Meteo.com</a></div>
+
+  <footer class="foot">
+    <a class="brand" href="https://bradcowdrey.com" target="_blank" rel="noopener">Made by Bradley Cowdrey. Free. Forever. · bradcowdrey.com ↗</a>
+    <div class="share-wrap">
+      <button type="button" class="pill" id="shareBtn" aria-haspopup="menu" aria-expanded="false" title="Share Two Degrees">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7.5 7.5 12 3l4.5 4.5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>
+        Share
+      </button>
+      <div class="menu" id="shareMenu" role="menu" hidden></div>
+    </div>
+  </footer>
+</main>
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script>
+(() => {
+  'use strict';
+  const APP_URL = 'https://bradcowdrey.com/two-degrees';
+  const MAC_URL = 'https://github.com/bradleycowdrey/two-degrees/releases/latest/download/TwoDegrees.dmg';
+  const SHARE_TEXT = 'Two Degrees: the weather in °F and °C at once, with the next 24 hours and five days ahead. Free and open source, by Bradley Cowdrey.';
+  const MAX_CITIES = 5;
+  const CACHE_MS = 10 * 60 * 1000;
+  const inArtifact = () => !!(window.claude && typeof window.claude.use === 'function');
+
+  const $ = (s) => document.querySelector(s);
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem('twodegrees.' + k); return v == null ? d : JSON.parse(v); } catch { return d; } },
+    set(k, v) { try { localStorage.setItem('twodegrees.' + k, JSON.stringify(v)); } catch {} },
+  };
+
+  /* Built-in cities, so search works offline and the sample forecast has real places. */
+  const DIRECTORY = [
+    ['New York', 'New York, United States', 40.7128, -74.006, 'America/New_York'],
+    ['Los Angeles', 'California, United States', 34.0522, -118.2437, 'America/Los_Angeles'],
+    ['Chicago', 'Illinois, United States', 41.8781, -87.6298, 'America/Chicago'],
+    ['Denver', 'Colorado, United States', 39.7392, -104.9903, 'America/Denver'],
+    ['Seattle', 'Washington, United States', 47.6062, -122.3321, 'America/Los_Angeles'],
+    ['San Francisco', 'California, United States', 37.7749, -122.4194, 'America/Los_Angeles'],
+    ['Austin', 'Texas, United States', 30.2672, -97.7431, 'America/Chicago'],
+    ['Miami', 'Florida, United States', 25.7617, -80.1918, 'America/New_York'],
+    ['Boston', 'Massachusetts, United States', 42.3601, -71.0589, 'America/New_York'],
+    ['Phoenix', 'Arizona, United States', 33.4484, -112.074, 'America/Phoenix'],
+    ['Atlanta', 'Georgia, United States', 33.749, -84.388, 'America/New_York'],
+    ['Nashville', 'Tennessee, United States', 36.1627, -86.7816, 'America/Chicago'],
+    ['Honolulu', 'Hawaii, United States', 21.3069, -157.8583, 'Pacific/Honolulu'],
+    ['Anchorage', 'Alaska, United States', 61.2181, -149.9003, 'America/Anchorage'],
+    ['Toronto', 'Ontario, Canada', 43.6532, -79.3832, 'America/Toronto'],
+    ['Vancouver', 'British Columbia, Canada', 49.2827, -123.1207, 'America/Vancouver'],
+    ['Mexico City', 'Mexico', 19.4326, -99.1332, 'America/Mexico_City'],
+    ['São Paulo', 'Brazil', -23.5505, -46.6333, 'America/Sao_Paulo'],
+    ['Buenos Aires', 'Argentina', -34.6037, -58.3816, 'America/Argentina/Buenos_Aires'],
+    ['London', 'England, United Kingdom', 51.5072, -0.1276, 'Europe/London'],
+    ['Dublin', 'Ireland', 53.3498, -6.2603, 'Europe/Dublin'],
+    ['Paris', 'France', 48.8566, 2.3522, 'Europe/Paris'],
+    ['Berlin', 'Germany', 52.52, 13.405, 'Europe/Berlin'],
+    ['Amsterdam', 'Netherlands', 52.3676, 4.9041, 'Europe/Amsterdam'],
+    ['Madrid', 'Spain', 40.4168, -3.7038, 'Europe/Madrid'],
+    ['Rome', 'Italy', 41.9028, 12.4964, 'Europe/Rome'],
+    ['Stockholm', 'Sweden', 59.3293, 18.0686, 'Europe/Stockholm'],
+    ['Reykjavík', 'Iceland', 64.1466, -21.9426, 'Atlantic/Reykjavik'],
+    ['Istanbul', 'Türkiye', 41.0082, 28.9784, 'Europe/Istanbul'],
+    ['Cairo', 'Egypt', 30.0444, 31.2357, 'Africa/Cairo'],
+    ['Nairobi', 'Kenya', -1.2921, 36.8219, 'Africa/Nairobi'],
+    ['Cape Town', 'South Africa', -33.9249, 18.4241, 'Africa/Johannesburg'],
+    ['Dubai', 'United Arab Emirates', 25.2048, 55.2708, 'Asia/Dubai'],
+    ['Mumbai', 'Maharashtra, India', 19.076, 72.8777, 'Asia/Kolkata'],
+    ['Delhi', 'India', 28.6139, 77.209, 'Asia/Kolkata'],
+    ['Singapore', 'Singapore', 1.3521, 103.8198, 'Asia/Singapore'],
+    ['Bangkok', 'Thailand', 13.7563, 100.5018, 'Asia/Bangkok'],
+    ['Hong Kong', 'Hong Kong', 22.3193, 114.1694, 'Asia/Hong_Kong'],
+    ['Shanghai', 'China', 31.2304, 121.4737, 'Asia/Shanghai'],
+    ['Seoul', 'South Korea', 37.5665, 126.978, 'Asia/Seoul'],
+    ['Tokyo', 'Japan', 35.6762, 139.6503, 'Asia/Tokyo'],
+    ['Sydney', 'New South Wales, Australia', -33.8688, 151.2093, 'Australia/Sydney'],
+    ['Melbourne', 'Victoria, Australia', -37.8136, 144.9631, 'Australia/Melbourne'],
+    ['Auckland', 'New Zealand', -36.8485, 174.7633, 'Pacific/Auckland'],
+  ].map(([name, region, lat, lon, tz]) => ({ name, region, lat, lon, tz }));
+
+  /* ---------- Units ---------- */
+  const toF = (c) => c * 9 / 5 + 32;
+  const deg = (c, unit) => Math.round(unit === 'F' ? toF(c) : c);
+  const other = (u) => (u === 'F' ? 'C' : 'F');
+  const defaultUnit = () => {
+    const lang = (navigator.language || 'en-US').toUpperCase();
+    return /-(US|LR|MM|BS|BZ|KY|PW|FM|MH)\b/.test(lang) ? 'F' : 'C';
+  };
+
+  /* ---------- State ---------- */
+  const state = {
+    unit: store.get('unit', defaultUnit()),
+    cities: [],
+    active: 0,
+    data: {},
+    editing: false,
+  };
+
+  function citiesFromQuery() {
+    try {
+      const raw = new URLSearchParams(location.search).get('c');
+      if (!raw) return null;
+      const list = raw.split('|').map((part) => {
+        const [name, lat, lon] = part.split('~');
+        const la = parseFloat(lat), lo = parseFloat(lon);
+        if (!name || !isFinite(la) || !isFinite(lo)) return null;
+        const known = DIRECTORY.find((d) => d.name === name);
+        return { name, region: known ? known.region : '', lat: la, lon: lo, tz: known ? known.tz : null };
+      }).filter(Boolean).slice(0, MAX_CITIES);
+      return list.length ? list : null;
+    } catch { return null; }
+  }
+  state.cities = citiesFromQuery() || store.get('cities', null) || ['New York', 'London', 'Tokyo'].map((n) => DIRECTORY.find((d) => d.name === n));
+  state.active = Math.min(store.get('active', 0), state.cities.length - 1);
+  const saveCities = () => { store.set('cities', state.cities); store.set('active', state.active); };
+
+  /* ---------- Weather codes (WMO) ---------- */
+  const CODES = {
+    0: ['Clear', 'clear'], 1: ['Mostly clear', 'clear'], 2: ['Partly cloudy', 'partly'], 3: ['Overcast', 'cloud'],
+    45: ['Fog', 'fog'], 48: ['Freezing fog', 'fog'],
+    51: ['Light drizzle', 'drizzle'], 53: ['Drizzle', 'drizzle'], 55: ['Heavy drizzle', 'drizzle'],
+    56: ['Freezing drizzle', 'drizzle'], 57: ['Freezing drizzle', 'drizzle'],
+    61: ['Light rain', 'rain'], 63: ['Rain', 'rain'], 65: ['Heavy rain', 'rain'], 66: ['Freezing rain', 'rain'], 67: ['Freezing rain', 'rain'],
+    71: ['Light snow', 'snow'], 73: ['Snow', 'snow'], 75: ['Heavy snow', 'snow'], 77: ['Snow grains', 'snow'],
+    80: ['Showers', 'rain'], 81: ['Showers', 'rain'], 82: ['Heavy showers', 'rain'], 85: ['Snow showers', 'snow'], 86: ['Snow showers', 'snow'],
+    95: ['Thunderstorms', 'storm'], 96: ['Thunderstorms, hail', 'storm'], 99: ['Thunderstorms, hail', 'storm'],
+  };
+  const codeInfo = (code) => CODES[code] || ['Cloudy', 'cloud'];
+
+  /* ---------- Icons ---------- */
+  const CLOUD = 'M7.2 18.5h9.6a3.9 3.9 0 0 0 .6-7.76A5.4 5.4 0 0 0 7.1 11.6a3.45 3.45 0 0 0 .1 6.9z';
+  const CLOUD_HI = 'M7.2 15.5h9.6a3.9 3.9 0 0 0 .6-7.76A5.4 5.4 0 0 0 7.1 8.6a3.45 3.45 0 0 0 .1 6.9z';
+  const sunRays = (cx, cy, r1, r2) => Array.from({ length: 8 }, (_, i) => {
+    const a = i * Math.PI / 4;
+    return `M${(cx + Math.cos(a) * r1).toFixed(2)} ${(cy + Math.sin(a) * r1).toFixed(2)}L${(cx + Math.cos(a) * r2).toFixed(2)} ${(cy + Math.sin(a) * r2).toFixed(2)}`;
+  }).join('');
+  function icon(code, isDay, label) {
+    const kind = codeInfo(code)[1];
+    const sun = (cx, cy, r) => `<circle cx="${cx}" cy="${cy}" r="${r}" fill="var(--sun)"/><path d="${sunRays(cx, cy, r + 2, r + 4.2)}" stroke="var(--sun)" stroke-width="1.8" stroke-linecap="round"/>`;
+    const moon = (cx, cy, r) => `<path d="M${cx + r * .35} ${cy - r}a${r} ${r} 0 1 0 ${r * .65} ${r * 1.55}A${r * .8} ${r * .8} 0 0 1 ${cx + r * .35} ${cy - r}z" fill="var(--moon)"/>`;
+    const body = isDay ? sun : moon;
+    let g;
+    switch (kind) {
+      case 'clear': g = isDay ? sun(12, 12, 4.6) : moon(11, 12, 6.4); break;
+      case 'partly': g = (isDay ? sun(8.6, 8.4, 3.4) : moon(8.4, 8.4, 4.4)) + `<path d="${CLOUD}" fill="var(--cloud)" stroke="var(--tile)" stroke-width="1.4"/>`; break;
+      case 'cloud': g = `<path d="M10.5 9.8a4.6 4.6 0 0 1 8.4 1.6 3.2 3.2 0 0 1 .2 6.3" fill="none" stroke="var(--cloud-dark)" stroke-width="1.6" stroke-linecap="round"/><path d="${CLOUD}" fill="var(--cloud)"/>`; break;
+      case 'fog': g = `<path d="${CLOUD_HI}" fill="var(--cloud)"/><path d="M5 18.5h14M7 21.5h10" stroke="var(--cloud-dark)" stroke-width="1.8" stroke-linecap="round"/>`; break;
+      case 'drizzle': g = `<path d="${CLOUD_HI}" fill="var(--cloud)"/><g fill="var(--rain)"><circle cx="8.5" cy="19" r="1.1"/><circle cx="12.5" cy="20.5" r="1.1"/><circle cx="16.5" cy="19" r="1.1"/></g>`; break;
+      case 'rain': g = `<path d="${CLOUD_HI}" fill="var(--cloud)"/><path d="M8.6 18 7.6 21.6M12.6 18l-1 3.6M16.6 18l-1 3.6" stroke="var(--rain)" stroke-width="1.8" stroke-linecap="round"/>`; break;
+      case 'snow': g = `<path d="${CLOUD_HI}" fill="var(--cloud)"/><g fill="var(--snow)"><circle cx="8.4" cy="19.2" r="1.3"/><circle cx="12.4" cy="21.2" r="1.3"/><circle cx="16.4" cy="19.2" r="1.3"/></g>`; break;
+      case 'storm': g = `<path d="${CLOUD_HI}" fill="var(--cloud-dark)"/><path d="M12.8 14.2 10 18.6h2.7l-1.2 4.2 3.9-5.4h-2.8l1.4-3.2z" fill="var(--sun)"/>`; break;
+      default: g = `<path d="${CLOUD}" fill="var(--cloud)"/>`;
+    }
+    void body;
+    return `<svg viewBox="0 0 24 24" role="img" aria-label="${esc(label || codeInfo(code)[0])}">${g}</svg>`;
+  }
+
+  /* ---------- Time helpers. Forecast times are city-local "YYYY-MM-DDTHH:MM" strings. ---------- */
+  const parseLocal = (s) => { const [d, t = '00:00'] = s.split('T'); const [y, m, dd] = d.split('-').map(Number); const [h, mi] = t.split(':').map(Number); return new Date(Date.UTC(y, m - 1, dd, h, mi)); };
+  const hour12 = (s) => { const h = parseLocal(s).getUTCHours(); return h === 0 ? '12 AM' : h === 12 ? '12 PM' : h < 12 ? h + ' AM' : (h - 12) + ' PM'; };
+  const clock = (s) => parseLocal(s).toLocaleTimeString('en-US', { timeZone: 'UTC', hour: 'numeric', minute: '2-digit' });
+  const weekday = (s) => parseLocal(s).toLocaleDateString('en-US', { timeZone: 'UTC', weekday: 'short' });
+  const localNow = (tz) => {
+    const parts = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: tz || 'UTC', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+      .formatToParts(new Date()).map((p) => [p.type, p.value]));
+    return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`;
+  };
+  const isoLocal = (d) => d.toISOString().slice(0, 16);
+
+  /* ---------- Data ---------- */
+  async function fetchLive(city) {
+    const url = 'https://api.open-meteo.com/v1/forecast?' + new URLSearchParams({
+      latitude: city.lat.toFixed(4), longitude: city.lon.toFixed(4), timezone: 'auto', forecast_days: '6', wind_speed_unit: 'kmh',
+      current: 'temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,is_day',
+      hourly: 'temperature_2m,weather_code,precipitation_probability,is_day',
+      daily: 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset',
+    });
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('Open-Meteo answered ' + res.status);
+    const j = await res.json();
+    const c = j.current, h = j.hourly, d = j.daily;
+    return {
+      source: 'live', fetchedAt: Date.now(), tz: j.timezone,
+      current: { time: c.time, t: c.temperature_2m, feels: c.apparent_temperature, hum: c.relative_humidity_2m, wind: c.wind_speed_10m, code: c.weather_code, isDay: !!c.is_day },
+      hourly: h.time.map((time, i) => ({ time, t: h.temperature_2m[i], code: h.weather_code[i], pop: h.precipitation_probability[i] ?? 0, isDay: !!h.is_day[i] })),
+      daily: d.time.map((date, i) => ({ date, code: d.weather_code[i], max: d.temperature_2m_max[i], min: d.temperature_2m_min[i], pop: d.precipitation_probability_max[i] ?? 0, sunrise: d.sunrise[i], sunset: d.sunset[i] })),
+    };
+  }
+
+  /* A believable, clearly labelled sample for places where live data can't load (offline, sandboxed previews). */
+  function sample(city) {
+    let seed = Math.abs(Math.round(city.lat * 1000 + city.lon * 7919)) || 1;
+    const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    const nowStr = localNow(city.tz);
+    const now = parseLocal(nowStr);
+    const month = now.getUTCMonth();
+    const south = city.lat < 0;
+    const season = Math.cos(((month + (south ? 6 : 0)) - 6.5) / 12 * 2 * Math.PI); // -1 winter .. 1 summer
+    const base = 27 - Math.abs(city.lat) * 0.42 + season * (Math.abs(city.lat) * 0.26);
+    const swing = 4 + rnd() * 3;
+    const pattern = [0, 2, 61, 3, 1, 80, 2, 0];
+    const daily = [], hourly = [];
+    const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    for (let i = 0; i < 6; i++) {
+      const mid = base + (rnd() - 0.5) * 6;
+      let code = pattern[Math.floor(rnd() * pattern.length)];
+      if (code >= 61 && mid < 1) code = 73;
+      const date = isoLocal(new Date(start.getTime() + i * 864e5)).slice(0, 10);
+      const rise = 6 + Math.round(rnd() * 10) / 10, set = 18 - season * 1.6;
+      const at = (hrs) => `${date}T${String(Math.floor(hrs)).padStart(2, '0')}:${String(Math.round((hrs % 1) * 60)).padStart(2, '0')}`;
+      daily.push({ date, code, max: mid + swing, min: mid - swing, pop: code >= 51 ? 50 + Math.round(rnd() * 40) : Math.round(rnd() * 15), sunrise: at(rise), sunset: at(set), _mid: mid, _sw: swing, _rise: rise, _set: set });
+    }
+    for (let i = 0; i < 24 * 6; i++) {
+      const t = new Date(start.getTime() + i * 36e5);
+      const day = daily[Math.floor(i / 24)], hr = i % 24;
+      const temp = day._mid + day._sw * Math.sin((hr - 9) / 24 * 2 * Math.PI) + (rnd() - 0.5);
+      const wet = day.code >= 51 && hr >= 12 && hr <= 18;
+      hourly.push({ time: isoLocal(t), t: temp, code: wet ? day.code : (day.code >= 51 ? 3 : day.code), pop: wet ? day.pop : Math.round(rnd() * 12), isDay: hr >= day._rise && hr < day._set });
+    }
+    const cur = hourly[Math.min(hourly.length - 1, now.getUTCHours())];
+    return {
+      source: 'sample', fetchedAt: Date.now(), tz: city.tz,
+      current: { time: nowStr, t: cur.t, feels: cur.t - 1.5, hum: 55 + Math.round(rnd() * 30), wind: 6 + Math.round(rnd() * 18), code: cur.code, isDay: cur.isDay },
+      hourly, daily: daily.map(({ _mid, _sw, _rise, _set, ...d }) => d),
+    };
+  }
+
+  const keyOf = (c) => c.lat.toFixed(2) + ',' + c.lon.toFixed(2);
+  async function load(city) {
+    const key = keyOf(city);
+    const cached = state.data[key] || store.get('wx.' + key, null);
+    if (cached && cached.source === 'live' && Date.now() - cached.fetchedAt < CACHE_MS) return (state.data[key] = cached);
+    try {
+      const live = await fetchLive(city);
+      if (!city.tz) city.tz = live.tz;
+      store.set('wx.' + key, live);
+      return (state.data[key] = live);
+    } catch (err) {
+      if (cached && cached.source === 'live') return (state.data[key] = { ...cached, stale: true });
+      return (state.data[key] = sample(city));
+    }
+  }
+
+  /* ---------- Rendering ---------- */
+  const tempColor = (c) => {
+    const stops = [[-10, [127, 167, 217]], [8, [143, 190, 214]], [16, [233, 201, 138]], [25, [242, 166, 90]], [34, [224, 74, 122]]];
+    if (c <= stops[0][0]) return `rgb(${stops[0][1]})`;
+    for (let i = 1; i < stops.length; i++) {
+      if (c <= stops[i][0]) {
+        const [a, ca] = stops[i - 1], [b, cb] = stops[i], k = (c - a) / (b - a);
+        return `rgb(${ca.map((v, j) => Math.round(v + (cb[j] - v) * k)).join(',')})`;
+      }
+    }
+    return `rgb(${stops[stops.length - 1][1]})`;
+  };
+  const glowFor = (kind, isDay) => !isDay ? 'rgba(233,220,200,.10)'
+    : ({ clear: 'rgba(244,184,96,.20)', partly: 'rgba(244,184,96,.13)', rain: 'rgba(141,180,226,.16)', drizzle: 'rgba(141,180,226,.13)', storm: 'rgba(153,15,61,.28)', snow: 'rgba(244,247,251,.12)' }[kind] || 'rgba(207,198,187,.09)');
+  const dual = (c) => { const u = state.unit; return `${deg(c, u)}°${u} / ${deg(c, other(u))}°${other(u)}`; };
+  const speak = (c) => `${deg(c, 'F')} degrees Fahrenheit, ${deg(c, 'C')} Celsius`;
+
+  function upcoming(data) {
+    const nowHour = data.current.time.slice(0, 13);
+    let i = data.hourly.findIndex((h) => h.time.slice(0, 13) === nowHour);
+    if (i < 0) i = 0;
+    return data.hourly.slice(i, i + 24);
+  }
+
+  function summaryLine(data, hours) {
+    const wet = hours.slice(1, 13).find((h) => h.pop >= 50);
+    if (wet) {
+      const k = codeInfo(wet.code)[1];
+      return `${k === 'snow' ? 'Snow' : k === 'storm' ? 'Storms' : 'Rain'} likely around ${hour12(wet.time)} (${wet.pop}%).`;
+    }
+    const today = data.daily[0];
+    const rest = hours.slice(0, 16);
+    const peak = rest.reduce((a, b) => (b.t > a.t ? b : a), rest[0]);
+    if (peak && peak !== rest[0] && peak.t - data.current.t > 1.5) return `Warming to ${dual(peak.t)} by ${hour12(peak.time)}.`;
+    const low = rest.reduce((a, b) => (b.t < a.t ? b : a), rest[0]);
+    if (low && low !== rest[0] && data.current.t - low.t > 1.5) return `Cooling to ${dual(low.t)} by ${hour12(low.time)}.`;
+    return `Today ${dual(today.min)} to ${dual(today.max)}.`;
+  }
+
+  function renderCities() {
+    const el = $('#cities');
+    el.classList.toggle('editing', state.editing);
+    el.innerHTML = state.cities.map((c, i) => {
+      const d = state.data[keyOf(c)];
+      const t = d ? `<span class="t">${deg(d.current.t, state.unit)}°</span>` : '';
+      return `<span class="chip-wrap"><button type="button" class="chip" data-i="${i}" aria-current="${i === state.active}">${esc(c.name)}${t}</button>` +
+        (state.cities.length > 1 ? `<button type="button" class="chip-x" data-x="${i}" aria-label="Remove ${esc(c.name)}">×</button>` : '') + `</span>`;
+    }).join('') +
+      (state.cities.length < MAX_CITIES ? `<button type="button" class="chip add" id="addBtn" aria-expanded="${!$('#search').hidden}">+ Add city</button>` : '') +
+      (state.cities.length > 1 ? `<button type="button" class="chip add" id="editBtn" aria-pressed="${state.editing}">${state.editing ? 'Done' : 'Edit'}</button>` : '');
+  }
+
+  function render() {
+    renderCities();
+    const city = state.cities[state.active];
+    const data = state.data[keyOf(city)];
+    $('#unitF').setAttribute('aria-pressed', state.unit === 'F');
+    $('#unitC').setAttribute('aria-pressed', state.unit === 'C');
+    if (!data) return;
+    const u = state.unit, o = other(u);
+    const cur = data.current;
+    const [condName, kind] = codeInfo(cur.code);
+    const hours = upcoming(data);
+    const today = data.daily[0];
+    const wind = Math.round(cur.wind);
+
+    const now = $('#now');
+    now.style.setProperty('--glow', glowFor(kind, cur.isDay));
+    now.innerHTML = `
+      <div class="place"><h2>${esc(city.name)}</h2><span class="local">${esc(city.region ? city.region + ' · ' : '')}${clock(cur.time)}</span></div>
+      <div class="reading">
+        <div class="big-icon">${icon(cur.code, cur.isDay, condName)}</div>
+        <div class="temps" aria-label="${speak(cur.t)}">
+          <span class="primary" aria-hidden="true">${deg(cur.t, u)}<sup>°${u}</sup></span>
+          <span class="divider" aria-hidden="true"></span>
+          <span class="secondary" aria-hidden="true">${deg(cur.t, o)}<sup>°${o}</sup></span>
+        </div>
+      </div>
+      <p class="cond">${esc(condName)}</p>
+      <p class="summary">${esc(summaryLine(data, hours))}</p>
+      <div class="stats">
+        <div class="stat"><div class="k">Feels like</div><div class="v">${deg(cur.feels, u)}°${u}</div><div class="s">${deg(cur.feels, o)}°${o}</div></div>
+        <div class="stat"><div class="k">Today</div><div class="v">${deg(today.min, u)}–${deg(today.max, u)}°${u}</div><div class="s">${deg(today.min, o)}–${deg(today.max, o)}°${o}</div></div>
+        <div class="stat"><div class="k">Wind</div><div class="v">${Math.round(wind * 0.621371)} mph</div><div class="s">${wind} km/h</div></div>
+        <div class="stat"><div class="k">Humidity</div><div class="v">${Math.round(cur.hum)}%</div><div class="s">Rain ${today.pop}%</div></div>
+      </div>`;
+
+    // Next 24 hours, with a temperature line drawn to one scale across the strip.
+    const COL = 54, SPARK_H = 40, PAD = 7;
+    const ts = hours.map((h) => h.t);
+    const tMin = Math.min(...ts), tMax = Math.max(...ts), span = Math.max(tMax - tMin, 1);
+    const y = (t) => PAD + (1 - (t - tMin) / span) * (SPARK_H - PAD * 2);
+    const pts = hours.map((h, i) => [i * COL + COL / 2, y(h.t)]);
+    const path = pts.map(([x, yy], i) => (i ? 'L' : 'M') + x.toFixed(1) + ' ' + yy.toFixed(1)).join('');
+    const area = path + `L${pts[pts.length - 1][0].toFixed(1)} ${SPARK_H}L${pts[0][0].toFixed(1)} ${SPARK_H}Z`;
+    const width = hours.length * COL;
+    $('#hours').innerHTML = hours.map((h, i) => {
+      const first = i === 0, midnight = !first && h.time.slice(11, 13) === '00';
+      return `<div class="hour${first ? ' is-now' : ''}${midnight ? ' day-start' : ''}" aria-label="${first ? 'Now' : hour12(h.time)}: ${esc(codeInfo(h.code)[0])}, ${speak(h.t)}${h.pop >= 20 ? ', ' + h.pop + ' percent chance of rain' : ''}">
+        <div class="h">${first ? 'Now' : midnight ? weekday(h.time) : hour12(h.time)}</div>
+        <div class="ic">${icon(h.code, h.isDay, '')}</div>
+        <div class="spark"></div>
+        <div class="f">${deg(h.t, u)}°</div>
+        <div class="c">${deg(h.t, o)}°${o}</div>
+        <div class="p">${h.pop >= 20 ? h.pop + '%' : ''}</div>
+      </div>`;
+    }).join('') + `<svg class="sparkline" width="${width}" height="${SPARK_H}" viewBox="0 0 ${width} ${SPARK_H}" aria-hidden="true">
+        <defs><linearGradient id="sparkFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFF1E5" stop-opacity=".16"/><stop offset="1" stop-color="#FFF1E5" stop-opacity="0"/></linearGradient></defs>
+        <path d="${area}" fill="url(#sparkFill)"/>
+        <path d="${path}" fill="none" stroke="var(--cream)" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" opacity=".85"/>
+        ${pts.map(([x, yy], i) => `<circle cx="${x.toFixed(1)}" cy="${yy.toFixed(1)}" r="${i === 0 ? 3.6 : 2}" fill="${i === 0 ? 'var(--text)' : 'var(--cream)'}"${i === 0 ? ' stroke="var(--tile)" stroke-width="2"' : ''}/>`).join('')}
+      </svg>`;
+    $('#hoursAside').textContent = `${deg(tMin, u)}° – ${deg(tMax, u)}°${u}`;
+
+    // Five days, each range bar on one shared scale.
+    const days = data.daily.slice(0, 5);
+    const lo = Math.min(...days.map((d) => d.min)), hi = Math.max(...days.map((d) => d.max)), range = Math.max(hi - lo, 1);
+    const pct = (t) => ((t - lo) / range * 100).toFixed(1);
+    $('#days').innerHTML = days.map((d, i) => {
+      const [name] = codeInfo(d.code);
+      const dot = i === 0 ? `<u style="left:${pct(Math.min(Math.max(cur.t, d.min), d.max))}%" title="Now"></u>` : '';
+      return `<div class="day" aria-label="${i === 0 ? 'Today' : weekday(d.date)}: ${esc(name)}. Low ${speak(d.min)}. High ${speak(d.max)}.${d.pop >= 20 ? ' ' + d.pop + ' percent chance of rain.' : ''}">
+        <span class="d">${i === 0 ? 'Today' : weekday(d.date)}</span>
+        <span class="ic">${icon(d.code, true, '')}</span>
+        <span class="p">${d.pop >= 20 ? d.pop + '%' : ''}</span>
+        <span class="lo"><b>${deg(d.min, u)}°</b><span>${deg(d.min, o)}°${o}</span></span>
+        <span class="bar"><i style="left:${pct(d.min)}%;right:${(100 - pct(d.max)).toFixed(1)}%;background:linear-gradient(90deg,${tempColor(d.min)},${tempColor(d.max)})"></i>${dot}</span>
+        <span class="hi"><b>${deg(d.max, u)}°</b><span>${deg(d.max, o)}°${o}</span></span>
+      </div>`;
+    }).join('');
+
+    // Status line: where the numbers came from, and how fresh they are.
+    const status = $('#status');
+    status.classList.toggle('live', data.source === 'live' && !data.stale);
+    $('#statusText').textContent = data.source === 'live'
+      ? `${data.stale ? 'Offline, showing the forecast from' : 'Updated'} ${new Date(data.fetchedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`
+      : 'Sample forecast. Live data loads in the Mac app and the web app.';
+    document.title = `${deg(cur.t, u)}°${u} ${city.name} · Two Degrees`;
+  }
+
+  async function refreshAll() {
+    const active = state.cities[state.active];
+    await load(active);
+    render();
+    await Promise.all(state.cities.map(load));
+    render();
+  }
+
+  /* ---------- Search ---------- */
+  let searchSeq = 0;
+  function openSearch(open) {
+    $('#search').hidden = !open;
+    if (open) { $('#searchInput').value = ''; showResults(''); setTimeout(() => $('#searchInput').focus(), 0); }
+    renderCities();
+  }
+  function resultRow(c, i) {
+    return `<button type="button" class="result" role="option" data-r="${i}"><span><div class="n">${esc(c.name)}</div><div class="r">${esc(c.region)}</div></span><span class="sp"></span><span class="plus" aria-hidden="true">+</span></button>`;
+  }
+  let shown = [];
+  async function showResults(q) {
+    const seq = ++searchSeq;
+    const needle = q.trim().toLowerCase();
+    const local = DIRECTORY.filter((d) => !needle || d.name.toLowerCase().includes(needle) || d.region.toLowerCase().includes(needle)).slice(0, needle ? 6 : 5);
+    shown = local;
+    paintResults(needle);
+    if (needle.length < 2) return;
+    try {
+      const res = await fetch('https://geocoding-api.open-meteo.com/v1/search?' + new URLSearchParams({ name: q.trim(), count: '6', language: 'en', format: 'json' }));
+      const j = await res.json();
+      if (seq !== searchSeq || !j.results) return;
+      const remote = j.results.map((r) => ({ name: r.name, region: [r.admin1, r.country].filter(Boolean).join(', '), lat: r.latitude, lon: r.longitude, tz: r.timezone }));
+      const seen = new Set(local.map(keyOf));
+      shown = local.concat(remote.filter((r) => !seen.has(keyOf(r)))).slice(0, 8);
+      paintResults(needle);
+    } catch { /* offline or sandboxed: the built-in list is enough */ }
+  }
+  function paintResults(needle) {
+    $('#results').innerHTML = shown.length ? shown.map(resultRow).join('')
+      : `<div class="hint">No match for “${esc(needle)}”. Try a larger nearby city.</div>`;
+  }
+  function addCity(c) {
+    const existing = state.cities.findIndex((x) => keyOf(x) === keyOf(c));
+    if (existing >= 0) state.active = existing;
+    else if (state.cities.length < MAX_CITIES) { state.cities.push({ ...c }); state.active = state.cities.length - 1; }
+    saveCities();
+    openSearch(false);
+    load(state.cities[state.active]).then(render);
+    render();
+  }
+
+  /* ---------- Share (same menu as Cowdrey.MD and Meridian) ---------- */
+  function shareLink() {
+    const c = state.cities.map((x) => `${x.name}~${x.lat.toFixed(3)}~${x.lon.toFixed(3)}`).join('|');
+    return APP_URL + '?c=' + encodeURIComponent(c).replace(/%7E/g, '~').replace(/%7C/g, '|');
+  }
+  const ICON = {
+    share: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7.5 7.5 12 3l4.5 4.5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>',
+    link: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg>',
+    mac: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M2 20h20"/></svg>',
+    msg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 9h8M8 13h5"/></svg>',
+  };
+  function toast(text) {
+    const t = $('#toast');
+    t.textContent = text; t.hidden = false;
+    clearTimeout(toast.timer); toast.timer = setTimeout(() => (t.hidden = true), 2200);
+  }
+  async function copyText(text, done) {
+    try { await navigator.clipboard.writeText(text); toast(done); }
+    catch {
+      const ta = document.createElement('textarea');
+      ta.value = text; ta.setAttribute('readonly', ''); ta.style.cssText = 'position:fixed;opacity:0';
+      document.body.appendChild(ta); ta.select();
+      let ok = false; try { ok = document.execCommand('copy'); } catch {}
+      ta.remove();
+      toast(ok ? done : 'Copy didn’t work here. The link is ' + text);
+    }
+  }
+  function toggleShare(open) {
+    const menu = $('#shareMenu'), btn = $('#shareBtn');
+    if (open === undefined) open = menu.hidden;
+    if (open) {
+      const canShare = typeof navigator.share === 'function' && !inArtifact();
+      menu.innerHTML = `<div class="mh">Share Two Degrees</div><p>${esc(SHARE_TEXT)}</p>
+        ${canShare ? `<button type="button" role="menuitem" data-share="native">${ICON.share}<span>Share…</span></button>` : ''}
+        <button type="button" role="menuitem" data-share="web">${ICON.link}<span>Copy link with these cities</span></button>
+        <button type="button" role="menuitem" data-share="mac">${ICON.mac}<span>Copy Mac download link</span></button>
+        <button type="button" role="menuitem" data-share="message">${ICON.msg}<span>Copy a message to send</span></button>`;
+      menu.hidden = false;
+      menu.querySelector('button').focus();
+    } else menu.hidden = true;
+    btn.setAttribute('aria-expanded', String(open));
+  }
+
+  /* ---------- Events ---------- */
+  const setUnit = (u) => { state.unit = u; store.set('unit', u); render(); };
+  $('#unitF').addEventListener('click', () => setUnit('F'));
+  $('#unitC').addEventListener('click', () => setUnit('C'));
+
+  $('#cities').addEventListener('click', (e) => {
+    const x = e.target.closest('[data-x]');
+    if (x) {
+      const i = +x.dataset.x;
+      state.cities.splice(i, 1);
+      if (state.active >= state.cities.length || state.active > i) state.active = Math.max(0, state.active - 1);
+      if (state.cities.length < 2) state.editing = false;
+      saveCities(); render(); return;
+    }
+    const chip = e.target.closest('[data-i]');
+    if (chip) { state.active = +chip.dataset.i; saveCities(); load(state.cities[state.active]).then(render); render(); return; }
+    if (e.target.closest('#addBtn')) { openSearch($('#search').hidden); return; }
+    if (e.target.closest('#editBtn')) { state.editing = !state.editing; renderCities(); }
+  });
+  $('#searchInput').addEventListener('input', (e) => showResults(e.target.value));
+  $('#searchInput').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && shown[0]) { e.preventDefault(); addCity(shown[0]); }
+    if (e.key === 'Escape') openSearch(false);
+  });
+  $('#results').addEventListener('click', (e) => { const r = e.target.closest('[data-r]'); if (r) addCity(shown[+r.dataset.r]); });
+
+  $('#shareBtn').addEventListener('click', () => toggleShare());
+  $('#shareMenu').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-share]'); if (!b) return;
+    toggleShare(false);
+    const kind = b.dataset.share, link = shareLink();
+    if (kind === 'native') navigator.share({ title: 'Two Degrees', text: SHARE_TEXT, url: link }).catch(() => {});
+    if (kind === 'web') copyText(link, 'Link copied, with your cities');
+    if (kind === 'mac') copyText(MAC_URL, 'Mac download link copied');
+    if (kind === 'message') copyText(`${SHARE_TEXT}\n\nIn your browser: ${link}\nFor Mac: ${MAC_URL}`, 'Message copied, ready to paste');
+  });
+  document.addEventListener('click', (e) => { if (!e.target.closest('.share-wrap') && !$('#shareMenu').hidden) toggleShare(false); });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !$('#shareMenu').hidden) { toggleShare(false); $('#shareBtn').focus(); }
+    if (e.target.closest && e.target.closest('input')) return;
+    if (e.key.toLowerCase() === 'f') setUnit('F');
+    if (e.key.toLowerCase() === 'c') setUnit('C');
+  });
+
+  if (navigator.geolocation && !inArtifact()) {
+    const btn = $('#locateBtn');
+    btn.hidden = false;
+    btn.addEventListener('click', () => navigator.geolocation.getCurrentPosition(async (pos) => {
+      const here = { name: 'My location', region: '', lat: pos.coords.latitude, lon: pos.coords.longitude, tz: null };
+      try {
+        const r = await fetch(`https://geocoding-api.open-meteo.com/v1/reverse?latitude=${here.lat}&longitude=${here.lon}&count=1`);
+        const j = await r.json(); const g = j.results && j.results[0];
+        if (g) Object.assign(here, { name: g.name, region: [g.admin1, g.country].filter(Boolean).join(', '), tz: g.timezone });
+      } catch {}
+      addCity(here);
+    }, () => toast('Location is off. Add a city by name instead.')));
+  }
+
+  setInterval(() => { state.cities.forEach((c) => { const d = state.data[keyOf(c)]; if (d && d.source === 'live' && Date.now() - d.fetchedAt > CACHE_MS) delete state.data[keyOf(c)]; }); refreshAll(); }, 15 * 60 * 1000);
+  render();
+  refreshAll();
+})();
+</script>
+
+</body></html>
