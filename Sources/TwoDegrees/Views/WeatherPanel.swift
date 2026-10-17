@@ -23,6 +23,8 @@ private struct WeatherPanelContent: View {
     let compact: Bool
     @State private var adding = false
     @State private var editing = false
+    /// The five-day forecast starts closed every time the app opens.
+    @State private var daysOpen = false
     @State private var contentHeight: CGFloat = 0
     /// Height of the window's hidden title bar. The panel draws under it (so the crimson rule
     /// is at the very top), and SwiftUI still adds it to the window height, so it's subtracted
@@ -58,6 +60,10 @@ private struct WeatherPanelContent: View {
 
             ScrollView(.vertical) {
                 VStack(alignment: .leading, spacing: ui.pt(10)) {
+                    // Only takes space when there's something to say.
+                    if updater.latest != nil || updater.notice != nil || updater.userChecking {
+                        UpdateBanner()
+                    }
                     CityChips(adding: $adding, editing: $editing)
                     if adding {
                         Tile { CitySearchField(adding: $adding) }
@@ -66,7 +72,7 @@ private struct WeatherPanelContent: View {
                     if let forecast = store.activeForecast {
                         NowTile(city: store.active, forecast: forecast)
                         HoursTile(forecast: forecast)
-                        DaysTile(forecast: forecast)
+                        DaysTile(forecast: forecast, open: $daysOpen)
                     } else {
                         Tile {
                             HStack(spacing: ui.m) {
@@ -83,7 +89,6 @@ private struct WeatherPanelContent: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                         }
                     }
-                    StatusLine()
                     footer
                 }
                 .padding(.horizontal, ui.pt(18))
@@ -117,6 +122,11 @@ private struct WeatherPanelContent: View {
         .animation(.snappy, value: adding)
         .animation(.snappy, value: editing)
         .onAppear { Task { await updater.checkIfDue() } }
+        .task {
+            if !compact && SelfTest.isActive {
+                await SelfTest.run(store: store, adding: $adding, editing: $editing, daysOpen: $daysOpen, host: host)
+            }
+        }
         .focusable()
         .focusEffectDisabled()
         .onKeyPress(characters: CharacterSet(charactersIn: "fFcC"), phases: .down) { press in
@@ -199,25 +209,117 @@ private struct WeatherPanelContent: View {
         host.window?.close()             // the panel goes away in the same beat
     }
 
+    /// Status and Share on one row, the credit on its own full-width line beneath.
     private var footer: some View {
-        HStack(spacing: ui.m) {
+        VStack(alignment: .leading, spacing: ui.s) {
+            HStack(spacing: ui.pt(10)) {
+                StatusLine()
+                Spacer(minLength: ui.s)
+                shareButton
+            }
             Link(destination: Brand.website) {
                 Text("Made by \(Brand.author). Free. Forever. · \(Brand.websiteHost) ↗")
+                    .multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .font(ui.font(11.5))
+            .font(ui.font(12))
             .foregroundStyle(Palette.textMuted)
-            .lineLimit(2)
-            Spacer(minLength: ui.s)
-            ShareLink(
-                item: Brand.repository,
-                subject: Text("Two Degrees for Mac"),
-                message: Text(Brand.shareMessage)
-            ) {
-                Label("Share", systemImage: "square.and.arrow.up")
-            }
-            .buttonStyle(PillButtonStyle(small: true))
-            .help("Share Two Degrees")
         }
+        .padding(.top, ui.pt(2))
+    }
+
+    private var shareButton: some View {
+        ShareLink(
+            item: Brand.repository,
+            subject: Text("Two Degrees for Mac"),
+            message: Text(Brand.shareMessage)
+        ) {
+            Label("Share", systemImage: "square.and.arrow.up")
+        }
+        .buttonStyle(PillButtonStyle(small: true))
+        .help("Share Two Degrees")
+    }
+}
+
+/// Shown only when a newer version is out: one line and one button.
+private struct UpdateBanner: View {
+    @EnvironmentObject private var updater: Updater
+    @Environment(\.metrics) private var ui
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: ui.s) {
+            // An available update is always shown, above any other status, until it's installed.
+            if let release = updater.latest {
+                row {
+                    Circle().fill(Palette.crimson).frame(width: ui.pt(7), height: ui.pt(7))
+                    Text("Two Degrees \(release.version) is available")
+                        .font(ui.font(14, .semibold))
+                        .foregroundStyle(Palette.textPrimary)
+                    Text("You have \(updater.currentVersion)")
+                        .font(ui.meta)
+                        .foregroundStyle(Palette.textMuted)
+                    Spacer(minLength: ui.s)
+                    switch updater.phase {
+                    case .downloading:
+                        ProgressView().controlSize(.small)
+                        message("Downloading…")
+                    case .installing:
+                        ProgressView().controlSize(.small)
+                        message("Installing. Two Degrees will restart…")
+                    default:
+                        Button("Update") { Task { await updater.install() } }
+                            .buttonStyle(PillButtonStyle(prominent: true))
+                    }
+                }
+            }
+
+            if updater.userChecking {
+                row {
+                    ProgressView().controlSize(.small)
+                    message("Checking for updates…")
+                }
+            } else if let notice = updater.notice {
+                row {
+                    Image(systemName: notice.isError ? "exclamationmark.circle.fill" : "checkmark.circle.fill")
+                        .font(ui.font(14, .semibold))
+                        .foregroundStyle(notice.isError ? Palette.crimson : Palette.cream)
+                    message(notice.text)
+                    Spacer(minLength: ui.s)
+                    if notice.isError {
+                        Button("Retry") {
+                            Task {
+                                if updater.latest != nil { await updater.install() } else { await updater.check(userInitiated: true) }
+                            }
+                        }
+                        .buttonStyle(PillButtonStyle())
+                        Button("Download") { updater.openReleasePage() }
+                            .buttonStyle(PillButtonStyle())
+                    }
+                    IconButton(symbol: "xmark", help: "Dismiss") { updater.dismissNotice() }
+                }
+            }
+        }
+        .animation(.snappy, value: updater.notice)
+        .animation(.snappy, value: updater.userChecking)
+        .animation(.snappy, value: updater.latest)
+    }
+
+    private func message(_ text: String) -> some View {
+        Text(text)
+            .font(ui.meta)
+            .foregroundStyle(Palette.textSecondary)
+            .lineLimit(2)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private func row<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
+        HStack(spacing: ui.m) { content() }
+            .frame(maxWidth: .infinity, minHeight: ui.pt(34), alignment: .leading)
+            .padding(.leading, ui.l)
+            .padding(.trailing, ui.pt(6))
+            .padding(.vertical, ui.pt(6))
+            .background(RoundedRectangle(cornerRadius: ui.pt(22), style: .continuous).fill(Palette.raisedTile))
+            .transition(.move(edge: .top).combined(with: .opacity))
     }
 }
 
@@ -840,10 +942,14 @@ private struct Sparkline: View {
 
 // MARK: - Five days
 
+/// The five-day forecast as an accordion, closed when the app opens: closed, one row with the
+/// five-day range in both units; open, the bars on their shared, labelled scale.
 private struct DaysTile: View {
     @EnvironmentObject private var store: WeatherStore
     @Environment(\.metrics) private var ui
     let forecast: Forecast
+    @Binding var open: Bool
+    @State private var hovering = false
 
     var body: some View {
         // One shared scale for all five bars (including right now), with ticks every 10°F or 5°C.
@@ -851,32 +957,58 @@ private struct DaysTile: View {
         let now = forecast.now.temperature
         let low = min(now, days.map(\.low).min() ?? now), high = max(now, days.map(\.high).max() ?? now)
         let ticks = Ticks.make(low: low, high: high, unit: store.unit)
+        let unit = store.unit, other = store.unit.other
+        let dLow = days.map(\.low).min() ?? now, dHigh = days.map(\.high).max() ?? now
         Tile {
             VStack(alignment: .leading, spacing: ui.xs) {
-                HStack(spacing: ui.pt(10)) {
-                    Text("5-day forecast")
-                        .font(ui.eyebrow)
-                        .foregroundStyle(Palette.textMuted)
-                        .frame(width: ui.pt(52) + ui.pt(10) + ui.pt(32) + ui.pt(10) + ui.pt(48), alignment: .leading)
-                    GeometryReader { proxy in
-                        ForEach(ticks, id: \.label) { tick in
-                            Text("\(tick.label)°")
-                                .font(ui.font(11, .medium))
+                Button { withAnimation(.snappy) { open.toggle() } } label: {
+                    HStack(spacing: ui.pt(10)) {
+                        Text("5-day forecast")
+                            .font(ui.eyebrow)
+                            .foregroundStyle(hovering ? Palette.textPrimary : Palette.textMuted)
+                            .frame(width: ui.pt(52) + ui.pt(10) + ui.pt(32) + ui.pt(10) + ui.pt(48), alignment: .leading)
+                        if open {
+                            GeometryReader { proxy in
+                                ForEach(ticks, id: \.label) { tick in
+                                    Text("\(tick.label)°")
+                                        .font(ui.font(11, .medium))
+                                        .monospacedDigit()
+                                        .foregroundStyle(Palette.textFaint)
+                                        .fixedSize()
+                                        .position(x: CGFloat((tick.celsius - low) / max(high - low, 1)) * proxy.size.width, y: proxy.size.height / 2)
+                                }
+                            }
+                            .frame(height: ui.pt(14))
+                            .accessibilityHidden(true)
+                        } else {
+                            Text("\(unit.value(dLow))–\(unit.value(dHigh))\(unit.symbol) · \(other.value(dLow))–\(other.value(dHigh))\(other.symbol)")
+                                .font(ui.font(13, .medium))
                                 .monospacedDigit()
                                 .foregroundStyle(Palette.textFaint)
-                                .fixedSize()
-                                .position(x: CGFloat((tick.celsius - low) / max(high - low, 1)) * proxy.size.width, y: proxy.size.height / 2)
+                                .lineLimit(1)
+                                .frame(maxWidth: .infinity, alignment: .trailing)
                         }
+                        Image(systemName: "chevron.down")
+                            .font(ui.font(11, .semibold))
+                            .foregroundStyle(hovering ? Palette.textPrimary : Palette.textMuted)
+                            .rotationEffect(.degrees(open ? 180 : 0))
+                            .frame(width: ui.pt(48), alignment: .trailing)
                     }
-                    .frame(height: ui.pt(14))
-                    .accessibilityHidden(true)
-                    Color.clear.frame(width: ui.pt(48), height: 1)
+                    .contentShape(Rectangle())
                 }
-                .padding(.bottom, ui.xs)
-                ForEach(Array(days.enumerated()), id: \.element.id) { index, day in
-                    if index > 0 { Rectangle().fill(Palette.borderStrong).frame(height: 0.5) }
-                    DayRow(day: index == 0 ? day.including(now) : day, isToday: index == 0, low: low, high: high, ticks: ticks.map(\.celsius),
-                           now: index == 0 ? now : nil)
+                .buttonStyle(.plain)
+                .onHover { hovering = $0 }
+                .accessibilityLabel(open ? "Hide 5-day forecast" : "Show 5-day forecast")
+                .accessibilityAddTraits(.isHeader)
+                .padding(.bottom, open ? ui.xs : 0)
+
+                if open {
+                    ForEach(Array(days.enumerated()), id: \.element.id) { index, day in
+                        if index > 0 { Rectangle().fill(Palette.borderStrong).frame(height: 0.5) }
+                        DayRow(day: index == 0 ? day.including(now) : day, isToday: index == 0, low: low, high: high, ticks: ticks.map(\.celsius),
+                               now: index == 0 ? now : nil)
+                    }
+                    .transition(.opacity)
                 }
             }
         }
@@ -987,7 +1119,6 @@ private struct StatusLine: View {
             Link("Data: Open-Meteo", destination: Brand.dataCredit)
                 .help("Weather data by Open-Meteo.com")
                 .fixedSize()
-            Spacer(minLength: 0)
         }
         .font(ui.font(12))
         .foregroundStyle(Palette.textMuted)
@@ -1039,6 +1170,29 @@ struct AppMark: View {
             }
             .frame(width: size, height: size)
             .accessibilityHidden(true)
+    }
+}
+
+struct IconButton: View {
+    @Environment(\.metrics) private var ui
+    let symbol: String
+    let help: String
+    var small = false
+    let action: () -> Void
+    @State private var hovering = false
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(ui.font(small ? 12 : 14, .semibold))
+                .foregroundStyle(hovering ? Palette.textPrimary : Palette.textSecondary)
+                .frame(width: ui.pt(small ? 28 : 34), height: ui.pt(small ? 28 : 34))
+                .background(Circle().fill(hovering ? Palette.borderStrong : Palette.border))
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering = $0 }
+        .help(help)
     }
 }
 

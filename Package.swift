@@ -5,6 +5,7 @@ let package = Package(
     name: "TwoDegrees",
     platforms: [.macOS(.v14)],
     targets: [
-        .executableTarget(name: "TwoDegrees", path: "Sources/TwoDegrees")
+        .executableTarget(name: "TwoDegrees", path: "Sources/TwoDegrees"),
+        .testTarget(name: "TwoDegreesTests", dependencies: ["TwoDegrees"], path: "Tests/TwoDegreesTests"),
     ]
 )

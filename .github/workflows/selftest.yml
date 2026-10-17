@@ -1,0 +1,46 @@
+name: Self-test
+
+# Builds the app on a real Mac and runs `TwoDegrees --selftest`: live data, every size and
+# state, city add/remove, window positions, a real update check + download + checksum +
+# unpack, the Dock tile and all widget sizes. Unit tests run first. The report and
+# screenshots are published to the ci-shots branch; the job fails if any check fails.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  selftest:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Unit tests
+        run: swift test 2>&1 | tee "$RUNNER_TEMP/unit-tests.txt"
+      - name: Build
+        run: scripts/build-app.sh 0.0.0-selftest
+      - name: Run self-test
+        run: |
+          OUT="$RUNNER_TEMP/shots"; mkdir -p "$OUT"
+          cp "$RUNNER_TEMP/unit-tests.txt" "$OUT/" || true
+          dist/TwoDegrees.app/Contents/MacOS/TwoDegrees --selftest "$OUT" > "$OUT/app.log" 2>&1 &
+          PID=$!
+          for i in $(seq 1 300); do [ -f "$OUT/report.txt" ] && break; sleep 1; done
+          sleep 1; kill $PID 2>/dev/null || true
+          cat "$OUT/report.txt" 2>/dev/null || echo "no report"
+      - name: Publish to ci-shots branch
+        if: always()
+        run: |
+          cd "$RUNNER_TEMP/shots"
+          echo "$GITHUB_SHA" > commit.txt
+          git init -q -b ci-shots
+          git config user.name "ci"; git config user.email "ci@users.noreply.github.com"
+          git add -A && git commit -qm "Self-test for $GITHUB_SHA"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" ci-shots
+      - name: Fail on any failed check
+        run: |
+          head -1 "$RUNNER_TEMP/shots/report.txt" | grep -q "ALL PASSED"

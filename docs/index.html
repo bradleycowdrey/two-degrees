@@ -168,8 +168,16 @@
   .bar { position: relative; height: 6px; border-radius: 6px; background: var(--raised); box-shadow: inset 0 0 0 0.5px var(--border-strong); }
   .bar i { position: absolute; top: 0; bottom: 0; border-radius: 6px; }
   .bar s { position: absolute; top: -4px; bottom: -4px; width: 1px; margin-left: -0.5px; background: var(--border-strong); }
-  .days-head { display: grid; grid-template-columns: 152px minmax(0, 1fr) 48px; column-gap: 10px; align-items: center; margin-bottom: 4px; }
+  /* The five-day forecast is an accordion, closed when the app opens. */
+  .days-head { display: grid; grid-template-columns: 152px minmax(0, 1fr) 48px; column-gap: 10px; align-items: center; width: 100%;
+    padding: 0; border: 0; background: none; color: inherit; text-align: left; cursor: pointer; }
+  .days-head[aria-expanded="true"] { margin-bottom: 4px; }
   .days-head .eyebrow { margin: 0; }
+  .days-head:hover .eyebrow, .days-head:hover .chev { color: var(--text); }
+  .days-head .range { display: block; text-align: right; font-size: 13px; font-weight: 500; color: var(--faint); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .chev { justify-self: end; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; color: var(--muted); transition: transform .2s, color .15s; }
+  .chev svg { width: 14px; height: 14px; }
+  .days-head[aria-expanded="true"] .chev { transform: rotate(180deg); }
   .ticks { position: relative; height: 14px; }
   .ticks span { position: absolute; transform: translateX(-50%); font-size: 11px; font-weight: 500; line-height: 14px; color: var(--faint); }
   .bar u { position: absolute; top: 50%; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%; background: var(--text); box-shadow: 0 0 0 2.5px var(--tile); }
@@ -181,8 +189,11 @@
   .status.live .dot { background: #6FD39C; }
   .status a { text-decoration: underline; text-decoration-color: var(--border-strong); text-underline-offset: 2px; }
   .status a:hover { color: var(--text); }
-  .foot { display: flex; align-items: center; gap: 10px; }
-  .foot .brand { flex: 1; min-width: 0; font-size: 11.5px; letter-spacing: -.005em; color: var(--muted); }
+  /* Footer: status and Share on one row, the credit on its own full-width line beneath. */
+  .foot { display: flex; flex-direction: column; gap: 8px; padding-top: 2px; }
+  .foot-row { display: flex; align-items: center; gap: 10px; }
+  .foot-row .status { flex: 1; min-width: 0; }
+  .foot .brand { font-size: 12px; color: var(--muted); }
   .foot .brand:hover { color: var(--text); }
   .pill { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 12px; border: 0; border-radius: 980px; cursor: pointer;
     background: var(--border); color: var(--text); font-size: 13px; font-weight: 600; transition: background .15s, transform .1s; flex: none; }
@@ -221,8 +232,6 @@
     .seg.list button { width: 36px; height: 32px; }
     .seg.list { position: sticky; right: 0; box-shadow: -20px 0 14px 2px var(--bg); }
     .days-head { grid-template-columns: 134px minmax(0, 1fr) 44px; column-gap: 8px; }
-    .foot .sep { display: none; }
-    .foot .host { display: block; }
     .seg button { height: 32px; }
     .circle { width: 36px; height: 36px; }
     .hours-scroll { margin: 0 -16px; padding: 0 16px; }
@@ -276,14 +285,19 @@
   </section>
 
   <section class="tile" aria-labelledby="daysTitle">
-    <div class="days-head"><h3 class="eyebrow" id="daysTitle">5-day forecast</h3><span class="ticks" id="dayTicks" aria-hidden="true"></span><span></span></div>
-    <div class="days" id="days"></div>
+    <button type="button" class="days-head" id="daysToggle" aria-expanded="false" aria-controls="days">
+      <span class="eyebrow" id="daysTitle">5-day forecast</span>
+      <span class="ticks" id="dayTicks" aria-hidden="true"></span>
+      <span class="chev" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></span>
+    </button>
+    <div class="days" id="days" hidden></div>
   </section>
 
-  <div class="status" id="status"><span class="dot"></span><span id="statusText" title="">Loading…</span><span aria-hidden="true">·</span><a href="https://open-meteo.com/" target="_blank" rel="noopener" title="Weather data by Open-Meteo.com">Data: Open-Meteo</a></div>
+
 
   <footer class="foot">
-    <a class="brand" href="https://bradcowdrey.com" target="_blank" rel="noopener">Made by Bradley Cowdrey. Free. Forever.<span class="sep"> · </span><span class="host">bradcowdrey.com ↗</span></a>
+    <div class="foot-row">
+    <div class="status" id="status"><span class="dot"></span><span id="statusText" title="">Loading…</span><span aria-hidden="true">·</span><a href="https://open-meteo.com/" target="_blank" rel="noopener" title="Weather data by Open-Meteo.com">Data: Open-Meteo</a></div>
     <div class="share-wrap">
       <button type="button" class="pill" id="shareBtn" aria-haspopup="menu" aria-expanded="false" title="Share Two Degrees">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7.5 7.5 12 3l4.5 4.5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>
@@ -291,6 +305,8 @@
       </button>
       <div class="menu" id="shareMenu" role="menu" hidden></div>
     </div>
+    </div>
+    <a class="brand" href="https://bradcowdrey.com" target="_blank" rel="noopener">Made by Bradley Cowdrey. Free. Forever. · bradcowdrey.com ↗</a>
   </footer>
 </main>
 <div class="toast" id="toast" role="status" hidden></div>
@@ -376,6 +392,7 @@
     active: 0,
     data: {},
     editing: false,
+    daysOpen: false,   // closed every time the app opens
     size: store.get('size', 'medium'),
     font: store.get('font', 'inter'),
   };
@@ -686,7 +703,13 @@
         <span class="hi"><b>${deg(d.max, u)}°</b><span>${deg(d.max, o)}°${o}</span></span>
       </div>`;
     }).join('');
-    $('#dayTicks').innerHTML = ticks.map(([v, at]) => `<span style="left:${at}%">${v}°</span>`).join('');
+    // Closed: the five-day range in both units. Open: the bars and their scale.
+    const open = state.daysOpen;
+    $('#daysToggle').setAttribute('aria-expanded', String(open));
+    $('#days').hidden = !open;
+    const dLo = Math.min(...days.map((d) => d.min)), dHi = Math.max(...days.map((d) => d.max));
+    $('#dayTicks').innerHTML = open ? ticks.map(([v, at]) => `<span style="left:${at}%">${v}°</span>`).join('')
+      : `<span class="range">${deg(dLo, u)}–${deg(dHi, u)}°${u} · ${deg(dLo, o)}–${deg(dHi, o)}°${o}</span>`;
 
     // Status line: where the numbers came from, and how fresh they are.
     const status = $('#status');
@@ -824,6 +847,7 @@
     }, () => toast('Location is off. Add a city by name instead.'));
   }
   $('#moreBtn').addEventListener('click', () => toggleMore());
+  $('#daysToggle').addEventListener('click', () => { state.daysOpen = !state.daysOpen; render(); });
   $('#moreMenu').addEventListener('click', (e) => {
     const b = e.target.closest('button'); if (!b) return;
     toggleMore(false);

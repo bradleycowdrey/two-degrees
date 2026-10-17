@@ -1,0 +1,213 @@
+import SwiftUI
+import AppKit
+import WidgetKit
+
+/// Functional self-test, used by CI on a real Mac: `TwoDegrees --selftest <dir>` opens the
+/// window with live data and exercises every function at every size, checking each result,
+/// saving a PNG of each state and writing report.txt (PASS / FAIL lines), then quits.
+/// Inert unless that launch argument is present.
+@MainActor
+enum SelfTest {
+    nonisolated static let outputDir: URL? = {
+        let args = CommandLine.arguments
+        guard let i = args.firstIndex(of: "--selftest"), i + 1 < args.count else { return nil }
+        return URL(fileURLWithPath: args[i + 1], isDirectory: true)
+    }()
+
+    nonisolated static var isActive: Bool { outputDir != nil }
+
+    private static var started = false
+    private static var lines: [String] = []
+    private static var failures = 0
+
+    private static func check(_ ok: Bool, _ what: String) {
+        if !ok { failures += 1 }
+        lines.append("\(ok ? "PASS" : "FAIL") \(what)")
+    }
+
+    private static func note(_ text: String) { lines.append("     \(text)") }
+
+    static func run(store: WeatherStore, adding: Binding<Bool>, editing: Binding<Bool>, daysOpen: Binding<Bool>, host: HostWindow) async {
+        guard let dir = outputDir, !started else { return }
+        started = true
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let screen = NSScreen.main?.visibleFrame ?? .zero
+        note("screen visible frame \(Int(screen.width))x\(Int(screen.height)), version \(Updater.shared.currentVersion)")
+
+        // 1. Live data for every saved city.
+        for _ in 0..<40 where store.cities.contains(where: { store.forecasts[$0.id] == nil }) {
+            try? await Task.sleep(for: .milliseconds(500))
+        }
+        for city in store.cities {
+            let f = store.forecasts[city.id]
+            check(f != nil, "forecast loaded for \(city.name)")
+            if let f {
+                check(f.upcomingHours.count == 24, "\(city.name): 24 upcoming hours (got \(f.upcomingHours.count))")
+                check(f.days.count >= 5, "\(city.name): at least 5 days (got \(f.days.count))")
+                let t = f.now.temperature
+                check(TempUnit.fahrenheit.value(t) == Int((t * 9 / 5 + 32).rounded()), "\(city.name): °F conversion")
+                check((-60...60).contains(t), "\(city.name): plausible temperature \(t)°C")
+            }
+        }
+
+        check(!daysOpen.wrappedValue, "5-day forecast starts closed")
+
+        // 2. Every size × state: base (forecast closed), forecast open, adding, editing, °C. Window must fit its content and stay on screen.
+        let states: [(String, () -> Void)] = [
+            ("base", { adding.wrappedValue = false; editing.wrappedValue = false; daysOpen.wrappedValue = false; store.unit = .fahrenheit }),
+            ("forecast-open", { daysOpen.wrappedValue = true }),
+            ("adding", { editing.wrappedValue = false; adding.wrappedValue = true }),
+            ("editing", { adding.wrappedValue = false; editing.wrappedValue = true }),
+            ("celsius", { editing.wrappedValue = false; store.unit = .celsius }),
+            ("forecast-closed-again", { daysOpen.wrappedValue = false }),
+        ]
+        for (index, size) in UISize.allCases.enumerated() {
+            store.uiSize = size
+            for (name, apply) in states {
+                apply()
+                try? await Task.sleep(for: .seconds(1.2))
+                layoutCheck(host: host, screen: screen, label: "\(size.rawValue) \(name)")
+                snapshot(host: host, dir: dir, name: "panel-\(index)-\(size.rawValue)-\(name).png")
+            }
+        }
+        store.uiSize = .medium
+        store.unit = .fahrenheit
+        adding.wrappedValue = false
+        editing.wrappedValue = false
+
+        // 3. Unit toggle and city switching.
+        store.toggleUnit()
+        check(store.unit == .celsius, "unit toggles to °C")
+        store.toggleUnit()
+        check(store.unit == .fahrenheit, "unit toggles back to °F")
+        for city in store.cities {
+            store.select(city)
+            try? await Task.sleep(for: .seconds(0.8))
+            check(store.activeID == city.id, "select \(city.name)")
+            snapshot(host: host, dir: dir, name: "city-\(city.name.replacingOccurrences(of: " ", with: "-")).png")
+        }
+        store.select(store.cities[0])
+
+        // 4. Add and remove a city (search goes to Open-Meteo's geocoder).
+        let before = store.cities.count
+        let found = (try? await OpenMeteo.search("Denver")) ?? []
+        check(!found.isEmpty, "city search finds Denver (\(found.first?.region ?? "nothing"))")
+        if let denver = found.first {
+            store.add(denver)
+            check(store.cities.count == before + 1 && store.activeID == denver.id, "add Denver and select it")
+            for _ in 0..<20 where store.forecasts[denver.id] == nil { try? await Task.sleep(for: .milliseconds(500)) }
+            check(store.forecasts[denver.id] != nil, "forecast loads for added city")
+            store.add(denver)
+            check(store.cities.count == before + 1, "adding the same city twice doesn't duplicate it")
+            store.remove(denver)
+            check(store.cities.count == before && store.activeID != denver.id, "remove Denver")
+        }
+        while store.canAdd { store.add(City(name: "Test \(store.cities.count)", region: "", latitude: Double(store.cities.count), longitude: 0)) }
+        check(store.cities.count == WeatherStore.maxCities && !store.canAdd, "city limit is \(WeatherStore.maxCities)")
+        for city in store.cities where city.name.hasPrefix("Test ") { store.remove(city) }
+        check(store.cities.count == before, "test cities removed")
+
+        // 5. Window position: each request lands flush with that edge (16pt margin), top-aligned.
+        for placement in WindowPlacement.allCases {
+            WindowPlacement.request(.edge(placement))
+            try? await Task.sleep(for: .seconds(1.2))
+            guard let window = host.window else { check(false, "position \(placement.rawValue): no window"); continue }
+            let f = window.frame
+            let expectedX: CGFloat
+            switch placement {
+            case .left: expectedX = screen.minX + 16
+            case .center: expectedX = (screen.midX - f.width / 2).rounded()
+            case .right: expectedX = screen.maxX - f.width - 16
+            }
+            check(abs(f.minX - expectedX) <= 1 && abs(f.maxY - (screen.maxY - 16)) <= 1,
+                  "position \(placement.rawValue): x \(Int(f.minX)) expected \(Int(expectedX)), top \(Int(f.maxY)) expected \(Int(screen.maxY - 16))")
+        }
+
+        // 6. Updates: a real check against GitHub, then a real download, checksum and unpack.
+        let updater = Updater.shared
+        await updater.check(userInitiated: true)
+        try? await Task.sleep(for: .seconds(0.6))
+        check(updater.latest != nil, "update check finds the latest release (\(updater.latest?.version ?? "none"); phase \(updater.phase))")
+        snapshot(host: host, dir: dir, name: "update-1-available.png")
+        let staged = await updater.selfTestStage()
+        check(staged.hasPrefix("PASS"), "update download, checksum and unpack: \(staged)")
+        updater.selfTestShow(phase: .downloading)
+        try? await Task.sleep(for: .seconds(0.6))
+        snapshot(host: host, dir: dir, name: "update-2-downloading.png")
+        updater.selfTestShow(phase: .upToDate, notice: "You’re up to date. Two Degrees \(updater.latest?.version ?? "") is the newest version.", clearLatest: true)
+        try? await Task.sleep(for: .seconds(0.6))
+        snapshot(host: host, dir: dir, name: "update-3-up-to-date.png")
+        updater.selfTestShow(phase: .failed("x"), notice: "Couldn’t check for updates. GitHub didn’t respond.", error: true)
+        try? await Task.sleep(for: .seconds(0.6))
+        snapshot(host: host, dir: dir, name: "update-4-error.png")
+        updater.selfTestShow(phase: .idle, notice: nil)
+
+        // 7. Dock tile and widgets, rendered offscreen at 2x.
+        if let forecast = store.activeForecast {
+            render(DockTileView(primary: store.unit.value(forecast.now.temperature), primaryUnit: store.unit,
+                                secondary: store.unit.other.value(forecast.now.temperature), code: forecast.now.code, isDay: forecast.now.isDay)
+                .frame(width: 128, height: 128), dir: dir, name: "dock-tile.png")
+            let entry = WeatherEntry(date: Date(), city: store.active, unit: store.unit, forecast: forecast)
+            let sizes: [(WidgetFamily, CGSize, String)] = [
+                (.systemSmall, CGSize(width: 170, height: 170), "small"),
+                (.systemMedium, CGSize(width: 364, height: 170), "medium"),
+                (.systemLarge, CGSize(width: 364, height: 382), "large"),
+            ]
+            for (family, size, name) in sizes {
+                render(WidgetView(entry: entry, family: family)
+                    .padding(16)
+                    .frame(width: size.width, height: size.height)
+                    .background(WidgetBackground())
+                    .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous)),
+                       dir: dir, name: "widget-\(name).png")
+            }
+            var offline = entry
+            offline.failed = true
+            render(WidgetView(entry: offline, family: .systemSmall).padding(16).frame(width: 170, height: 170)
+                .background(WidgetBackground()).clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous)),
+                   dir: dir, name: "widget-small-offline.png")
+            check(true, "dock tile and widgets rendered")
+        } else {
+            check(false, "dock tile and widgets: no forecast")
+        }
+
+        // 8. Logic checks that need no UI.
+        check(Updater.isNewer("0.2.10", than: "0.2.9") && !Updater.isNewer("0.2.0", than: "0.2.0") && Updater.isNewer("1.0", than: "0.9.9-dev"),
+              "version comparison")
+        let ticks = Ticks.make(low: 0, high: 25, unit: .fahrenheit)
+        check(ticks.map(\.label) == [40, 50, 60, 70], "five-day scale ticks every 10°F (got \(ticks.map(\.label)))")
+
+        lines.insert("\(failures == 0 ? "ALL PASSED" : "\(failures) FAILED") (\(lines.filter { $0.hasPrefix("PASS") }.count) passed)", at: 0)
+        try? lines.joined(separator: "\n").write(to: dir.appendingPathComponent("report.txt"), atomically: true, encoding: .utf8)
+        NSApp.terminate(nil)
+    }
+
+    private static func layoutCheck(host: HostWindow, screen: CGRect, label: String) {
+        guard let window = host.window, let content = window.contentView else {
+            check(false, "\(label): no window")
+            return
+        }
+        content.layoutSubtreeIfNeeded()
+        let fit = content.fittingSize
+        let bounds = content.bounds
+        let clipped = fit.width > bounds.width + 1 || fit.height > bounds.height + 1
+        let onScreen = screen.isEmpty || screen.insetBy(dx: -1, dy: -1).contains(window.frame)
+        check(!clipped && onScreen,
+              "\(label): window \(Int(window.frame.width))x\(Int(window.frame.height)), content needs \(Int(fit.width))x\(Int(fit.height))\(clipped ? " CLIPPED" : "")\(onScreen ? "" : " OFFSCREEN")")
+    }
+
+    private static func snapshot(host: HostWindow, dir: URL, name: String) {
+        guard let content = host.window?.contentView,
+              let rep = content.bitmapImageRepForCachingDisplay(in: content.bounds) else { return }
+        content.cacheDisplay(in: content.bounds, to: rep)
+        try? rep.representation(using: .png, properties: [:])?.write(to: dir.appendingPathComponent(name))
+    }
+
+    private static func render<V: View>(_ view: V, dir: URL, name: String) {
+        let renderer = ImageRenderer(content: view.environment(\.colorScheme, .dark))
+        renderer.scale = 2
+        guard let image = renderer.nsImage, let tiff = image.tiffRepresentation,
+              let png = NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:]) else { return }
+        try? png.write(to: dir.appendingPathComponent(name))
+    }
+}

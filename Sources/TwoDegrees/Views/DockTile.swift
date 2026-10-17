@@ -27,7 +27,7 @@ enum DockTile {
     }
 }
 
-private struct DockTileView: View {
+struct DockTileView: View {
     let primary: Int
     let primaryUnit: TempUnit
     let secondary: Int

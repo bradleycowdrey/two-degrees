@@ -43,6 +43,7 @@ targets:
       - path: Sources/TwoDegrees/Model/Weather.swift
       - path: Sources/TwoDegrees/Views/Palette.swift
       - path: Sources/TwoDegrees/Views/WeatherSymbol.swift
+      - path: Sources/TwoDegrees/Views/WidgetViews.swift
     settings:
       base:
         PRODUCT_NAME: TwoDegreesWidget

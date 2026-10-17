@@ -293,6 +293,45 @@ final class Updater: ObservableObject {
 
     func dismissNotice() { notice = nil }
 
+    // MARK: Self-test hooks (CI only)
+
+    /// Runs the real download → checksum → unpack → version check for `latest`, without
+    /// replacing or relaunching the app. Returns a one-line result for the report.
+    func selfTestStage() async -> String {
+        guard let release = latest else { return "no update to stage" }
+        do {
+            let work = FileManager.default.temporaryDirectory
+                .appendingPathComponent("TwoDegreesSelfTest-\(UUID().uuidString)", isDirectory: true)
+            try FileManager.default.createDirectory(at: work, withIntermediateDirectories: true)
+            let (downloaded, response) = try await URLSession.shared.download(from: release.dmg)
+            guard (response as? HTTPURLResponse)?.statusCode == 200 else { throw UpdateError.download }
+            let dmg = work.appendingPathComponent("TwoDegrees.dmg")
+            try FileManager.default.moveItem(at: downloaded, to: dmg)
+            var checksumNote = "no checksum published"
+            if let checksumURL = release.sha256 {
+                let (checksum, _) = try await URLSession.shared.data(from: checksumURL)
+                let expected = String(decoding: checksum, as: UTF8.self)
+                    .split(whereSeparator: \.isWhitespace).first.map { $0.lowercased() } ?? ""
+                guard try Self.sha256(of: dmg) == expected else { throw UpdateError.checksum }
+                checksumNote = "checksum OK"
+            }
+            let staged = try await Self.extractApp(from: dmg, into: work)
+            let stagedVersion = Bundle(url: staged)?.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
+            guard stagedVersion == release.version else { throw UpdateError.wrongVersion }
+            let widget = FileManager.default.fileExists(atPath: staged.appendingPathComponent("Contents/PlugIns/TwoDegreesWidget.appex").path)
+            return "PASS staged \(release.version): \(checksumNote), app version matches, widget \(widget ? "present" : "MISSING")"
+        } catch {
+            return "FAIL \(error.localizedDescription)"
+        }
+    }
+
+    /// Puts the banner into a given state so the self-test can photograph it.
+    func selfTestShow(phase: Phase? = nil, notice text: String? = nil, error: Bool = false, clearLatest: Bool = false) {
+        if clearLatest { latest = nil }
+        if let phase { self.phase = phase }
+        notice = text.map { Notice(text: $0, isError: error) }
+    }
+
     /// Opens the release page in the browser as a manual fallback.
     func openReleasePage() {
         NSWorkspace.shared.open(latest?.page ?? Brand.repository.appendingPathComponent("releases/latest"))

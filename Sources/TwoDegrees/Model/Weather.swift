@@ -166,8 +166,12 @@ enum OpenMeteo {
         request.setValue("TwoDegrees", forHTTPHeaderField: "User-Agent")
         let (data, response) = try await URLSession.shared.data(for: request)
         guard (response as? HTTPURLResponse)?.statusCode == 200 else { throw URLError(.badServerResponse) }
-        let raw = try JSONDecoder().decode(Response.self, from: data)
-        return raw.forecast()
+        return try decodeForecast(data)
+    }
+
+    /// Open-Meteo's forecast JSON → Forecast (separate so it can be unit tested).
+    static func decodeForecast(_ data: Data) throws -> Forecast {
+        try JSONDecoder().decode(Response.self, from: data).forecast()
     }
 
     static func search(_ query: String) async throws -> [City] {
