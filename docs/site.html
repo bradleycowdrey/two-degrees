@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Two Degrees for Mac · Bradley Cowdrey</title>
+<meta name="description" content="Two Degrees: the weather in °F and °C at once. A free, open-source weather app for the Mac Dock, menu bar and desktop widgets, by Bradley Cowdrey. Try it in your browser.">
+<meta property="og:title" content="Two Degrees for Mac · Bradley Cowdrey">
+<meta property="og:description" content="The weather in °F and °C at once. Free for Mac, and right here in your browser.">
+<meta property="og:url" content="https://bradcowdrey.com/two-degrees">
+<meta property="og:image" content="https://raw.githubusercontent.com/bradleycowdrey/two-degrees/main/docs/icon.png">
+<link rel="canonical" href="https://bradcowdrey.com/two-degrees">
+<link rel="icon" href="https://raw.githubusercontent.com/bradleycowdrey/two-degrees/main/docs/icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  /* Same page as bradcowdrey.com/meridian: apple.com layout, bradcowdrey.com colours. */
+  :root {
+    color-scheme: dark;
+    --bg: #1A1816; --tile: #23201D; --border: #2A2520; --border-strong: #3A3530;
+    --text: #FFFFFF; --cream: #FFF1E5; --secondary: #E0D8D0; --muted: #B0A898; --faint: #9A9286;
+    --crimson: #990F3D; --accent: #E04A7A;
+    --cold: #7FA7D9; --mild: #E9C98A; --warm: #F2A65A; --hot: #E04A7A;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { -webkit-font-smoothing: antialiased; scroll-behavior: smooth; }
+  body { background: var(--bg); color: var(--text); font: 400 17px/1.47 -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, system-ui, sans-serif; letter-spacing: -.01em; }
+  a { color: inherit; text-decoration: none; }
+  :focus-visible { outline: 2px solid var(--cream); outline-offset: 3px; border-radius: 8px; }
+  .globalnav { position: sticky; top: 0; z-index: 10; background: rgba(26,24,22,.72); backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px); border-bottom: 0.5px solid var(--border); }
+  .globalnav .in { max-width: 1024px; margin: 0 auto; padding: 0 16px; height: 48px; display: flex; align-items: center; gap: 24px; font-size: 12px; color: var(--secondary); }
+  .globalnav .brand { font-weight: 600; font-size: 14px; color: var(--text); margin-right: auto; }
+  .globalnav a:hover { color: var(--text); }
+  .globalnav .cta { background: #fff; color: var(--bg); border-radius: 980px; padding: 4px 12px; font-weight: 500; }
+  .globalnav .cta:hover { color: var(--bg); background: var(--cream); }
+  .wrap { max-width: 1024px; margin: 0 auto; padding: 0 16px 96px; }
+
+  .hero { text-align: center; padding: 88px 0 40px; }
+  .hero img { width: 120px; height: 120px; margin-bottom: 24px; }
+  .eyebrow-l { color: var(--accent); font-size: 21px; font-weight: 600; margin-bottom: 6px; }
+  h1 { font-size: clamp(48px, 9vw, 80px); font-weight: 600; letter-spacing: -.035em; line-height: 1.05; }
+  .sub { font-size: clamp(21px, 3vw, 28px); font-weight: 600; letter-spacing: -.02em; color: var(--muted); margin: 8px auto 28px; max-width: 640px; line-height: 1.15; text-wrap: balance; }
+  .actions { display: flex; justify-content: center; align-items: center; gap: 24px; flex-wrap: wrap; }
+  .pill { display: inline-flex; align-items: center; height: 44px; padding: 0 22px; border-radius: 980px; font-size: 17px; font-weight: 500; background: #fff; color: var(--bg); transition: background .15s; }
+  .pill:hover { background: var(--cream); }
+  .textlink { color: var(--cream); font-size: 17px; }
+  .textlink:hover { text-decoration: underline; }
+  .fine { font-size: 14px; color: var(--faint); margin-top: 16px; text-wrap: balance; }
+
+  /* The two numbers, big: the whole idea in one line. */
+  .pair { display: flex; justify-content: center; align-items: baseline; gap: clamp(16px, 4vw, 40px); margin: 56px 0 8px; font-variant-numeric: tabular-nums; }
+  .pair .f { font-size: clamp(88px, 18vw, 168px); font-weight: 600; letter-spacing: -.05em; line-height: 1; }
+  .pair .c { font-size: clamp(56px, 11vw, 104px); font-weight: 600; letter-spacing: -.04em; line-height: 1; color: var(--cream); opacity: .8; }
+  .pair .rule { width: 3px; align-self: stretch; margin: 12px 0; border-radius: 3px; background: var(--crimson); }
+  .pair-cap { text-align: center; color: var(--muted); font-size: 17px; }
+
+  /* Live demo: the real web app, sized to its content. */
+  .demo { margin: 72px auto 0; max-width: 600px; scroll-margin-top: 64px; }
+  .demo iframe { display: block; width: 100%; height: 980px; border: 0; background: var(--bg); color-scheme: dark; transition: height .2s ease; }
+  .demo-cap { text-align: center; font-size: 14px; color: var(--faint); margin-top: 4px; }
+  .demo-cap a { color: var(--cream); }
+  .demo-cap a:hover { text-decoration: underline; }
+
+  .section-h { font-size: clamp(32px, 5vw, 48px); font-weight: 600; letter-spacing: -.03em; line-height: 1.08; margin: 96px 0 24px; scroll-margin-top: 72px; }
+  .section-p { color: var(--muted); font-size: 21px; line-height: 1.38; max-width: 680px; margin: -8px 0 32px; }
+
+  /* A feel for the other scale: one ruler, °F on top and °C below. */
+  .scale { background: var(--tile); border-radius: 28px; padding: 32px 32px 28px; }
+  .ruler { position: relative; height: 132px; margin: 0 8px; }
+  .ruler .bar { position: absolute; left: 0; right: 0; top: 58px; height: 14px; border-radius: 7px;
+    background: linear-gradient(90deg, var(--cold), #B9C7D6 30%, var(--mild) 55%, var(--warm) 78%, var(--hot)); }
+  .ruler .tick { position: absolute; top: 0; bottom: 0; width: 0; }
+  .ruler .tick::before { content: ""; position: absolute; left: -1px; top: 50px; height: 30px; width: 2px; border-radius: 2px; background: var(--cream); }
+  .ruler .tick .tf, .ruler .tick .tc { position: absolute; left: 0; transform: translateX(-50%); white-space: nowrap; font-variant-numeric: tabular-nums; font-weight: 600; }
+  .ruler .tick .tf { top: 4px; font-size: 22px; letter-spacing: -.02em; }
+  .ruler .tick .tc { top: 88px; font-size: 17px; color: var(--cream); opacity: .8; }
+  .ruler .tick .tn { position: absolute; left: 0; top: 112px; transform: translateX(-50%); white-space: nowrap; font-size: 13px; color: var(--muted); }
+  .ruler .tick.edge-l .tf, .ruler .tick.edge-l .tc, .ruler .tick.edge-l .tn { transform: translateX(-12px); }
+  .ruler .tick.edge-r .tf, .ruler .tick.edge-r .tc, .ruler .tick.edge-r .tn { transform: translateX(calc(-100% + 12px)); }
+
+  .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
+  .ftile { background: var(--tile); border-radius: 28px; padding: 32px; min-height: 220px; display: flex; flex-direction: column; }
+  .ftile .k { color: var(--accent); font-size: 14px; font-weight: 600; margin-bottom: 8px; }
+  .ftile h3 { font-size: 28px; font-weight: 600; letter-spacing: -.025em; line-height: 1.12; margin-bottom: 12px; }
+  .ftile p { color: var(--muted); font-size: 17px; }
+  .ftile .sample { margin-top: auto; padding-top: 20px; font-variant-numeric: tabular-nums; color: var(--secondary); font-size: 15px; font-weight: 500; }
+  .ftile .sample b { color: var(--text); font-weight: 600; }
+  .ftile .sample span { color: var(--faint); margin: 0 6px; }
+
+  .steps { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 20px; }
+  .step { background: var(--tile); border-radius: 28px; padding: 28px; }
+  .step .num { font-size: 48px; font-weight: 600; letter-spacing: -.03em; color: var(--faint); line-height: 1; margin-bottom: 16px; }
+  .step p { color: var(--secondary); font-size: 17px; }
+  .step a { color: var(--cream); text-decoration: underline; text-underline-offset: 2px; }
+  code { font-family: ui-monospace, Menlo, monospace; font-size: 13px; background: var(--bg); padding: 2px 6px; border-radius: 6px; word-break: break-all; }
+
+  .closing { text-align: center; margin-top: 112px; }
+  .closing h2 { font-size: clamp(32px, 5vw, 48px); font-weight: 600; letter-spacing: -.03em; line-height: 1.08; margin-bottom: 24px; }
+
+  footer { border-top: 0.5px solid var(--border); margin-top: 96px; padding-top: 20px; font-size: 12px; color: var(--faint); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+  footer .bar { height: 3px; background: var(--crimson); width: 48px; border-radius: 2px; margin-bottom: 12px; }
+  footer a:hover { color: var(--secondary); }
+
+  @media (max-width: 720px) {
+    .hero { padding: 56px 0 32px; }
+    .hero img { width: 88px; height: 88px; }
+    .demo { margin: 48px -16px 0; }
+    .demo-cap { padding: 0 16px; }
+    .ruler .tick.minor { display: none; }
+    .globalnav .hide-s { display: none; }
+    .scale { padding: 24px 16px 20px; }
+    .ruler .tick .tf { font-size: 17px; }
+    .ruler .tick .tc { font-size: 14px; }
+    .ruler .tick .tn { display: none; }
+    .ruler { height: 112px; }
+    .ftile { padding: 28px; min-height: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } .demo iframe { transition: none; } }
+</style>
+</head>
+<body>
+<nav class="globalnav" aria-label="Two Degrees"><div class="in">
+  <a class="brand" href="https://bradcowdrey.com">Bradley Cowdrey</a>
+  <a class="hide-s" href="#demo">Overview</a>
+  <a class="hide-s" href="#features">Features</a>
+  <a class="hide-s" href="#install">Install</a>
+  <a href="https://github.com/bradleycowdrey/two-degrees">Source</a>
+  <a class="cta" href="https://github.com/bradleycowdrey/two-degrees/releases/latest/download/TwoDegrees.dmg">Download</a>
+</div></nav>
+
+<main class="wrap">
+  <section class="hero">
+    <img src="https://raw.githubusercontent.com/bradleycowdrey/two-degrees/main/docs/icon.png" alt="Two Degrees app icon">
+    <div class="eyebrow-l">Free for Mac</div>
+    <h1>Two Degrees.</h1>
+    <p class="sub">Two scales. One forecast. Right in your Dock.</p>
+    <div class="actions">
+      <a class="pill" href="https://github.com/bradleycowdrey/two-degrees/releases/latest/download/TwoDegrees.dmg">Download</a>
+      <a class="textlink" href="#demo">Try it below ›</a>
+    </div>
+    <p class="fine">macOS 14 or later · Apple silicon and Intel · Open source</p>
+
+    <div class="pair" aria-label="64 degrees Fahrenheit is 18 degrees Celsius"><span class="f">64°F</span><span class="rule"></span><span class="c">18°C</span></div>
+    <p class="pair-cap">Every temperature, twice. No switching. No mental math.</p>
+  </section>
+
+  <section class="demo" id="demo" aria-label="Two Degrees, live">
+    <iframe id="app" title="Two Degrees weather app, live" allow="geolocation; clipboard-write; web-share" loading="eager"></iframe>
+    <p class="demo-cap">This is the real app, with live weather. Your cities stay in this browser. <a id="full" href="/two-degrees/app.html">Open it full screen ↗</a></p>
+  </section>
+
+  <h2 class="section-h" id="scale">Get a feel for the other scale.</h2>
+  <p class="section-p">Read the weather in the scale you know, and the other one is always right beside it. After a week, 18°C just feels like a nice day.</p>
+  <div class="scale"><div class="ruler" id="ruler" role="img" aria-label="A ruler from 14°F to 104°F with Celsius below: freezing is 32°F and 0°C, a cool morning is 50°F and 10°C, room temperature is 68°F and 20°C, a beach day is 86°F and 30°C, a heatwave is 104°F and 40°C"><div class="bar"></div></div></div>
+
+  <h2 class="section-h" id="features">Simple on purpose.</h2>
+  <div class="tiles">
+    <div class="ftile"><div class="k">Both units</div><h3>Every number, twice.</h3><p>Now, feels like, today’s range, every hour and every day, in °F and °C. Pick which one is large.</p><div class="sample"><b>57°</b> 14°C<span>·</span>feels <b>54°</b> 12°C</div></div>
+    <div class="ftile"><div class="k">Dock</div><h3>The weather lives in your Dock.</h3><p>The icon shows the live reading and the sky. Right-click it for every city you’ve saved.</p></div>
+    <div class="ftile"><div class="k">Menu bar</div><h3>And one click away.</h3><p>The reading sits in your menu bar. Tear the panel off into a window, keep it on top, pick from five sizes.</p><div class="sample">☁︎ <b>57°</b> · 14°</div></div>
+    <div class="ftile"><div class="k">Widgets</div><h3>On your desktop, too.</h3><p>Small, medium and large widgets for the desktop and Notification Center, each with its own city.</p></div>
+    <div class="ftile"><div class="k">Next 24 hours</div><h3>The day, hour by hour.</h3><p>A scrolling strip with a temperature line, the sky for each hour, and the chance of rain when it matters.</p></div>
+    <div class="ftile"><div class="k">5-day forecast</div><h3>Five days on one scale.</h3><p>Lows and highs on range bars that share one labelled scale, with a dot for right now. Tap to open.</p></div>
+    <div class="ftile"><div class="k">Plain words</div><h3>One sentence says it.</h3><p>“Rain likely around 3 PM (60%).” “Warming to 68°F / 20°C by 2 PM.”</p></div>
+    <div class="ftile"><div class="k">Your cities</div><h3>Up to five places.</h3><p>Search anywhere on Earth, switch with one click, and share a link that opens with your cities.</p></div>
+    <div class="ftile"><div class="k">Privacy</div><h3>No account. No tracking.</h3><p>Open weather data from Open-Meteo, refreshed every 15 minutes. Free and open source, forever.</p></div>
+  </div>
+
+  <h2 class="section-h" id="install">Get started.</h2>
+  <div class="steps">
+    <div class="step"><div class="num">1</div><p>Download <a href="https://github.com/bradleycowdrey/two-degrees/releases/latest/download/TwoDegrees.dmg"><b>TwoDegrees.dmg</b></a> and drag Two Degrees into Applications.</p></div>
+    <div class="step"><div class="num">2</div><p>First launch: right-click Two Degrees and choose <b>Open</b>. Or run <code>xattr -dr com.apple.quarantine /Applications/TwoDegrees.app</code></p></div>
+    <div class="step"><div class="num">3</div><p>Add your cities with the <b>+</b> button. The Dock and menu bar fill in on their own.</p></div>
+    <div class="step"><div class="num">4</div><p>Want a widget? Right-click your desktop, choose <b>Edit Widgets</b>, and search for Two Degrees.</p></div>
+  </div>
+
+  <section class="closing">
+    <h2>The weather, in both.</h2>
+    <div class="actions">
+      <a class="pill" href="https://github.com/bradleycowdrey/two-degrees/releases/latest/download/TwoDegrees.dmg">Download for Mac</a>
+      <a class="textlink" href="https://github.com/bradleycowdrey/two-degrees">View the source ›</a>
+    </div>
+  </section>
+
+  <footer><div><div class="bar"></div>© 2026 Bradley Cowdrey</div><span>Free and open source · <a href="https://github.com/bradleycowdrey/two-degrees">GitHub</a> · Weather data by <a href="https://open-meteo.com/">Open-Meteo</a></span></footer>
+</main>
+
+<script>
+(() => {
+  // The app: /two-degrees/app.html on bradcowdrey.com, index.html next to this file anywhere else.
+  // Share links (?c=…) point at this page, so pass them through.
+  const onSite = /(^|\.)bradcowdrey\.com$|lovable\.app$/.test(location.hostname);
+  const src = (onSite ? '/two-degrees/app.html' : 'index.html') + location.search;
+  const frame = document.getElementById('app');
+  frame.src = src;
+  document.getElementById('full').href = src;
+  addEventListener('message', (e) => {
+    const h = e.data && e.data.twoDegreesHeight;
+    if (e.source === frame.contentWindow && Number.isFinite(h) && h > 200) frame.style.height = h + 'px';
+  });
+  if (new URLSearchParams(location.search).has('c')) document.getElementById('demo').scrollIntoView();
+
+  // The ruler: 14°F to 104°F, with the Celsius it matches underneath.
+  const MIN = 14, MAX = 104;
+  const marks = [[32, 'Freezing'], [50, 'Cool morning', 1], [68, 'Room temperature'], [86, 'Beach day', 1], [104, 'Heatwave']];  // minor marks hide on phones
+  const ruler = document.getElementById('ruler');
+  for (const [f, name, minor] of marks) {
+    const pct = (f - MIN) / (MAX - MIN) * 100, c = Math.round((f - 32) * 5 / 9);
+    const t = document.createElement('div');
+    t.className = 'tick' + (minor ? ' minor' : '') + (pct > 96 ? ' edge-r' : pct < 4 ? ' edge-l' : '');
+    t.style.left = pct + '%';
+    t.innerHTML = `<span class="tf">${f}°F</span><span class="tc">${c}°C</span><span class="tn">${name}</span>`;
+    ruler.appendChild(t);
+  }
+})();
+</script>
+</body>
+</html>

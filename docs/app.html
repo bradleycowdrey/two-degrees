@@ -38,6 +38,8 @@
     padding: 24px 18px 16px; display: flex; flex-direction: column; gap: 10px;
   }
   .panel { zoom: var(--z, 1); }
+  /* Inside the product page's frame: a shadow short enough not to be cut off at the frame's edge. */
+  .embedded .panel { box-shadow: 0 0 0 0.5px var(--border-strong), 0 16px 32px rgba(0,0,0,.4); }
   .panel.system, .panel.system button, .panel.system input { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif; }
   .more-wrap { position: relative; }
   .menu.more { top: 40px; bottom: auto; width: 230px; }
@@ -171,6 +173,8 @@
   .days-head { display: grid; grid-template-columns: 152px minmax(0, 1fr) 48px; column-gap: 10px; align-items: center; width: 100%;
     padding: 0; border: 0; background: none; color: inherit; text-align: left; cursor: pointer; }
   .days-head[aria-expanded="true"] { margin-bottom: 4px; }
+  /* Closed, the title column only needs to fit the title, which leaves the range room on a phone. */
+  .days-head[aria-expanded="false"] { grid-template-columns: max-content minmax(0, 1fr) 48px; }
   .days-head .eyebrow { margin: 0; }
   .days-head:hover .eyebrow, .days-head:hover .chev { color: var(--text); }
   .days-head .range { display: block; text-align: right; font-size: 13px; font-weight: 500; color: var(--faint); font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -179,6 +183,7 @@
   .days-head[aria-expanded="true"] .chev { transform: rotate(180deg); }
   .ticks { position: relative; height: 14px; }
   .ticks span { position: absolute; transform: translateX(-50%); font-size: 11px; font-weight: 500; line-height: 14px; color: var(--faint); }
+  .ticks .range { position: static; transform: none; }   /* the closed summary is text, not a tick label */
   .bar u { position: absolute; top: 50%; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%; background: var(--text); box-shadow: 0 0 0 2.5px var(--tile); }
 
   /* Footer */
@@ -231,6 +236,7 @@
     .seg.list button { width: 36px; height: 32px; }
     .seg.list { position: sticky; right: 0; box-shadow: -20px 0 14px 2px var(--bg); }
     .days-head { grid-template-columns: 134px minmax(0, 1fr) 44px; column-gap: 8px; }
+    .days-head[aria-expanded="false"] { grid-template-columns: max-content minmax(0, 1fr) 44px; }
     .seg button { height: 32px; }
     .circle { width: 36px; height: 36px; }
     .hours-scroll { margin: 0 -16px; padding: 0 16px; }
@@ -914,6 +920,12 @@
   });
 
   setInterval(() => { state.cities.forEach((c) => { const d = state.data[keyOf(c)]; if (d && d.source === 'live' && Date.now() - d.fetchedAt > CACHE_MS) delete state.data[keyOf(c)]; }); refreshAll(); }, 15 * 60 * 1000);
+  // Embedded in the product page (bradcowdrey.com/two-degrees): tell it how tall to be.
+  if (window.parent !== window && typeof ResizeObserver === 'function') {
+    document.documentElement.classList.add('embedded');
+    const post = () => window.parent.postMessage({ twoDegreesHeight: Math.ceil(document.body.getBoundingClientRect().height) }, '*');
+    new ResizeObserver(post).observe(document.body);
+  }
   window.__twoDegreesTest = { deg };   // read by tests/web.test.js
   applyLook();
   render();
