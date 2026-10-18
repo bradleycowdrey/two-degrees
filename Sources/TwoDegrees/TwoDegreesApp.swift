@@ -1,6 +1,7 @@
 import SwiftUI
 import AppKit
 import WidgetKit
+import CoreServices
 
 @main
 struct TwoDegreesApp: App {
@@ -9,6 +10,11 @@ struct TwoDegreesApp: App {
     @ObservedObject private var updater = Updater.shared
 
     init() {
+        // For CI: print the updater's install script, so the update-in-place test runs the real one.
+        if CommandLine.arguments.contains("--print-install-script") {
+            print(Updater.installScript)
+            exit(0)
+        }
         FontRegistry.registerBundledFonts()
         Task { @MainActor in Updater.shared.start() }
     }
@@ -100,8 +106,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @MainActor
     func applicationDidFinishLaunching(_ notification: Notification) {
         WeatherStore.shared.refreshDock()   // the cached reading, until fresh numbers arrive
-        // Redraw the widgets now, so after an update they show the new version's design right away
-        // instead of at their next scheduled refresh.
+        // Make sure LaunchServices has this exact build registered. macOS checks the widget's version
+        // against it and throws the widget's content away on a mismatch (an app swapped in place by an
+        // update keeps the old record), which leaves the widget blank. Re-registering heals that.
+        LSRegisterURL(Bundle.main.bundleURL as CFURL, true)
+        // Then redraw the widgets, so after an update they show the new version right away instead of
+        // at their next scheduled refresh.
         WidgetCenter.shared.reloadAllTimelines()
     }
 

@@ -1,6 +1,7 @@
 import SwiftUI
 import AppKit
 import WidgetKit
+import CoreServices
 
 /// Functional self-test, used by CI on a real Mac: `TwoDegrees --selftest <dir>` opens the
 /// window with live data and exercises every function at every size, checking each result,
@@ -232,6 +233,9 @@ enum SelfTest {
         for (family, size, name) in widgetSizes {
             check(drawWidget(unreachable, family, size, "widget-unavailable-\(name).png"), "\(name) widget draws the couldn't-load message")
         }
+
+        // The app re-registers its exact build at launch, so macOS never judges the widget against a stale version.
+        check(LSRegisterURL(Bundle.main.bundleURL as CFURL, true) == noErr, "app registers its own build with LaunchServices")
 
         // 9. Logic checks that need no UI.
         let fromTag = try? Updater.release(fromTagPage: URL(string: "https://github.com/bradleycowdrey/two-degrees/releases/tag/v1.2.3")!)

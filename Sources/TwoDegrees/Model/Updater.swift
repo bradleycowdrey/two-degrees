@@ -240,6 +240,9 @@ final class Updater: ObservableObject {
       fi
     fi
     /usr/bin/xattr -dr com.apple.quarantine "$TARGET" 2>/dev/null
+    # Tell LaunchServices about the new version. Without this it keeps the old build number, and
+    # macOS rejects the widget's content ("Bundle version did not match"), leaving it blank.
+    /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$TARGET"
     echo "$(date) relaunching"
     /usr/bin/open "$TARGET"
     """

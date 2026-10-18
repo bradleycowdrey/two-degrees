@@ -392,6 +392,11 @@ final class InstallScriptTests: XCTestCase {
 
     func marker(_ url: URL) -> String? { try? String(contentsOf: url.appendingPathComponent("Contents/marker"), encoding: .utf8) }
 
+    func testRegistersTheNewVersionWithLaunchServices() {
+        // Without this, macOS keeps the old build number and rejects the widget's content.
+        XCTAssertTrue(Updater.installScript.contains("lsregister -f \"$TARGET\""))
+    }
+
     func testSwapsInTheNewApp() throws {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         let target = dir.appendingPathComponent("TwoDegrees.app"), new = dir.appendingPathComponent("staged/TwoDegrees.app")

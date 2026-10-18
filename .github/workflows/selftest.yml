@@ -50,6 +50,32 @@ jobs:
           echo "== pluginkit" >> "$OUT/widget-package.txt"
           pluginkit -m -v -i com.bradcowdrey.twodegrees.widget >> "$OUT/widget-package.txt" 2>&1 || true
           tail -3 "$OUT/widget-package.txt"
+      - name: Update in place keeps macOS's app registry current
+        run: |
+          # The real-world path: v0.3.4 installed, then updated in place by the new app's own install
+          # script. macOS must then have the new build number registered, or it rejects the widget's
+          # content ("Bundle version did not match") and the widget stays blank.
+          OUT="$RUNNER_TEMP/shots"; mkdir -p "$OUT"; T="$RUNNER_TEMP/inplace"; mkdir -p "$T"
+          LSREG=/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
+          curl -fsSL -o "$T/old.dmg" https://github.com/bradleycowdrey/two-degrees/releases/download/v0.3.4/TwoDegrees-0.3.4.dmg
+          NEWV=$(plutil -extract CFBundleVersion raw dist/TwoDegrees.app/Contents/Info.plist)
+          dist/TwoDegrees.app/Contents/MacOS/TwoDegrees --print-install-script | sed 's#^/usr/bin/open .*#true#' > "$T/install.sh"
+          record() {   # the LaunchServices record for this exact app path
+            "$LSREG" -dump | P="$1" perl -0777 -ne 'for (split /-{20,}\n/) { if (/^path:\s+\Q$ENV{P}\E \(/m) { print; last } }'
+          }
+          try() {   # $1 = label, $2 = install script
+            rm -rf "$T/app" "$T/mnt"; mkdir -p "$T/app"
+            hdiutil attach -nobrowse -quiet -mountpoint "$T/mnt" "$T/old.dmg"
+            ditto "$T/mnt/TwoDegrees.app" "$T/app/TwoDegrees.app"; hdiutil detach -quiet "$T/mnt"
+            "$LSREG" -f "$T/app/TwoDegrees.app"
+            sh "$2" 999999 "$T/app/TwoDegrees.app" "$PWD/dist/TwoDegrees.app"
+            echo "== $1 (new build $NEWV)"; record "$T/app/TwoDegrees.app" | grep -E '^(path|version|identifier|CFBundleVersion)' || record "$T/app/TwoDegrees.app" | head -40
+          }
+          grep -v 'lsregister -f' "$T/install.sh" > "$T/install-old.sh"
+          { try "old install script (no lsregister)" "$T/install-old.sh"; try "new install script" "$T/install.sh"; } > "$OUT/update-in-place.txt" 2>&1
+          cat "$OUT/update-in-place.txt"
+          sed -n '/== new install script/,$p' "$OUT/update-in-place.txt" | grep -E "version: +.*\b$NEWV\b|CFBundleVersion.*\b$NEWV\b" \
+            || { echo "::error::After an update in place, macOS still doesn't have build $NEWV registered"; exit 1; }
       - name: Run self-test
         run: |
           OUT="$RUNNER_TEMP/shots"; mkdir -p "$OUT"
