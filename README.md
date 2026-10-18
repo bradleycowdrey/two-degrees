@@ -8,6 +8,7 @@ Made by <a href="https://bradcowdrey.com">Bradley Cowdrey · bradcowdrey.com</a>
 <p align="center">
   <a href="https://github.com/bradleycowdrey/two-degrees/releases/latest/download/TwoDegrees.dmg"><b>Download for Mac</b></a> ·
   <a href="https://bradcowdrey.com/two-degrees">Try it in your browser</a> ·
+  <a href="#widgets">Widgets</a> ·
   <a href="https://github.com/bradleycowdrey/two-degrees/issues">Report an issue</a>
 </p>
 
@@ -37,11 +38,6 @@ Pick which unit is large; the other always sits right next to it.
 - **Automatic updates** from GitHub Releases, SHA-256 verified, one click to install.
 - No account, no API key, no tracking. Weather data from [Open-Meteo](https://open-meteo.com) (CC BY 4.0), refreshed every 15 minutes.
 
-<p align="center">
-  <a href="https://bradcowdrey.com/two-degrees#widgets"><img src="docs/screenshot-widgets.png" width="760" alt="The large, medium and small Two Degrees widgets on a desktop: New York in °F and London with °C large."></a><br>
-  <sub>The widgets. See them live at <a href="https://bradcowdrey.com/two-degrees#widgets">bradcowdrey.com/two-degrees</a>.</sub>
-</p>
-
 Native SwiftUI, universal binary (Apple silicon + Intel), macOS 14 Sonoma or later.
 
 ## Web app
@@ -57,6 +53,21 @@ Both come from this repo through GitHub Pages (`main` → `/docs`), so a push he
 
 Edit the files in `web/`, then run `scripts/build-web.sh` to rebuild `docs/`. `node scripts/readme-shots.js` redraws the two
 pictures in this README from the web app.
+
+## Widgets
+
+Small, medium and large widgets for your desktop and Notification Center, each with its own city and its own choice
+of which unit is large: New York in °F next to London in °C, if you like. The large one adds the next six hours and the
+5-day forecast.
+
+<p align="center">
+  <a href="https://bradcowdrey.com/two-degrees#widgets"><img src="docs/screenshot-widgets.png" width="760" alt="The large, medium and small Two Degrees widgets on a desktop: New York in °F and London with °C large."></a><br>
+  <sub>The widgets. See them live at <a href="https://bradcowdrey.com/two-degrees#widgets">bradcowdrey.com/two-degrees</a>.</sub>
+</p>
+
+**Add one:** open Two Degrees once, then right-click the desktop (or open Notification Center), choose **Edit Widgets**,
+search for **Two Degrees**, and drag in a size. To change a widget's city or unit, right-click it and choose
+**Edit "Two Degrees"**.
 
 ## Install (sideload)
 
