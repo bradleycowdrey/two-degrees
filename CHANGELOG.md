@@ -3,15 +3,18 @@
 Two Degrees updates itself: when a new version is out, the app shows a banner with an **Update** button
 (or use **Check for Updates** in the ⋯ menu). Every version is on [Releases](https://github.com/bradleycowdrey/two-degrees/releases).
 
-## [Unreleased]
+## [0.3.3] - 2026-10-18
 
-Changes on [bradcowdrey.com/two-degrees](https://bradcowdrey.com/two-degrees) and in the web app since 0.3.2.
+- **Widgets redraw right after an update.** Opening Two Degrees now refreshes its widgets at once, so they show the
+  new version's design immediately instead of up to 30 minutes later.
 
-- **A product page** at bradcowdrey.com/two-degrees, like Meridian's: the real app running in the page, a °F/°C ruler,
-  features, install steps, and Share buttons in the nav, the hero and the closing section.
-- **The widgets, live**, on the product page, in a "Right on your desktop" section. They follow the app above it:
-  change its city or unit and they change too.
-- The page now comes straight from this repo through GitHub Pages, so it's always the latest version.
+Also new on [bradcowdrey.com/two-degrees](https://bradcowdrey.com/two-degrees) since 0.3.2:
+
+- **A product page**, like Meridian's: the real app running in the page, a °F/°C ruler, features, install steps,
+  and Share buttons in the nav, the hero and the closing section.
+- **The widgets, live**, in a "Right on your desktop" section. They follow the app above them: change its city or
+  unit and they change too.
+- The page comes straight from this repo through GitHub Pages, so it's always the latest version.
 - Fixed: on a phone, the closed 5-day forecast's range ran into its title.
 
 ## [0.3.2] - 2026-10-17
@@ -62,7 +65,7 @@ Changes on [bradcowdrey.com/two-degrees](https://bradcowdrey.com/two-degrees) an
 - First release: the weather in °F and °C at once, in the Dock (a live temperature on the icon) and the menu bar,
   with the next 24 hours, a 5-day forecast, up to five cities and a Share button. Data from Open-Meteo.
 
-[Unreleased]: https://github.com/bradleycowdrey/two-degrees/compare/v0.3.2...main
+[0.3.3]: https://github.com/bradleycowdrey/two-degrees/releases/tag/v0.3.3
 [0.3.2]: https://github.com/bradleycowdrey/two-degrees/releases/tag/v0.3.2
 [0.3.1]: https://github.com/bradleycowdrey/two-degrees/releases/tag/v0.3.1
 [0.3.0]: https://github.com/bradleycowdrey/two-degrees/releases/tag/v0.3.0

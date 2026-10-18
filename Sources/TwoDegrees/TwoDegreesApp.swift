@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import WidgetKit
 
 @main
 struct TwoDegreesApp: App {
@@ -99,6 +100,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @MainActor
     func applicationDidFinishLaunching(_ notification: Notification) {
         WeatherStore.shared.refreshDock()   // the cached reading, until fresh numbers arrive
+        // Redraw the widgets now, so after an update they show the new version's design right away
+        // instead of at their next scheduled refresh.
+        WidgetCenter.shared.reloadAllTimelines()
     }
 
     @MainActor
