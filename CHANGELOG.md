@@ -3,6 +3,13 @@
 Two Degrees updates itself: when a new version is out, the app shows a banner with an **Update** button
 (or use **Check for Updates** in the ⋯ menu). Every version is on [Releases](https://github.com/bradleycowdrey/two-degrees/releases).
 
+## [0.3.5] - 2026-10-18
+
+- **Fixed: widgets stayed blank after an update.** The updater swapped in the new app without telling macOS, so
+  macOS still had the old version on record and threw the widget's content away. The updater now registers each new
+  version, and the app re-registers itself every time it opens, which also repairs Macs already affected: open
+  Two Degrees once and its widgets fill in.
+
 ## [0.3.4] - 2026-10-18
 
 - **Fixed: a widget could go blank after you picked a different city.** If the new city's forecast didn't arrive in
@@ -74,6 +81,7 @@ Also new on [bradcowdrey.com/two-degrees](https://bradcowdrey.com/two-degrees) s
 - First release: the weather in °F and °C at once, in the Dock (a live temperature on the icon) and the menu bar,
   with the next 24 hours, a 5-day forecast, up to five cities and a Share button. Data from Open-Meteo.
 
+[0.3.5]: https://github.com/bradleycowdrey/two-degrees/releases/tag/v0.3.5
 [0.3.4]: https://github.com/bradleycowdrey/two-degrees/releases/tag/v0.3.4
 [0.3.3]: https://github.com/bradleycowdrey/two-degrees/releases/tag/v0.3.3
 [0.3.2]: https://github.com/bradleycowdrey/two-degrees/releases/tag/v0.3.2
