@@ -10,6 +10,8 @@ struct WeatherEntry: TimelineEntry {
     let forecast: Forecast
     var isPlaceholder = false
     var failed = false
+    /// No forecast at all (offline and nothing saved): the widget says so instead of going blank.
+    var unavailable = false
 }
 
 /// Warm near-black with the crimson rule; the rule steps aside in tinted and clear modes.
@@ -59,10 +61,14 @@ struct WidgetView: View {
 
     var body: some View {
         Group {
-            switch family ?? environmentFamily {
-            case .systemMedium: MediumView(entry: entry)
-            case .systemLarge: LargeView(entry: entry)
-            default: SmallView(entry: entry)
+            if entry.unavailable {
+                UnavailableView(entry: entry)
+            } else {
+                switch family ?? environmentFamily {
+                case .systemMedium: MediumView(entry: entry)
+                case .systemLarge: LargeView(entry: entry)
+                default: SmallView(entry: entry)
+                }
             }
         }
         .environment(\.colorScheme, .dark)
@@ -120,6 +126,34 @@ private struct NowBlock: View {
                     .minimumScaleFactor(0.8)
             }
         }
+    }
+}
+
+/// Offline with nothing saved yet: the city, and a plain message that it will try again.
+private struct UnavailableView: View {
+    let entry: WeatherEntry
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(entry.city.name)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(Palette.textPrimary)
+                .lineLimit(1)
+            Spacer(minLength: 2)
+            Image(systemName: "icloud.slash")
+                .font(.system(size: 20, weight: .medium))
+                .foregroundStyle(Palette.textMuted)
+            Text("Couldn’t load the weather")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(Palette.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Text("Trying again in a few minutes")
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(Palette.textMuted)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
     }
 }
 

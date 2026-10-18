@@ -27,6 +27,29 @@ jobs:
           swift test 2>&1 | tee "$RUNNER_TEMP/unit-tests.txt"
       - name: Build
         run: scripts/build-app.sh 0.0.0-selftest
+      - name: Check the packaged widget
+        run: |
+          # What macOS needs to run the widget at all: its sandbox and network entitlements survive
+          # signing, its settings (App Intents) metadata is inside, and it registers as a widget.
+          OUT="$RUNNER_TEMP/shots"; mkdir -p "$OUT"
+          W=dist/TwoDegrees.app/Contents/PlugIns/TwoDegreesWidget.appex
+          {
+            echo "== entitlements"; codesign -d --entitlements - --xml "$W" 2>/dev/null | plutil -convert xml1 -o - - || true
+            echo "== App Intents metadata"; find "$W" -name 'Metadata.appintents' -print
+            echo "== extension point"; plutil -extract NSExtension.NSExtensionPointIdentifier raw "$W/Contents/Info.plist"
+          } > "$OUT/widget-package.txt" 2>&1
+          cat "$OUT/widget-package.txt"
+          grep -q 'com.apple.security.app-sandbox' "$OUT/widget-package.txt" || { echo "::error::The widget lost its sandbox entitlement; macOS won't run it"; exit 1; }
+          grep -q 'com.apple.security.network.client' "$OUT/widget-package.txt" || { echo "::error::The widget lost its network entitlement; it can't fetch the weather"; exit 1; }
+          grep -q 'Metadata.appintents' "$OUT/widget-package.txt" || { echo "::error::The widget has no App Intents metadata; macOS can't read its city setting"; exit 1; }
+          grep -q 'com.apple.widgetkit-extension' "$OUT/widget-package.txt" || { echo "::error::The widget isn't declared as a WidgetKit extension"; exit 1; }
+          LSREG=/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
+          "$LSREG" -f -R "$PWD/dist/TwoDegrees.app" || true
+          pluginkit -a "$W" || true
+          sleep 2
+          echo "== pluginkit" >> "$OUT/widget-package.txt"
+          pluginkit -m -v -i com.bradcowdrey.twodegrees.widget >> "$OUT/widget-package.txt" 2>&1 || true
+          tail -3 "$OUT/widget-package.txt"
       - name: Run self-test
         run: |
           OUT="$RUNNER_TEMP/shots"; mkdir -p "$OUT"

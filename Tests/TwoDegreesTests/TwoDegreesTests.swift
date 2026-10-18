@@ -410,3 +410,69 @@ final class InstallScriptTests: XCTestCase {
         XCTAssertEqual(marker(target), "old", "the old app is restored")
     }
 }
+
+/// The widget's data path (WidgetData): its city setting, search, and what it shows when the network fails.
+final class WidgetDataTests: XCTestCase {
+    private let forecastURL = "https://api.open-meteo.com/v1/forecast"
+    private let searchURL = "https://geocoding-api.open-meteo.com/v1/search"
+
+    override func setUp() { StubProtocol.delay = 0 }
+
+    private func freshDefaults() -> UserDefaults {
+        let name = "TwoDegrees.tests.widget.\(UUID().uuidString)"
+        return UserDefaults(suiteName: name)!
+    }
+
+    func testCitySettingReadsBackWithAccentsPipesAndEdgeCoordinates() {
+        let cities = [City(name: "São Paulo", region: "São Paulo, Brazil", latitude: -23.5475, longitude: -46.63611),
+                      City(name: "A|B", region: "C|D", latitude: 0.00001, longitude: -180),
+                      City(name: "Reykjavík", region: "", latitude: 64.13548, longitude: -21.89541)]
+        for city in cities {
+            let back = WidgetData.city(fromID: WidgetData.id(for: city))
+            XCTAssertEqual(back?.latitude, city.latitude)
+            XCTAssertEqual(back?.longitude, city.longitude)
+            XCTAssertEqual(back?.name, city.name.replacingOccurrences(of: "|", with: "/"))
+        }
+        XCTAssertNil(WidgetData.city(fromID: "Nowhere|x|abc|1"))
+        XCTAssertNil(WidgetData.city(fromID: "Too|many|parts|1|2"))
+        XCTAssertNil(WidgetData.city(fromID: "Off|map|95|0"))
+    }
+
+    func testPickedCityLoadsAndIsSavedForOffline() async throws {
+        StubProtocol.routes = [(forecastURL, 200, Data(Fixtures.forecast.utf8), nil)]
+        let defaults = freshDefaults()
+        let city = WidgetData.city(fromID: WidgetData.id(for: City(name: "New York", region: "", latitude: 40.71, longitude: -74.01)))!
+        let live = await WidgetData.entry(city: city, unit: .celsius, defaults: defaults, session: StubProtocol.session())
+        XCTAssertFalse(live.failed || live.unavailable || live.isPlaceholder)
+        XCTAssertEqual(WidgetData.refreshInterval(for: live), 30 * 60)
+
+        StubProtocol.routes = []   // now offline: the saved forecast, marked offline
+        let offline = await WidgetData.entry(city: city, unit: .celsius, defaults: defaults, session: StubProtocol.session())
+        XCTAssertTrue(offline.failed)
+        XCTAssertFalse(offline.unavailable)
+        XCTAssertEqual(offline.forecast.days.count, live.forecast.days.count)
+        XCTAssertEqual(WidgetData.refreshInterval(for: offline), 5 * 60)
+    }
+
+    func testOfflineWithNothingSavedSaysSoInsteadOfGoingBlank() async {
+        StubProtocol.routes = []
+        let e = await WidgetData.entry(city: City(name: "Nowhere", region: "", latitude: 1, longitude: 1),
+                                       unit: .fahrenheit, defaults: freshDefaults(), session: StubProtocol.session())
+        XCTAssertTrue(e.unavailable)
+        XCTAssertFalse(e.isPlaceholder, "the redacted placeholder can look like an empty widget")
+        XCTAssertEqual(WidgetData.refreshInterval(for: e), 5 * 60)
+    }
+
+    func testSearchNeverThrowsAndShortQueriesShowSuggestions() async {
+        let suggestions = [City(name: "Paris", region: "France", latitude: 48.85, longitude: 2.35)]
+        StubProtocol.routes = []
+        let none = await WidgetData.search("Denver", suggestions: suggestions, session: StubProtocol.session())
+        XCTAssertEqual(none.count, 0)
+        let short = await WidgetData.search(" D ", suggestions: suggestions, session: StubProtocol.session())
+        XCTAssertEqual(short.map(\.name), ["Paris"])
+        let body = #"{"results":[{"name":"Denver","latitude":39.73915,"longitude":-104.9847,"country":"United States","admin1":"Colorado"}]}"#
+        StubProtocol.routes = [(searchURL, 200, Data(body.utf8), nil)]
+        let found = await WidgetData.search("Denver", suggestions: suggestions, session: StubProtocol.session())
+        XCTAssertEqual(found.first?.region, "Colorado, United States")
+    }
+}

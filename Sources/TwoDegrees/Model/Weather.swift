@@ -156,7 +156,7 @@ enum OpenMeteo {
     /// Swapped for a stubbed session in unit tests.
     nonisolated(unsafe) static var session: URLSession = .shared
 
-    static func forecast(for city: City) async throws -> Forecast {
+    static func forecast(for city: City, session: URLSession = OpenMeteo.session) async throws -> Forecast {
         var components = URLComponents(string: "https://api.open-meteo.com/v1/forecast")!
         components.queryItems = [
             .init(name: "latitude", value: String(format: "%.4f", city.latitude)),
@@ -182,7 +182,7 @@ enum OpenMeteo {
         return raw.forecast()
     }
 
-    static func search(_ query: String) async throws -> [City] {
+    static func search(_ query: String, session: URLSession = OpenMeteo.session) async throws -> [City] {
         var components = URLComponents(string: "https://geocoding-api.open-meteo.com/v1/search")!
         components.queryItems = [
             .init(name: "name", value: query),

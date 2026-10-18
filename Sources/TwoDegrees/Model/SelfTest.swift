@@ -183,7 +183,57 @@ enum SelfTest {
             check(false, "dock tile and widgets: no forecast")
         }
 
-        // 8. Logic checks that need no UI.
+        // 8. The widget's own data path, run the way the widget runs it: a city searched for and
+        //    picked in the widget's settings, stored as its setting, rebuilt from it, loaded and drawn
+        //    in every size, within the few seconds a widget gets. Then offline with nothing saved.
+        let widgetSizes: [(WidgetFamily, CGSize, String)] = [
+            (.systemSmall, CGSize(width: 170, height: 170), "small"),
+            (.systemMedium, CGSize(width: 364, height: 170), "medium"),
+            (.systemLarge, CGSize(width: 364, height: 382), "large"),
+        ]
+        func drawWidget(_ e: WeatherEntry, _ family: WidgetFamily, _ size: CGSize, _ name: String) -> Bool {
+            render(WidgetView(entry: e, family: family)
+                .padding(16)
+                .frame(width: size.width, height: size.height)
+                .background(WidgetBackground())
+                .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous)), dir: dir, name: name)
+        }
+        let widgetDefaults = UserDefaults(suiteName: "TwoDegrees.selftest.widget") ?? .standard
+        widgetDefaults.removePersistentDomain(forName: "TwoDegrees.selftest.widget")
+        for city in [City(name: "São Paulo", region: "São Paulo, Brazil", latitude: -23.5475, longitude: -46.63611),
+                     City(name: "Pipe | Town", region: "A|B", latitude: -0.0001, longitude: 179.99)] {
+            let back = WidgetData.city(fromID: WidgetData.id(for: city))
+            check(back?.latitude == city.latitude && back?.longitude == city.longitude && back?.name == city.name.replacingOccurrences(of: "|", with: "/"),
+                  "widget setting reads back for \(city.name)")
+        }
+        check(await WidgetData.search(" ", suggestions: [store.active]).map(\.name) == [store.active.name], "widget search under two letters shows the suggestions")
+        for query in ["Denver", "Sao Paulo", "Zürich", "Reykjavík"] {
+            let started = Date()
+            let found = await WidgetData.search(query, suggestions: [])
+            guard let first = found.first else { check(false, "widget search finds \(query)"); continue }
+            check(true, "widget search finds \(query): \(first.name), \(first.region)")
+            guard let picked = WidgetData.city(fromID: WidgetData.id(for: first)) else { check(false, "\(first.name): widget setting doesn't read back"); continue }
+            let entry = await WidgetData.entry(city: picked, unit: .celsius, defaults: widgetDefaults)
+            let seconds = Date().timeIntervalSince(started)
+            check(!entry.failed && !entry.unavailable && entry.forecast.days.count >= 5 && entry.forecast.upcomingHours.count >= 6,
+                  "widget loads \(picked.name) after picking it (\(String(format: "%.1f", seconds)) s)")
+            check(seconds < 12, "widget has \(picked.name)'s numbers within 12 s")
+            let slug = picked.name.lowercased().filter(\.isLetter)
+            for (family, size, name) in widgetSizes {
+                check(drawWidget(entry, family, size, "widget-picked-\(slug)-\(name).png"), "\(name) widget draws \(picked.name)")
+            }
+        }
+        let offlineConfig = URLSessionConfiguration.ephemeral
+        offlineConfig.protocolClasses = [OfflineProtocol.self]
+        let nowhere = City(name: "Nowhere Yet", region: "", latitude: 10, longitude: 10)
+        let unreachable = await WidgetData.entry(city: nowhere, unit: .fahrenheit, defaults: widgetDefaults, session: URLSession(configuration: offlineConfig))
+        check(unreachable.unavailable && !unreachable.isPlaceholder && WidgetData.refreshInterval(for: unreachable) <= 5 * 60,
+              "widget offline with nothing saved says it couldn't load (not blank) and retries within 5 minutes")
+        for (family, size, name) in widgetSizes {
+            check(drawWidget(unreachable, family, size, "widget-unavailable-\(name).png"), "\(name) widget draws the couldn't-load message")
+        }
+
+        // 9. Logic checks that need no UI.
         let fromTag = try? Updater.release(fromTagPage: URL(string: "https://github.com/bradleycowdrey/two-degrees/releases/tag/v1.2.3")!)
         check(fromTag?.version == "1.2.3" && fromTag?.dmg.lastPathComponent == "TwoDegrees-1.2.3.dmg", "update fallback reads the version from the release page")
         check(Updater.isNewer("0.2.10", than: "0.2.9") && !Updater.isNewer("0.2.0", than: "0.2.0") && Updater.isNewer("1.0", than: "0.9.9-dev"),
@@ -242,4 +292,12 @@ enum SelfTest {
         }
         return colours.count > 3
     }
+}
+
+/// Fails every request as if offline, for the widget's no-network check.
+final class OfflineProtocol: URLProtocol {
+    override class func canInit(with request: URLRequest) -> Bool { true }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+    override func startLoading() { client?.urlProtocol(self, didFailWithError: URLError(.notConnectedToInternet)) }
+    override func stopLoading() {}
 }

@@ -52,8 +52,8 @@ enum UnitChoice: String, AppEnum {
 struct CityEntity: AppEntity {
     let city: City
 
-    /// "name|region|lat|lon", so a saved widget can rebuild its city without the network.
-    var id: String { [city.name, city.region, String(city.latitude), String(city.longitude)].joined(separator: "|") }
+    /// See WidgetData.id(for:): a saved widget rebuilds its city from this without the network.
+    var id: String { WidgetData.id(for: city) }
 
     static var typeDisplayRepresentation: TypeDisplayRepresentation = "City"
     static var defaultQuery = CityQuery()
@@ -65,9 +65,8 @@ struct CityEntity: AppEntity {
     init(_ city: City) { self.city = city }
 
     init?(id: String) {
-        let parts = id.split(separator: "|", omittingEmptySubsequences: false).map(String.init)
-        guard parts.count == 4, let lat = Double(parts[2]), let lon = Double(parts[3]) else { return nil }
-        city = City(name: parts[0], region: parts[1], latitude: lat, longitude: lon)
+        guard let city = WidgetData.city(fromID: id) else { return nil }
+        self.city = city
     }
 }
 
@@ -77,7 +76,7 @@ struct CityQuery: EntityStringQuery {
     }
 
     func entities(matching string: String) async throws -> [CityEntity] {
-        try await OpenMeteo.search(string).map(CityEntity.init)
+        await WidgetData.search(string, suggestions: WidgetDefaults.cities).map(CityEntity.init)
     }
 
     func suggestedEntities() async throws -> [CityEntity] {
@@ -110,26 +109,11 @@ struct Provider: AppIntentTimelineProvider {
 
     func timeline(for configuration: WidgetSettings, in context: Context) async -> Timeline<WeatherEntry> {
         let entry = await entry(for: configuration)
-        // Fresh numbers every 30 minutes; sooner after a failed fetch.
-        let next = Date().addingTimeInterval(entry.failed ? 10 * 60 : 30 * 60)
-        return Timeline(entries: [entry], policy: .after(next))
+        return Timeline(entries: [entry], policy: .after(Date().addingTimeInterval(WidgetData.refreshInterval(for: entry))))
     }
 
     private func entry(for configuration: WidgetSettings) async -> WeatherEntry {
-        let city = configuration.city?.city ?? WidgetDefaults.cities[0]
-        let unit = configuration.unit.unit
-        let key = "forecast." + city.id
-        do {
-            let forecast = try await OpenMeteo.forecast(for: city)
-            if let data = try? JSONEncoder().encode(forecast) { UserDefaults.standard.set(data, forKey: key) }
-            return WeatherEntry(date: Date(), city: city, unit: unit, forecast: forecast)
-        } catch {
-            // Offline: show the last good forecast, clearly labelled with its time.
-            if let data = UserDefaults.standard.data(forKey: key), let saved = try? JSONDecoder().decode(Forecast.self, from: data) {
-                return WeatherEntry(date: Date(), city: city, unit: unit, forecast: saved, failed: true)
-            }
-            return WeatherEntry(date: Date(), city: city, unit: unit, forecast: .placeholder, isPlaceholder: true, failed: true)
-        }
+        await WidgetData.entry(city: configuration.city?.city ?? WidgetDefaults.cities[0], unit: configuration.unit.unit)
     }
 }
 
