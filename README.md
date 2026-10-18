@@ -2,7 +2,7 @@
 
 <h1 align="center">Two Degrees</h1>
 <p align="center"><b>The weather in °F and °C at once.</b><br>
-A tiny, free, open-source weather app for your Mac's Dock and menu bar.<br>
+A tiny, free, open-source weather app for your Mac's Dock, menu bar and desktop widgets.<br>
 Made by <a href="https://bradcowdrey.com">Bradley Cowdrey · bradcowdrey.com</a></p>
 
 <p align="center">

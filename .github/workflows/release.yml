@@ -70,5 +70,5 @@ jobs:
             gh release create "$TAG" dist/*.dmg dist/*.sha256 \
               --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --latest \
               --title "Two Degrees ${TAG##*v}" \
-              --notes "Download the DMG, open it and drag Two Degrees into Applications. First launch: right-click Two Degrees, then Open. Made by Bradley Cowdrey · bradcowdrey.com"
+              --notes "Download the DMG, open it and drag Two Degrees into Applications. First launch: right-click Two Degrees, then Open. For a widget: right-click the desktop, choose Edit Widgets and search for Two Degrees. Made by Bradley Cowdrey · bradcowdrey.com"
           fi
