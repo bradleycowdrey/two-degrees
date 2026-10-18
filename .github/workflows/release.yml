@@ -67,8 +67,12 @@ jobs:
             # Never replace a published version's files; bump VERSION to release new code.
             echo "Release $TAG already exists; not overwriting it."
           else
+            # The notes are this version's section of CHANGELOG.md, then how to install.
+            CHANGES="$(awk -v v="## [${TAG##*v}]" 'index($0, v) == 1 {on=1; next} on && /^## \[/ {exit} on' CHANGELOG.md)"
+            printf '%s\n\n%s\n' "${CHANGES:-See CHANGELOG.md for what changed.}" \
+              "**Install:** download the DMG, open it and drag Two Degrees into Applications. First launch: right-click Two Degrees, then Open. For a widget: right-click the desktop, choose Edit Widgets and search for Two Degrees. Made by Bradley Cowdrey · bradcowdrey.com" > notes.md
             gh release create "$TAG" dist/*.dmg dist/*.sha256 \
               --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --latest \
               --title "Two Degrees ${TAG##*v}" \
-              --notes "Download the DMG, open it and drag Two Degrees into Applications. First launch: right-click Two Degrees, then Open. For a widget: right-click the desktop, choose Edit Widgets and search for Two Degrees. Made by Bradley Cowdrey · bradcowdrey.com"
+              --notes-file notes.md
           fi

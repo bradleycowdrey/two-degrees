@@ -9,6 +9,7 @@ Made by <a href="https://bradcowdrey.com">Bradley Cowdrey · bradcowdrey.com</a>
   <a href="https://github.com/bradleycowdrey/two-degrees/releases/latest/download/TwoDegrees.dmg"><b>Download for Mac</b></a> ·
   <a href="https://bradcowdrey.com/two-degrees">Try it in your browser</a> ·
   <a href="#widgets">Widgets</a> ·
+  <a href="CHANGELOG.md">What's new</a> ·
   <a href="https://github.com/bradleycowdrey/two-degrees/issues">Report an issue</a>
 </p>
 
@@ -21,6 +22,17 @@ Made by <a href="https://bradcowdrey.com">Bradley Cowdrey · bradcowdrey.com</a>
 
 Two Degrees shows every temperature twice, °F and °C side by side, so nobody has to do the math.
 Pick which unit is large; the other always sits right next to it.
+
+## What's new
+
+- **0.3.2**: a clearer 5-day forecast. Each day's low and high sit at the ends of its bar, on one shared scale,
+  in the app, the web app and the large widget.
+- **On the web**: [bradcowdrey.com/two-degrees](https://bradcowdrey.com/two-degrees) is now a full product page with
+  the app running in it, the [widgets live](https://bradcowdrey.com/two-degrees#widgets), and Share buttons.
+- **0.3.0**: an update banner, verified updates, and the 5-day forecast as an accordion.
+
+The app updates itself: a banner offers each new version. Every change is in the [changelog](CHANGELOG.md), and every
+version is on [Releases](https://github.com/bradleycowdrey/two-degrees/releases).
 
 ## Features
 
