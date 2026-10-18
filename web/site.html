@@ -241,7 +241,8 @@
   // The app: /two-degrees/app wherever this page is served at /two-degrees (bradcowdrey.com, its previews and
   // GitHub Pages), app.html next to this file anywhere else. Share links (?c=…) point at this page, so pass them through.
   const onSite = /^\/two-degrees(\/|$)/.test(location.pathname);
-  const src = (onSite ? '/two-degrees/app' : 'app.html') + location.search;
+  // GitHub Pages (github.io) gets the file name; bradcowdrey.com serves the app at /two-degrees/app.
+  const src = (!onSite ? 'app.html' : location.hostname.endsWith('github.io') ? '/two-degrees/app.html' : '/two-degrees/app') + location.search;
   const frame = document.getElementById('app'), widgets = document.getElementById('widgetsFrame');
   frame.src = src;
   widgets.src = src + (src.includes('?') ? '&' : '?') + 'widgets';   // the same app, showing just its widgets

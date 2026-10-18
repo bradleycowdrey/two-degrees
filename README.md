@@ -7,8 +7,13 @@ Made by <a href="https://bradcowdrey.com">Bradley Cowdrey · bradcowdrey.com</a>
 
 <p align="center">
   <a href="https://github.com/bradleycowdrey/two-degrees/releases/latest/download/TwoDegrees.dmg"><b>Download for Mac</b></a> ·
-  <a href="https://bradcowdrey.com/two-degrees">Web app</a> ·
+  <a href="https://bradcowdrey.com/two-degrees">Try it in your browser</a> ·
   <a href="https://github.com/bradleycowdrey/two-degrees/issues">Report an issue</a>
+</p>
+
+<p align="center">
+  <a href="https://bradcowdrey.com/two-degrees"><img src="docs/screenshot-app.png" width="380" alt="Two Degrees: New York at 71°F with 22°C beside it, the next 24 hours, and a 5-day forecast with each day's low and high at the ends of its bar. Click to try it in your browser."></a><br>
+  <sub>Click the picture to try the live app at <a href="https://bradcowdrey.com/two-degrees">bradcowdrey.com/two-degrees</a> (also on <a href="https://bradleycowdrey.github.io/two-degrees/">GitHub Pages</a>).</sub>
 </p>
 
 ---
@@ -21,7 +26,7 @@ Pick which unit is large; the other always sits right next to it.
 - **Both units, always**: the current temperature, feels-like, today's range, every hour and every day, in °F and °C.
 - **Lives in the Dock**: the Dock icon shows the live reading (`57°` over `14°C`) and the sky. Right-click it for every saved city.
 - **And the menu bar**: `☁ 57° · 14°`, with the full panel one click away. Larger unit only, or icon only, if you prefer.
-- **Widgets**: small, medium and large desktop / Notification Center widgets. Each picks its own city (search any place) and which unit is large.
+- **Widgets**: small, medium and large desktop / Notification Center widgets. Each picks its own city (search any place) and which unit is large. Right-click the desktop → **Edit Widgets** → search **Two Degrees**.
 - **Borrowed from Meridian**: drag the menu bar panel to tear it off into a window, window position (left, centre, right), keep on top, five sizes (⌘+ / ⌘−) and SF Pro or Inter.
 - **Next 24 hours**: a scrolling strip with a temperature line, icons, and rain chance when it's 20% or more.
 - **5-day forecast**: lows and highs in both units, on range bars drawn to one shared, labelled scale (ticks every 10°F / 5°C), with a dot for right now.
@@ -31,6 +36,11 @@ Pick which unit is large; the other always sits right next to it.
 - **The details**: open at login, `F` / `C` keys to swap units, VoiceOver reads both units.
 - **Automatic updates** from GitHub Releases, SHA-256 verified, one click to install.
 - No account, no API key, no tracking. Weather data from [Open-Meteo](https://open-meteo.com) (CC BY 4.0), refreshed every 15 minutes.
+
+<p align="center">
+  <a href="https://bradcowdrey.com/two-degrees#widgets"><img src="docs/screenshot-widgets.png" width="760" alt="The large, medium and small Two Degrees widgets on a desktop: New York in °F and London with °C large."></a><br>
+  <sub>The widgets. See them live at <a href="https://bradcowdrey.com/two-degrees#widgets">bradcowdrey.com/two-degrees</a>.</sub>
+</p>
 
 Native SwiftUI, universal binary (Apple silicon + Intel), macOS 14 Sonoma or later.
 
@@ -45,7 +55,8 @@ Both come from this repo through GitHub Pages (`main` → `/docs`), so a push he
   (`?c=Denver~39.739~-104.990|London~51.507~-0.128`). Where it can't reach Open-Meteo (offline, or a sandboxed
   preview), it says so and shows a labelled sample forecast.
 
-Edit the files in `web/`, then run `scripts/build-web.sh` to rebuild `docs/`.
+Edit the files in `web/`, then run `scripts/build-web.sh` to rebuild `docs/`. `node scripts/readme-shots.js` redraws the two
+pictures in this README from the web app.
 
 ## Install (sideload)
 
