@@ -25,6 +25,7 @@ Pick which unit is large; the other always sits right next to it.
 
 ## What's new
 
+- **0.3.4**: fixed a widget going blank after you picked a different city.
 - **0.3.3**: widgets redraw as soon as the app opens after an update.
 - **0.3.2**: a clearer 5-day forecast. Each day's low and high sit at the ends of its bar, on one shared scale,
   in the app, the web app and the large widget.
