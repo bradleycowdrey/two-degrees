@@ -227,6 +227,60 @@
 
   .skeleton { color: var(--faint); font-size: 14px; padding: 8px 0; }
 
+  /* Widget mode (app?widgets): the Mac widgets, live, laid out like a desktop. Shown on the product page.
+     Sizes follow the macOS grid: small S×S, medium (2S+g)×S, large (2S+g)×(2S+g). */
+  html.widgets-mode, html.widgets-mode body { background: transparent; }
+  html.widgets-mode body { padding: 0; }
+  html.widgets-mode main.panel, html.widgets-mode .toast { display: none !important; }
+  .wdesk { --S: 170px; --g: 20px; display: grid; grid-template-columns: repeat(4, var(--S)); grid-template-rows: repeat(2, var(--S)); gap: var(--g);
+    justify-content: center; padding: 8px 0 24px; }
+  .wdesk.narrow { grid-template-columns: repeat(2, var(--S)); grid-template-rows: repeat(4, var(--S)); }
+  .w { position: relative; overflow: hidden; min-width: 0; background: var(--bg); border-radius: 22px; padding: 16px; color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, system-ui, sans-serif; letter-spacing: 0;
+    box-shadow: 0 0 0 0.5px rgba(255,255,255,.1), 0 18px 40px rgba(0,0,0,.45); }
+  .w::before { content: ""; position: absolute; inset: 0 0 auto; height: 3px; background: var(--crimson); }
+  .w.large { grid-area: 1 / 1 / 3 / 3; display: flex; flex-direction: column; gap: 10px; }
+  .w.medium { grid-area: 1 / 3 / 2 / 5; display: flex; gap: 12px; }
+  .w.small.a { grid-area: 2 / 3 / 3 / 4; }
+  .w.small.b { grid-area: 2 / 4 / 3 / 5; }
+  .wdesk.narrow .w.medium { grid-area: 3 / 1 / 4 / 3; }
+  .wdesk.narrow .w.small.a { grid-area: 4 / 1 / 5 / 2; }
+  .wdesk.narrow .w.small.b { grid-area: 4 / 2 / 5 / 3; }
+  .w hr { flex: none; margin: 0; border: 0; background: var(--border-strong); height: 0.5px; }
+  .w.medium hr { width: 0.5px; height: auto; }
+  .wn { display: flex; flex-direction: column; height: 100%; min-width: 0; }
+  .w.medium .wn { width: 120px; flex: none; }
+  .w.large .wn { height: 104px; flex: none; }
+  .wn-top { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; }
+  .wn-top b { flex: 1; min-width: 0; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .wn-top svg { width: 18px; height: 18px; flex: none; }
+  .wn-temp { margin-top: auto; display: flex; align-items: baseline; gap: 6px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .wn-temp span { font-size: var(--big); font-weight: 600; letter-spacing: -.03em; line-height: 1.05; }
+  .wn-temp small { font-size: calc(var(--big) * .45); font-weight: 500; color: var(--muted); }
+  .wn-cond, .wn-range { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .wn-cond { font-size: 12px; font-weight: 600; color: var(--secondary); }
+  .wn-range { font-size: 11px; font-weight: 500; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .wh { flex: 1; display: flex; min-width: 0; }
+  .wh > div { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .wh span { font-size: 10px; font-weight: 500; color: var(--muted); }
+  .wh span.wnow { font-weight: 600; color: var(--cream); }
+  .wh svg { width: 16px; height: 18px; }
+  .wh b { font-size: 13px; font-weight: 600; }
+  .wh small { font-size: 10px; color: var(--muted); }
+  .wd { display: flex; flex-direction: column; gap: 6px; }
+  .wd-row { display: grid; grid-template-columns: 40px 18px minmax(0, 1fr) 54px; gap: 8px; align-items: center; height: 16px; font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .wd-row svg { width: 15px; height: 15px; }
+  .wd-track { position: relative; height: 16px; }
+  /* As in the app: one scale for all five days, each low and high riding the ends of its bar. */
+  .wd-bar { position: absolute; left: 30px; right: 30px; top: 50%; height: 5px; margin-top: -2.5px; }
+  .wd-bar i { position: absolute; top: 0; bottom: 0; min-width: 5px; border-radius: 5px; }
+  .wd-bar u { position: absolute; top: 50%; width: 8px; height: 8px; margin: -4px 0 0 -4px; border-radius: 50%; background: var(--text); box-shadow: 0 0 0 2px var(--bg); }
+  .wd-lo, .wd-hi { position: absolute; top: 50%; transform: translateY(-50%); white-space: nowrap; line-height: 1; }
+  .wd-lo { padding-right: 4px; color: var(--secondary); }
+  .wd-hi { padding-left: 4px; }
+  .wd-o { font-size: 10px; font-weight: 400; color: var(--muted); text-align: right; white-space: nowrap; }
+  .w .wload { margin-top: auto; font-size: 12px; color: var(--faint); }
+
   @media (max-width: 460px) {
     .panel { padding: 25px 14px 16px; border-radius: 24px; }
     .tile { padding: 16px; }
@@ -321,6 +375,7 @@
   </footer>
 </main>
 <div class="toast" id="toast" role="status" hidden></div>
+<section class="wdesk" id="widgets" aria-label="Two Degrees widgets" hidden></section>
 
 <script>
 (() => {
@@ -400,6 +455,7 @@
 
   /* ---------- State ---------- */
   const EMBEDDED = window.parent !== window;   // running inside the product page's frame
+  const WIDGETS = new URLSearchParams(location.search).has('widgets');   // app?widgets: just the Mac widgets, live
   const state = {
     unit: store.get('unit', defaultUnit()),
     cities: [],
@@ -632,6 +688,7 @@
   }
 
   function render() {
+    if (WIDGETS) return renderWidgets();
     renderCities();
     const city = state.cities[state.active];
     const data = state.data[keyOf(city)];
@@ -743,6 +800,54 @@
       ? `${data.stale ? 'Offline · from' : 'Updated'} ${new Date(data.fetchedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`
       : 'Sample forecast';
     document.title = `${deg(cur.t, u)}°${u} ${city.name} · Two Degrees`;
+  }
+
+  /* ---------- Widget mode: the Mac app's small, medium and large widgets (WidgetViews.swift) ---------- */
+  function widgetNow(city, d, u, big = 40) {
+    const o = other(u);
+    if (!d) return `<div class="wn"><div class="wn-top"><b>${esc(city.name)}</b></div><div class="wload">Loading…</div></div>`;
+    const cur = d.current, lo = Math.min(d.daily[0].min, cur.t), hi = Math.max(d.daily[0].max, cur.t);
+    const foot = d.source !== 'live' ? 'Sample forecast'
+      : d.stale ? `Offline · from ${new Date(d.fetchedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`
+      : `${deg(lo, u)}–${deg(hi, u)}°${u} · ${deg(lo, o)}–${deg(hi, o)}°${o}`;
+    return `<div class="wn"><div class="wn-top"><b>${esc(city.name)}</b>${icon(cur.code, cur.isDay, '')}</div>
+      <div class="wn-temp" style="--big:${big}px" role="img" aria-label="${speak(cur.t)}"><span>${deg(cur.t, u)}°</span><small>${deg(cur.t, o)}°${o}</small></div>
+      <div class="wn-cond">${esc(codeInfo(cur.code)[0])}</div><div class="wn-range">${foot}</div></div>`;
+  }
+  function widgetHours(d, u, count) {
+    if (!d) return '<div class="wh"></div>';
+    const o = other(u);
+    return `<div class="wh">${upcoming(d).slice(0, count).map((h, i) => `<div><span class="${i ? '' : 'wnow'}">${i ? hour12(h.time) : 'Now'}</span>${icon(h.code, h.isDay, '')}<b>${deg(h.t, u)}°</b><small>${deg(h.t, o)}°${o}</small></div>`).join('')}</div>`;
+  }
+  function widgetDays(d, u) {
+    if (!d) return '';
+    const o = other(u), cur = d.current, days = d.daily.slice(0, 5);
+    const lo = Math.min(cur.t, ...days.map((x) => x.min)), hi = Math.max(cur.t, ...days.map((x) => x.max)), span = Math.max(hi - lo, 1);
+    const pct = (t) => ((t - lo) / span * 100).toFixed(1);
+    return `<div class="wd">${days.map((d0, i) => {
+      const x = i === 0 ? { ...d0, min: Math.min(d0.min, cur.t), max: Math.max(d0.max, cur.t) } : d0;
+      return `<div class="wd-row" role="img" aria-label="${i ? weekday(x.date) : 'Today'}: ${esc(codeInfo(x.code)[0])}. Low ${speak(x.min)}. High ${speak(x.max)}."><span>${i ? weekday(x.date) : 'Today'}</span>${icon(x.code, true, '')}
+        <span class="wd-track"><span class="wd-bar"><i style="left:${pct(x.min)}%;right:${(100 - pct(x.max)).toFixed(1)}%;background:linear-gradient(90deg,${tempColor(x.min)},${tempColor(x.max)})"></i>${i === 0 ? `<u style="left:${pct(cur.t)}%"></u>` : ''}
+        <span class="wd-lo" style="right:${(100 - pct(x.min)).toFixed(1)}%">${deg(x.min, u)}°</span><span class="wd-hi" style="left:${pct(x.max)}%">${deg(x.max, u)}°</span></span></span>
+        <span class="wd-o">${deg(x.min, o)}–${deg(x.max, o)}°${o}</span></div>`;
+    }).join('')}</div>`;
+  }
+  function renderWidgets() {
+    // The active city in the visitor's unit, plus a second small widget showing the next city with the other
+    // unit large: each widget picks its own city and unit, as on the Mac.
+    const n = state.cities.length, a = state.cities[state.active], b = state.cities[(state.active + 1) % n];
+    const u = state.unit, ub = other(u), da = state.data[keyOf(a)], db = state.data[keyOf(b)];
+    $('#widgets').innerHTML =
+      `<div class="w large">${widgetNow(a, da, u, 44)}<hr>${widgetHours(da, u, 6)}<hr>${widgetDays(da, u)}</div>` +
+      `<div class="w medium">${widgetNow(a, da, u)}<hr>${widgetHours(da, u, 5)}</div>` +
+      `<div class="w small a">${widgetNow(a, da, u)}</div>` +
+      `<div class="w small b">${widgetNow(b, db, ub)}</div>`;
+  }
+  function fitWidgets() {
+    // Four columns when they fit, two below that; scaled down (never up) to the frame's width.
+    const box = $('#widgets'), wide = innerWidth >= 740;
+    box.classList.toggle('narrow', !wide);
+    box.style.zoom = Math.min(1, innerWidth / (wide ? 740 : 360));
   }
 
   async function refreshAll() {
@@ -933,6 +1038,20 @@
     document.documentElement.classList.add('embedded');
     const post = () => window.parent.postMessage({ twoDegreesHeight: Math.ceil(document.body.getBoundingClientRect().height) }, '*');
     new ResizeObserver(post).observe(document.body);
+  }
+  if (WIDGETS) {
+    document.documentElement.classList.add('widgets-mode');
+    $('#widgets').hidden = false;
+    fitWidgets();
+    addEventListener('resize', fitWidgets);
+    // Follow the app on the same page: a new city or unit there shows up here.
+    addEventListener('storage', (e) => {
+      if (!e.key || !e.key.startsWith('twodegrees.') || e.key.startsWith('twodegrees.wx.')) return;
+      state.unit = store.get('unit', state.unit);
+      state.cities = store.get('cities', state.cities);
+      state.active = Math.min(store.get('active', 0), state.cities.length - 1);
+      refreshAll();
+    });
   }
   window.__twoDegreesTest = { deg };   // read by tests/web.test.js
   applyLook();

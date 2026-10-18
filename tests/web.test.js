@@ -218,6 +218,42 @@ async function setSize(page, size) {
     await context.close();
   }
 
+  // Widget mode (app?widgets, shown on the product page): the Mac widgets, live, at every width.
+  for (const [vp, w, h] of VIEWPORTS) {
+    const context = await browser.newContext({ viewport: { width: w, height: h } });
+    const page = await context.newPage();
+    const errors = [];
+    page.on('pageerror', (e) => errors.push(e.message));
+    await page.goto(PAGE + '?widgets');
+    await page.waitForSelector('.w.large .wd-row');
+    await page.waitForSelector('.w.small.b .wn-temp');   // the second city loads after the first
+    const t = (what) => `${vp} widgets: ${what}`;
+    const r = await page.evaluate(() => {
+      const problems = [];
+      for (const e of document.querySelectorAll('.w *')) {
+        if (!e.children.length && e.scrollWidth > e.clientWidth + 1 && getComputedStyle(e).textOverflow !== 'ellipsis') problems.push(`clipped "${e.textContent.trim().slice(0, 20)}"`);
+      }
+      for (const wd of document.querySelectorAll('.w')) if (wd.scrollHeight > wd.clientHeight + 1) problems.push(`${wd.className} is too short for its content`);
+      for (const row of document.querySelectorAll('.wd-row')) {
+        const q = (s) => row.querySelector(s).getBoundingClientRect();
+        const fill = q('.wd-bar i'), lo = q('.wd-lo'), hi = q('.wd-hi'), track = q('.wd-track');
+        if (Math.abs(lo.right - fill.left) > 1 || Math.abs(hi.left - fill.right) > 1) problems.push('a low/high is not at the end of its bar');
+        if (lo.left < track.left - 0.5 || hi.right > track.right + 0.5) problems.push('a low/high runs out of its row');
+      }
+      if (document.documentElement.scrollWidth > innerWidth) problems.push('widgets scroll sideways');
+      return {
+        problems,
+        sizes: [...document.querySelectorAll('.w')].map((e) => e.className.replace('w ', '')),
+        panelShown: getComputedStyle(document.querySelector('main.panel')).display !== 'none',
+        units: [...document.querySelectorAll('.w.small .wn-temp small')].map((e) => e.textContent.slice(-1)),
+      };
+    });
+    check(r.sizes.join(',') === 'large,medium,small a,small b' && !r.panelShown, t(`large, medium and two small widgets, without the app (${r.sizes.join(', ')})`));
+    check(r.units.length === 2 && r.units[0] !== r.units[1], t(`the two small widgets show different units large (${r.units.join(', ')})`));
+    check(r.problems.length === 0 && errors.length === 0, t('layout') + (r.problems.length || errors.length ? ` — ${[...r.problems, ...errors].join('; ')}` : ''));
+    await context.close();
+  }
+
   await browser.close();
   const summary = `${failed === 0 ? 'ALL PASSED' : failed + ' FAILED'} (${passed} passed)`;
   console.log([summary, ...results].join('\n'));
