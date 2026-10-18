@@ -156,7 +156,7 @@ enum OpenMeteo {
     /// Swapped for a stubbed session in unit tests.
     nonisolated(unsafe) static var session: URLSession = .shared
 
-    static func forecast(for city: City) async throws -> Forecast {
+    static func forecast(for city: City, timeout: TimeInterval = 20) async throws -> Forecast {
         var components = URLComponents(string: "https://api.open-meteo.com/v1/forecast")!
         components.queryItems = [
             .init(name: "latitude", value: String(format: "%.4f", city.latitude)),
@@ -167,7 +167,7 @@ enum OpenMeteo {
             .init(name: "hourly", value: "temperature_2m,weather_code,precipitation_probability,is_day"),
             .init(name: "daily", value: "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset"),
         ]
-        var request = URLRequest(url: components.url!, timeoutInterval: 20)
+        var request = URLRequest(url: components.url!, timeoutInterval: timeout)
         request.setValue("TwoDegrees", forHTTPHeaderField: "User-Agent")
         let (data, response) = try await session.data(for: request)
         guard (response as? HTTPURLResponse)?.statusCode == 200 else { throw URLError(.badServerResponse) }

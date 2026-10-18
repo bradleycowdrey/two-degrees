@@ -110,8 +110,10 @@ struct Provider: AppIntentTimelineProvider {
 
     func timeline(for configuration: WidgetSettings, in context: Context) async -> Timeline<WeatherEntry> {
         let entry = await entry(for: configuration)
-        // Fresh numbers every 30 minutes; sooner after a failed fetch.
-        let next = Date().addingTimeInterval(entry.failed ? 10 * 60 : 30 * 60)
+        // Fresh numbers every 30 minutes; sooner after a failed fetch, and soonest when there is
+        // nothing to show yet (a city that was just picked).
+        let wait: TimeInterval = !entry.failed ? 30 * 60 : entry.isPlaceholder ? 2 * 60 : 10 * 60
+        let next = Date().addingTimeInterval(wait)
         return Timeline(entries: [entry], policy: .after(next))
     }
 
@@ -119,17 +121,20 @@ struct Provider: AppIntentTimelineProvider {
         let city = configuration.city?.city ?? WidgetDefaults.cities[0]
         let unit = configuration.unit.unit
         let key = "forecast." + city.id
-        do {
-            let forecast = try await OpenMeteo.forecast(for: city)
-            if let data = try? JSONEncoder().encode(forecast) { UserDefaults.standard.set(data, forKey: key) }
-            return WeatherEntry(date: Date(), city: city, unit: unit, forecast: forecast)
-        } catch {
-            // Offline: show the last good forecast, clearly labelled with its time.
-            if let data = UserDefaults.standard.data(forKey: key), let saved = try? JSONDecoder().decode(Forecast.self, from: data) {
-                return WeatherEntry(date: Date(), city: city, unit: unit, forecast: saved, failed: true)
+        // WidgetKit gives a timeline only a few seconds. Two short tries fit inside that; one long
+        // try didn't, so the system gave up and kept showing the previous city after an edit.
+        for attempt in 0..<2 {
+            if let forecast = try? await OpenMeteo.forecast(for: city, timeout: 6) {
+                if let data = try? JSONEncoder().encode(forecast) { UserDefaults.standard.set(data, forKey: key) }
+                return WeatherEntry(date: Date(), city: city, unit: unit, forecast: forecast)
             }
-            return WeatherEntry(date: Date(), city: city, unit: unit, forecast: .placeholder, isPlaceholder: true, failed: true)
+            if attempt == 0 { try? await Task.sleep(for: .seconds(1)) }
         }
+        // Offline: show the last good forecast, clearly labelled with its time.
+        if let data = UserDefaults.standard.data(forKey: key), let saved = try? JSONDecoder().decode(Forecast.self, from: data) {
+            return WeatherEntry(date: Date(), city: city, unit: unit, forecast: saved, failed: true)
+        }
+        return WeatherEntry(date: Date(), city: city, unit: unit, forecast: .placeholder, isPlaceholder: true, failed: true)
     }
 }
 

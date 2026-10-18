@@ -79,10 +79,12 @@ private struct NowBlock: View {
         let now = entry.forecast.now, unit = entry.unit, other = entry.unit.other
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .center, spacing: 6) {
+                // Always readable, so a just-picked city shows its name while its forecast loads.
                 Text(entry.city.name)
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(Palette.textPrimary)
                     .lineLimit(1)
+                    .unredacted()
                 Spacer(minLength: 4)
                 WeatherSymbol(code: now.code, isDay: now.isDay, size: 15)
             }
@@ -106,7 +108,14 @@ private struct NowBlock: View {
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(Palette.textSecondary)
                 .lineLimit(1)
-            if entry.failed && !entry.isPlaceholder {
+            if entry.failed && entry.isPlaceholder {
+                Text("Can’t reach the weather · retrying")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(Palette.textMuted)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                    .unredacted()
+            } else if entry.failed {
                 Text("Offline · from \(entry.forecast.fetchedAt.formatted(date: .omitted, time: .shortened))")
                     .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(Palette.textMuted)
