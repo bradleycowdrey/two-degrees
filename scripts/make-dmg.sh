@@ -11,6 +11,37 @@ DMG="dist/TwoDegrees-$VERSION.dmg"
 WORK="$(mktemp -d)"
 rm -f "$DMG"
 
+NOTARIZE=false
+if [[ -n "${NOTARY_APPLE_ID:-}" && -n "${NOTARY_PASSWORD:-}" && -n "${NOTARY_TEAM_ID:-}" ]]; then NOTARIZE=true; fi
+
+# Submit to Apple's notary service and wait. Anything but "Accepted" stops the release, with
+# Apple's log of what it rejected.
+notarize() {
+  local out status id
+  out="$(xcrun notarytool submit "$1" --apple-id "$NOTARY_APPLE_ID" --password "$NOTARY_PASSWORD" \
+    --team-id "$NOTARY_TEAM_ID" --wait --timeout 45m --output-format json)" || true
+  echo "$out"
+  status="$(printf '%s' "$out" | python3 -c 'import json,sys
+try: print(json.load(sys.stdin).get("status", ""))
+except Exception: print("")')"
+  id="$(printf '%s' "$out" | python3 -c 'import json,sys
+try: print(json.load(sys.stdin).get("id", ""))
+except Exception: print("")')"
+  if [[ "$status" != "Accepted" ]]; then
+    echo "::error::Notarization of $(basename "$1") was not accepted (status: ${status:-none})"
+    [[ -n "$id" ]] && xcrun notarytool log "$id" --apple-id "$NOTARY_APPLE_ID" --password "$NOTARY_PASSWORD" --team-id "$NOTARY_TEAM_ID" || true
+    exit 1
+  fi
+}
+
+# Notarize and staple the app itself first, so it carries its own ticket: an app the updater
+# copies out of the DMG opens without needing to ask Apple online.
+if $NOTARIZE; then
+  ditto -c -k --keepParent dist/TwoDegrees.app "$WORK/TwoDegrees.zip"
+  notarize "$WORK/TwoDegrees.zip"
+  xcrun stapler staple dist/TwoDegrees.app
+fi
+
 # Styled installer window (branded background, fixed layout, no toolbar) via dmgbuild,
 # which writes Finder's .DS_Store directly instead of scripting Finder.
 styled() {
@@ -43,9 +74,8 @@ if [[ -n "${CODESIGN_IDENTITY:-}" && "${CODESIGN_IDENTITY}" != "-" ]]; then
   codesign --sign "$CODESIGN_IDENTITY" --timestamp "$DMG"
 fi
 
-if [[ -n "${NOTARY_APPLE_ID:-}" && -n "${NOTARY_PASSWORD:-}" && -n "${NOTARY_TEAM_ID:-}" ]]; then
-  xcrun notarytool submit "$DMG" --apple-id "$NOTARY_APPLE_ID" --password "$NOTARY_PASSWORD" \
-    --team-id "$NOTARY_TEAM_ID" --wait
+if $NOTARIZE; then
+  notarize "$DMG"
   xcrun stapler staple "$DMG"
 fi
 

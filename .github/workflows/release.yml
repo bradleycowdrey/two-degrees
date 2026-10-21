@@ -23,22 +23,37 @@ jobs:
         with:
           fetch-depth: 0
 
-      # Optional: Developer ID signing + notarization removes the Gatekeeper warning.
-      # Add these repository secrets to enable it; without them the app is ad-hoc signed.
+      # Developer ID signing + notarization, so macOS opens the app and runs its widget with no
+      # warnings. Needs these repository secrets: DEVELOPER_ID_P12 (the certificate, base64),
+      # DEVELOPER_ID_P12_PASSWORD, NOTARY_APPLE_ID and NOTARY_PASSWORD (an app-specific password).
+      # The signing identity and team ID are read from the certificate. Without the secrets the
+      # app is ad-hoc signed, as before.
       - name: Import signing certificate
         if: env.HAS_SIGNING_CERT == 'true'
         env:
           P12: ${{ secrets.DEVELOPER_ID_P12 }}
           P12_PASSWORD: ${{ secrets.DEVELOPER_ID_P12_PASSWORD }}
+          NOTARY_APPLE_ID: ${{ secrets.NOTARY_APPLE_ID }}
+          NOTARY_PASSWORD: ${{ secrets.NOTARY_PASSWORD }}
         run: |
+          # A signed app that isn't notarized is still blocked by Gatekeeper: insist on both.
+          [[ -n "$NOTARY_APPLE_ID" && -n "$NOTARY_PASSWORD" ]] || { echo "::error::DEVELOPER_ID_P12 is set but NOTARY_APPLE_ID or NOTARY_PASSWORD is missing"; exit 1; }
           KEYCHAIN="$RUNNER_TEMP/build.keychain"
           echo "$P12" | base64 --decode > "$RUNNER_TEMP/cert.p12"
           security create-keychain -p ci "$KEYCHAIN"
-          security set-keychain-settings "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
           security unlock-keychain -p ci "$KEYCHAIN"
-          security import "$RUNNER_TEMP/cert.p12" -k "$KEYCHAIN" -P "$P12_PASSWORD" -T /usr/bin/codesign
-          security set-key-partition-list -S apple-tool:,apple: -s -k ci "$KEYCHAIN"
+          security import "$RUNNER_TEMP/cert.p12" -k "$KEYCHAIN" -P "$P12_PASSWORD" -T /usr/bin/codesign \
+            || { echo "::error::Couldn't import the certificate: check DEVELOPER_ID_P12 is the base64 of the .p12 and DEVELOPER_ID_P12_PASSWORD is its password"; exit 1; }
+          security set-key-partition-list -S apple-tool:,apple: -s -k ci "$KEYCHAIN" >/dev/null
           security list-keychains -d user -s "$KEYCHAIN"
+          rm -f "$RUNNER_TEMP/cert.p12"
+          ID="$(security find-identity -v -p codesigning "$KEYCHAIN" | awk -F'"' '/Developer ID Application/ {print $2; exit}')"
+          [[ -n "$ID" ]] || { echo "::error::The certificate isn't a Developer ID Application certificate"; security find-identity -v -p codesigning "$KEYCHAIN"; exit 1; }
+          TEAM="${ID##*(}"; TEAM="${TEAM%)}"
+          echo "Signing as: $ID (team $TEAM)"
+          echo "CODESIGN_IDENTITY=$ID" >> "$GITHUB_ENV"
+          echo "DERIVED_TEAM_ID=$TEAM" >> "$GITHUB_ENV"
 
       - name: Work out version
         run: |
@@ -50,14 +65,31 @@ jobs:
 
       - name: Build and package
         env:
-          CODESIGN_IDENTITY: ${{ secrets.CODESIGN_IDENTITY }}
           NOTARY_APPLE_ID: ${{ secrets.NOTARY_APPLE_ID }}
           NOTARY_PASSWORD: ${{ secrets.NOTARY_PASSWORD }}
           NOTARY_TEAM_ID: ${{ secrets.NOTARY_TEAM_ID }}
         run: |
+          export NOTARY_TEAM_ID="${NOTARY_TEAM_ID:-${DERIVED_TEAM_ID:-}}"
           scripts/build-app.sh "$TAG"
           scripts/make-dmg.sh "$TAG"
           cp dist/TwoDegrees-*.dmg dist/TwoDegrees.dmg
+
+      - name: Check Gatekeeper accepts it
+        if: env.HAS_SIGNING_CERT == 'true'
+        run: |
+          # Exactly what a Mac checks on first launch: Developer ID, notarized, ticket stapled to the
+          # app and the DMG, and the widget signed by the same team.
+          set -o pipefail
+          DMG="$(ls dist/TwoDegrees-*.dmg)"
+          spctl -a -vv -t exec dist/TwoDegrees.app 2>&1 | tee "$RUNNER_TEMP/gk.txt"
+          grep -q "source=Notarized Developer ID" "$RUNNER_TEMP/gk.txt" || { echo "::error::Gatekeeper doesn't accept the app as notarized"; exit 1; }
+          spctl -a -vv -t open --context context:primary-signature "$DMG"
+          xcrun stapler validate dist/TwoDegrees.app
+          xcrun stapler validate "$DMG"
+          APP_TEAM="$(codesign -dv dist/TwoDegrees.app 2>&1 | sed -n 's/^TeamIdentifier=//p')"
+          WIDGET_TEAM="$(codesign -dv dist/TwoDegrees.app/Contents/PlugIns/TwoDegreesWidget.appex 2>&1 | sed -n 's/^TeamIdentifier=//p')"
+          echo "app team $APP_TEAM, widget team $WIDGET_TEAM"
+          [[ -n "$APP_TEAM" && "$APP_TEAM" == "$WIDGET_TEAM" ]] || { echo "::error::The app and its widget aren't signed by the same team"; exit 1; }
 
       - name: Publish release
         env:
@@ -70,7 +102,7 @@ jobs:
             # The notes are this version's section of CHANGELOG.md, then how to install.
             CHANGES="$(awk -v v="## [${TAG##*v}]" 'index($0, v) == 1 {on=1; next} on && /^## \[/ {exit} on' CHANGELOG.md)"
             printf '%s\n\n%s\n' "${CHANGES:-See CHANGELOG.md for what changed.}" \
-              "**Install:** download the DMG, open it and drag Two Degrees into Applications. First launch: right-click Two Degrees, then Open. For a widget: right-click the desktop, choose Edit Widgets and search for Two Degrees. Made by Bradley Cowdrey · bradcowdrey.com" > notes.md
+              "**Install:** download the DMG, open it and drag Two Degrees into Applications.$([[ "$HAS_SIGNING_CERT" == "true" ]] && echo " It's signed and notarized by Apple, so it opens like any other app." || echo " First launch: right-click Two Degrees, then Open.") For a widget: right-click the desktop, choose Edit Widgets and search for Two Degrees. Made by Bradley Cowdrey · bradcowdrey.com" > notes.md
             gh release create "$TAG" dist/*.dmg dist/*.sha256 \
               --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --latest \
               --title "Two Degrees ${TAG##*v}" \
