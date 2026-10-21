@@ -19,7 +19,7 @@ if [[ -n "${NOTARY_APPLE_ID:-}" && -n "${NOTARY_PASSWORD:-}" && -n "${NOTARY_TEA
 notarize() {
   local out status id
   out="$(xcrun notarytool submit "$1" --apple-id "$NOTARY_APPLE_ID" --password "$NOTARY_PASSWORD" \
-    --team-id "$NOTARY_TEAM_ID" --wait --timeout 45m --output-format json)" || true
+    --team-id "$NOTARY_TEAM_ID" --wait --timeout 3h --output-format json)" || true
   echo "$out"
   status="$(printf '%s' "$out" | python3 -c 'import json,sys
 try: print(json.load(sys.stdin).get("status", ""))

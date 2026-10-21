@@ -16,6 +16,9 @@ permissions:
 jobs:
   release:
     runs-on: macos-15
+    # Notarizing two submissions (the app, then the DMG) can take hours while Apple reviews a new
+    # developer account; afterwards it's minutes.
+    timeout-minutes: 420
     env:
       HAS_SIGNING_CERT: ${{ secrets.DEVELOPER_ID_P12 != '' }}
     steps:

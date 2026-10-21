@@ -5,14 +5,11 @@ Two Degrees updates itself: when a new version is out, the app shows a banner wi
 
 ## [0.3.7] - 2026-10-21
 
+- **Signed and notarized by Apple.** Two Degrees is now signed with a Developer ID and checked by Apple, so it opens
+  with a double-click (no "Open Anyway", no Terminal) and macOS runs its widget without second thoughts.
 - **Terms of Use and Privacy.** Two Degrees asks you to agree once, the first time it opens. The terms are always
   one click away under ⋯ → **Terms & Privacy** (in the app and on the web), in **Settings**, and at
   [bradcowdrey.com/legal](https://bradcowdrey.com/legal).
-
-## [0.3.6] - 2026-10-21
-
-- **Signed and notarized by Apple.** Two Degrees is now signed with a Developer ID and checked by Apple, so it opens
-  with a double-click (no "Open Anyway", no Terminal) and macOS runs its widget without second thoughts.
 
 ## [0.3.5] - 2026-10-18
 
@@ -92,7 +89,6 @@ Also new on [bradcowdrey.com/two-degrees](https://bradcowdrey.com/two-degrees) s
 - First release: the weather in °F and °C at once, in the Dock (a live temperature on the icon) and the menu bar,
   with the next 24 hours, a 5-day forecast, up to five cities and a Share button. Data from Open-Meteo.
 
-[0.3.6]: https://github.com/bradleycowdrey/two-degrees/releases/tag/v0.3.6
 [0.3.5]: https://github.com/bradleycowdrey/two-degrees/releases/tag/v0.3.5
 [0.3.4]: https://github.com/bradleycowdrey/two-degrees/releases/tag/v0.3.4
 [0.3.3]: https://github.com/bradleycowdrey/two-degrees/releases/tag/v0.3.3
