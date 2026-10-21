@@ -113,6 +113,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Then redraw the widgets, so after an update they show the new version right away instead of
         // at their next scheduled refresh.
         WidgetCenter.shared.reloadAllTimelines()
+        Terms.askIfNeeded()   // first run only, and after a material change to the terms
     }
 
     @MainActor

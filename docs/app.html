@@ -954,7 +954,8 @@
       menu.innerHTML = `<div class="sec">Size</div>` + SIZES.map(([id, label]) => item(`data-size="${id}"`, label, state.size === id)).join('') +
         `<hr><div class="sec">Font</div>` + item('data-font="system"', 'System (SF Pro)', state.font === 'system') + item('data-font="inter"', 'Inter (bradcowdrey.com)', state.font === 'inter') +
         `<hr>` + (canLocate() ? `<button type="button" role="menuitem" data-act="locate"><span class="ck"></span><span>Use My Location</span></button>` : '') +
-        `<button type="button" role="menuitem" data-act="copy"><span class="ck"></span><span>Copy Current Reading</span></button>`;
+        `<button type="button" role="menuitem" data-act="copy"><span class="ck"></span><span>Copy Current Reading</span></button>` +
+        `<button type="button" role="menuitem" data-act="terms"><span class="ck"></span><span>Terms &amp; Privacy</span></button>`;
       menu.hidden = false;
       menu.querySelector('button').focus();
     } else menu.hidden = true;
@@ -985,6 +986,7 @@
     if (b.dataset.font) { state.font = b.dataset.font; store.set('font', state.font); applyLook(); }
     if (b.dataset.act === 'locate') locate();
     if (b.dataset.act === 'copy') copyReading();
+    if (b.dataset.act === 'terms') window.open('https://bradcowdrey.com/legal', '_blank', 'noopener');
   });
 
   /* ---------- Events ---------- */
