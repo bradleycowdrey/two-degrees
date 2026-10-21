@@ -237,6 +237,27 @@ enum SelfTest {
         // The app re-registers its exact build at launch, so macOS never judges the widget against a stale version.
         check(LSRegisterURL(Bundle.main.bundleURL as CFURL, true) == noErr, "app registers its own build with LaunchServices")
 
+        // The first-launch Terms prompt: the real dialog on screen, photographed, then I Agree pressed.
+        let termsDefaults = UserDefaults(suiteName: "TwoDegrees.selftest.terms") ?? .standard
+        termsDefaults.removePersistentDomain(forName: "TwoDegrees.selftest.terms")
+        check(!Terms.accepted(in: termsDefaults), "terms: a first launch hasn't agreed yet, so it asks")
+        var termsButtons: [String] = []
+        var termsText = ""
+        let agreed = Terms.ask(defaults: termsDefaults, quit: false) { alert in
+            termsButtons = alert.buttons.map(\.title)
+            termsText = alert.messageText + " " + alert.informativeText
+            if let content = alert.window.contentView, let rep = content.bitmapImageRepForCachingDisplay(in: content.bounds) {
+                content.cacheDisplay(in: content.bounds, to: rep)
+                try? rep.representation(using: .png, properties: [:])?.write(to: dir.appendingPathComponent("terms-prompt.png"))
+            }
+            alert.buttons.first?.performClick(nil)
+        }
+        check(termsButtons == ["I Agree", "Read the Terms", "Quit"], "terms: the dialog offers I Agree, Read the Terms and Quit (\(termsButtons.joined(separator: ", ")))")
+        check(termsText.contains("bradcowdrey.com/legal") && termsText.contains("Open-Meteo"), "terms: the dialog names the terms page and where locations go")
+        check(agreed && Terms.accepted(in: termsDefaults), "terms: I Agree is remembered, so it isn't asked again")
+        termsDefaults.set("an-older-version", forKey: Terms.key)
+        check(!Terms.accepted(in: termsDefaults), "terms: after the terms change, it asks again")
+
         // 9. Logic checks that need no UI.
         let fromTag = try? Updater.release(fromTagPage: URL(string: "https://github.com/bradleycowdrey/two-degrees/releases/tag/v1.2.3")!)
         check(fromTag?.version == "1.2.3" && fromTag?.dmg.lastPathComponent == "TwoDegrees-1.2.3.dmg", "update fallback reads the version from the release page")

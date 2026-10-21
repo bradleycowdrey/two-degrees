@@ -481,3 +481,15 @@ final class WidgetDataTests: XCTestCase {
         XCTAssertEqual(found.first?.region, "Colorado, United States")
     }
 }
+
+/// The Terms prompt asks on a first launch and after the terms change, and not otherwise.
+final class TermsTests: XCTestCase {
+    func testAskedOnFirstLaunchAndAfterAChangeOnly() {
+        let defaults = UserDefaults(suiteName: "TwoDegrees.tests.terms.\(UUID().uuidString)")!
+        XCTAssertFalse(Terms.accepted(in: defaults))
+        defaults.set(Brand.termsVersion, forKey: Terms.key)
+        XCTAssertTrue(Terms.accepted(in: defaults))
+        defaults.set("2020-01-01", forKey: Terms.key)
+        XCTAssertFalse(Terms.accepted(in: defaults))
+    }
+}
