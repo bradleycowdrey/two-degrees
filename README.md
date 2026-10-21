@@ -123,6 +123,10 @@ Bump the number in `VERSION` and push to `main`. GitHub Actions builds a univers
 [Meteorologist](https://sourceforge.net/projects/heat-meteo/) (multiple locations in the menu bar), WeatherDock (a SwiftUI popover),
 [DatWeatherDoe](https://github.com/inderdhir/DatWeatherDoe) (simple, dark-mode friendly) and [wego](https://github.com/schachmat/wego) (weather that gets out of the way).
 
+## Terms and privacy
+
+Using Two Degrees means agreeing to the [Terms of Use and Privacy](TERMS.md) (also at [bradcowdrey.com/legal](https://bradcowdrey.com/legal)), which cover every app, AI skill, book and page Bradley Cowdrey publishes. In short: it's free and provided as is, you use it at your own risk, and your cities stay on your Mac. The app asks you to agree the first time it opens, and ⋯ → **Terms & Privacy** opens them any time.
+
 ## License
 
 MIT. See [LICENSE](LICENSE). Inter is under the SIL Open Font License.

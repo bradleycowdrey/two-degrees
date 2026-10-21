@@ -3,6 +3,12 @@
 Two Degrees updates itself: when a new version is out, the app shows a banner with an **Update** button
 (or use **Check for Updates** in the ⋯ menu). Every version is on [Releases](https://github.com/bradleycowdrey/two-degrees/releases).
 
+## [0.3.7] - 2026-10-21
+
+- **Terms of Use and Privacy.** Two Degrees asks you to agree once, the first time it opens. The terms are always
+  one click away under ⋯ → **Terms & Privacy** (in the app and on the web), in **Settings**, and at
+  [bradcowdrey.com/legal](https://bradcowdrey.com/legal).
+
 ## [0.3.6] - 2026-10-21
 
 - **Signed and notarized by Apple.** Two Degrees is now signed with a Developer ID and checked by Apple, so it opens
