@@ -1,9 +1,14 @@
 name: Release
 
-# Every push to main builds the app and publishes the DMG on GitHub Releases as v<VERSION>,
+# Every push to main with an unreleased VERSION builds Two Degrees and releases it as v<VERSION>,
 # plus a stable TwoDegrees.dmg so https://github.com/bradleycowdrey/two-degrees/releases/latest/download/TwoDegrees.dmg
-# always serves the newest build. Bump VERSION for a new release; pushing again with the same
-# VERSION replaces that release's files.
+# always serves the newest build. Bump VERSION for a new release; a published version is never replaced.
+#
+# Signed releases (Developer ID secrets present) happen in two steps, because Apple's notarization can
+# take hours: this workflow builds and signs the app, submits it to Apple without waiting, and keeps
+# the build as a "pending-release-<tag>" artifact. finish-release.yml checks Apple every 30 minutes
+# and, once Apple accepts, staples the ticket, builds the DMG, checks Gatekeeper and publishes.
+# Without the secrets the app is ad-hoc signed and published right away, as before.
 on:
   push:
     branches: [main]
@@ -12,102 +17,76 @@ on:
 
 permissions:
   contents: write
+  actions: read
 
 jobs:
   release:
     runs-on: macos-15
-    # Notarizing the app can take an hour or more while Apple reviews a new developer account.
-    timeout-minutes: 240
+    timeout-minutes: 60
     env:
       HAS_SIGNING_CERT: ${{ secrets.DEVELOPER_ID_P12 != '' }}
+      GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # Developer ID signing + notarization, so macOS opens the app and runs its widget with no
-      # warnings. Needs these repository secrets: DEVELOPER_ID_P12 (the certificate, base64),
-      # DEVELOPER_ID_P12_PASSWORD, NOTARY_APPLE_ID and NOTARY_PASSWORD (an app-specific password).
-      # The signing identity and team ID are read from the certificate. Without the secrets the
-      # app is ad-hoc signed, as before.
-      - name: Import signing certificate
-        if: env.HAS_SIGNING_CERT == 'true'
-        env:
-          P12: ${{ secrets.DEVELOPER_ID_P12 }}
-          P12_PASSWORD: ${{ secrets.DEVELOPER_ID_P12_PASSWORD }}
-          NOTARY_APPLE_ID: ${{ secrets.NOTARY_APPLE_ID }}
-          NOTARY_PASSWORD: ${{ secrets.NOTARY_PASSWORD }}
+      - name: Work out version, and whether there's anything to do
+        id: state
         run: |
-          # A signed app that isn't notarized is still blocked by Gatekeeper: insist on both.
-          [[ -n "$NOTARY_APPLE_ID" && -n "$NOTARY_PASSWORD" ]] || { echo "::error::DEVELOPER_ID_P12 is set but NOTARY_APPLE_ID or NOTARY_PASSWORD is missing"; exit 1; }
-          KEYCHAIN="$RUNNER_TEMP/build.keychain"
-          echo "$P12" | base64 --decode > "$RUNNER_TEMP/cert.p12"
-          security create-keychain -p ci "$KEYCHAIN"
-          security set-keychain-settings -lut 21600 "$KEYCHAIN"
-          security unlock-keychain -p ci "$KEYCHAIN"
-          security import "$RUNNER_TEMP/cert.p12" -k "$KEYCHAIN" -P "$P12_PASSWORD" -T /usr/bin/codesign \
-            || { echo "::error::Couldn't import the certificate: check DEVELOPER_ID_P12 is the base64 of the .p12 and DEVELOPER_ID_P12_PASSWORD is its password"; exit 1; }
-          security set-key-partition-list -S apple-tool:,apple: -s -k ci "$KEYCHAIN" >/dev/null
-          security list-keychains -d user -s "$KEYCHAIN"
-          rm -f "$RUNNER_TEMP/cert.p12"
-          ID="$(security find-identity -v -p codesigning "$KEYCHAIN" | awk -F'"' '/Developer ID Application/ {print $2; exit}')"
-          [[ -n "$ID" ]] || { echo "::error::The certificate isn't a Developer ID Application certificate"; security find-identity -v -p codesigning "$KEYCHAIN"; exit 1; }
-          TEAM="${ID##*(}"; TEAM="${TEAM%)}"
-          echo "Signing as: $ID (team $TEAM)"
-          echo "CODESIGN_IDENTITY=$ID" >> "$GITHUB_ENV"
-          echo "DERIVED_TEAM_ID=$TEAM" >> "$GITHUB_ENV"
-
-      - name: Work out version
-        run: |
-          if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
-            echo "TAG=$GITHUB_REF_NAME" >> "$GITHUB_ENV"
-          else
-            echo "TAG=v$(tr -d '[:space:]' < VERSION)" >> "$GITHUB_ENV"
+          if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then TAG="$GITHUB_REF_NAME"; else TAG="v$(tr -d '[:space:]' < VERSION)"; fi
+          echo "TAG=$TAG" >> "$GITHUB_ENV"
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release $TAG already exists; nothing to do. Bump VERSION to release new code."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          elif [[ -n "$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=pending-release-$TAG" -q '.artifacts[]|select(.expired|not)|.id')" ]]; then
+            echo "::notice::$TAG is already with Apple for notarization; finish-release.yml publishes it once Apple accepts. Bump VERSION to release newer code."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Build and package
+      - name: Import signing certificate
+        if: steps.state.outputs.skip != 'true' && env.HAS_SIGNING_CERT == 'true'
+        env:
+          DEVELOPER_ID_P12: ${{ secrets.DEVELOPER_ID_P12 }}
+          DEVELOPER_ID_P12_PASSWORD: ${{ secrets.DEVELOPER_ID_P12_PASSWORD }}
+          NOTARY_APPLE_ID: ${{ secrets.NOTARY_APPLE_ID }}
+          NOTARY_PASSWORD: ${{ secrets.NOTARY_PASSWORD }}
+        run: scripts/import-signing-cert.sh
+
+      - name: Build
+        if: steps.state.outputs.skip != 'true'
+        run: scripts/build-app.sh "$TAG"
+
+      # Unsigned path: package and publish now.
+      - name: Package and publish (ad-hoc signed)
+        if: steps.state.outputs.skip != 'true' && env.HAS_SIGNING_CERT != 'true'
+        run: |
+          scripts/make-dmg.sh "$TAG"
+          cp dist/TwoDegrees-*.dmg dist/TwoDegrees.dmg
+          scripts/publish-release.sh "$TAG" "$GITHUB_SHA"
+
+      # Signed path: submit the app to Apple and keep the build until Apple accepts it.
+      - name: Submit to Apple for notarization
+        if: steps.state.outputs.skip != 'true' && env.HAS_SIGNING_CERT == 'true'
         env:
           NOTARY_APPLE_ID: ${{ secrets.NOTARY_APPLE_ID }}
           NOTARY_PASSWORD: ${{ secrets.NOTARY_PASSWORD }}
           NOTARY_TEAM_ID: ${{ secrets.NOTARY_TEAM_ID }}
         run: |
-          export NOTARY_TEAM_ID="${NOTARY_TEAM_ID:-${DERIVED_TEAM_ID:-}}"
-          scripts/build-app.sh "$TAG"
-          scripts/make-dmg.sh "$TAG"
-          cp dist/TwoDegrees-*.dmg dist/TwoDegrees.dmg
+          TEAM="${NOTARY_TEAM_ID:-$DERIVED_TEAM_ID}"
+          mkdir -p pending
+          ditto -c -k --keepParent dist/TwoDegrees.app pending/TwoDegrees.app.zip
+          OUT="$(xcrun notarytool submit pending/TwoDegrees.app.zip --apple-id "$NOTARY_APPLE_ID" --password "$NOTARY_PASSWORD" --team-id "$TEAM" --output-format json)"
+          echo "$OUT"
+          ID="$(printf '%s' "$OUT" | python3 -c 'import json,sys; print(json.load(sys.stdin)["id"])')"
+          printf '{"tag": "%s", "sha": "%s", "submission": "%s"}\n' "$TAG" "$GITHUB_SHA" "$ID" > pending/release.json
+          cat pending/release.json
+          echo "::notice::$TAG submitted to Apple (submission $ID). finish-release.yml publishes it once Apple accepts; it checks every 30 minutes."
 
-      - name: Check Gatekeeper accepts it
-        if: env.HAS_SIGNING_CERT == 'true'
-        run: |
-          # What a Mac checks when the app is opened: Developer ID, notarized, ticket stapled to the app,
-          # and the widget signed by the same team. The DMG is signed; its own notarization is submitted
-          # without waiting (see make-dmg.sh), so its check here is informational.
-          set -o pipefail
-          DMG="$(ls dist/TwoDegrees-*.dmg)"
-          spctl -a -vv -t exec dist/TwoDegrees.app 2>&1 | tee "$RUNNER_TEMP/gk.txt"
-          grep -q "source=Notarized Developer ID" "$RUNNER_TEMP/gk.txt" || { echo "::error::Gatekeeper doesn't accept the app as notarized"; exit 1; }
-          xcrun stapler validate dist/TwoDegrees.app
-          codesign --verify --strict "$DMG" && codesign -dv "$DMG" 2>&1 | grep -E '^(Authority=Developer ID|TeamIdentifier)'
-          spctl -a -vv -t open --context context:primary-signature "$DMG" || echo "(DMG notarization still with Apple)"
-          APP_TEAM="$(codesign -dv dist/TwoDegrees.app 2>&1 | sed -n 's/^TeamIdentifier=//p')"
-          WIDGET_TEAM="$(codesign -dv dist/TwoDegrees.app/Contents/PlugIns/TwoDegreesWidget.appex 2>&1 | sed -n 's/^TeamIdentifier=//p')"
-          echo "app team $APP_TEAM, widget team $WIDGET_TEAM"
-          [[ -n "$APP_TEAM" && "$APP_TEAM" == "$WIDGET_TEAM" ]] || { echo "::error::The app and its widget aren't signed by the same team"; exit 1; }
-
-      - name: Publish release
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            # Never replace a published version's files; bump VERSION to release new code.
-            echo "Release $TAG already exists; not overwriting it."
-          else
-            # The notes are this version's section of CHANGELOG.md, then how to install.
-            CHANGES="$(awk -v v="## [${TAG##*v}]" 'index($0, v) == 1 {on=1; next} on && /^## \[/ {exit} on' CHANGELOG.md)"
-            printf '%s\n\n%s\n' "${CHANGES:-See CHANGELOG.md for what changed.}" \
-              "**Install:** download the DMG, open it and drag Two Degrees into Applications.$([[ "$HAS_SIGNING_CERT" == "true" ]] && echo " It's signed and notarized by Apple, so it opens like any other app." || echo " First launch: right-click Two Degrees, then Open.") For a widget: right-click the desktop, choose Edit Widgets and search for Two Degrees. Made by Bradley Cowdrey · bradcowdrey.com" > notes.md
-            gh release create "$TAG" dist/*.dmg dist/*.sha256 \
-              --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --latest \
-              --title "Two Degrees ${TAG##*v}" \
-              --notes-file notes.md
-          fi
+      - name: Keep the build until Apple accepts it
+        if: steps.state.outputs.skip != 'true' && env.HAS_SIGNING_CERT == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: pending-release-${{ env.TAG }}
+          path: pending/
+          retention-days: 30

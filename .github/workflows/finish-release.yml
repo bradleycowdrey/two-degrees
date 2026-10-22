@@ -1,0 +1,129 @@
+name: Finish release
+
+# Second step of a signed release (see release.yml). Every 30 minutes a small Linux job looks for
+# builds waiting on Apple ("pending-release-<tag>" artifacts). Only if there is one does a Mac ask
+# Apple about it. Still in review: try again next time. Rejected: print Apple's log and stop. Accepted:
+# staple the ticket, build and sign the DMG, check Gatekeeper, publish the release, and remove the
+# pending build so it's handled once.
+on:
+  schedule:
+    - cron: "7,37 * * * *"
+  workflow_run:
+    workflows: [Release]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: finish-release
+  cancel-in-progress: false
+
+jobs:
+  find:
+    runs-on: ubuntu-latest
+    outputs:
+      pending: ${{ steps.find.outputs.pending }}
+    steps:
+      - id: find
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PENDING="$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?per_page=100" \
+            -q '[.artifacts[] | select(.expired | not) | select(.name | startswith("pending-release-")) | {name, artifact: .id, run: .workflow_run.id}] | tojson')"
+          echo "Waiting on Apple: $PENDING"
+          echo "pending=$PENDING" >> "$GITHUB_OUTPUT"
+
+  finish:
+    needs: find
+    if: needs.find.outputs.pending != '[]' && needs.find.outputs.pending != ''
+    runs-on: macos-15
+    timeout-minutes: 45
+    strategy:
+      max-parallel: 1
+      fail-fast: false
+      matrix:
+        build: ${{ fromJSON(needs.find.outputs.pending) }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ matrix.build.name }}
+          run-id: ${{ matrix.build.run }}
+          github-token: ${{ github.token }}
+          path: pending
+
+      - name: Ask Apple
+        id: apple
+        env:
+          NOTARY_APPLE_ID: ${{ secrets.NOTARY_APPLE_ID }}
+          NOTARY_PASSWORD: ${{ secrets.NOTARY_PASSWORD }}
+          NOTARY_TEAM_ID: ${{ secrets.NOTARY_TEAM_ID }}
+          ARTIFACT_ID: ${{ matrix.build.artifact }}
+        run: |
+          TAG="$(python3 -c 'import json; print(json.load(open("pending/release.json"))["tag"])')"
+          SHA="$(python3 -c 'import json; print(json.load(open("pending/release.json"))["sha"])')"
+          ID="$(python3 -c 'import json; print(json.load(open("pending/release.json"))["submission"])')"
+          echo "TAG=$TAG" >> "$GITHUB_ENV"; echo "SHA=$SHA" >> "$GITHUB_ENV"
+          # The team ID: from the secret if set, else from the release's signing (stored in the app's signature).
+          ditto -x -k pending/TwoDegrees.app.zip dist
+          TEAM="${NOTARY_TEAM_ID:-$(codesign -dv dist/TwoDegrees.app 2>&1 | sed -n 's/^TeamIdentifier=//p')}"
+          echo "NOTARY_TEAM_ID=$TEAM" >> "$GITHUB_ENV"
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "$TAG is already published; removing the pending build."
+            gh api -X DELETE "repos/$GITHUB_REPOSITORY/actions/artifacts/$ARTIFACT_ID"
+            echo "status=done" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          OUT="$(xcrun notarytool info "$ID" --apple-id "$NOTARY_APPLE_ID" --password "$NOTARY_PASSWORD" --team-id "$TEAM" --output-format json)"
+          echo "$OUT"
+          STATUS="$(printf '%s' "$OUT" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("status",""))')"
+          case "$STATUS" in
+            Accepted) echo "status=accepted" >> "$GITHUB_OUTPUT" ;;
+            "In Progress") echo "::notice::$TAG is still with Apple (submission $ID); checking again in 30 minutes."
+                           echo "status=waiting" >> "$GITHUB_OUTPUT" ;;
+            *) echo "::error::Apple did not accept $TAG (status: ${STATUS:-unknown}). Its log follows; fix, bump VERSION and push."
+               xcrun notarytool log "$ID" --apple-id "$NOTARY_APPLE_ID" --password "$NOTARY_PASSWORD" --team-id "$TEAM" || true
+               gh api -X DELETE "repos/$GITHUB_REPOSITORY/actions/artifacts/$ARTIFACT_ID"
+               exit 1 ;;
+          esac
+
+      # Package exactly the release's commit (its DMG layout, CHANGELOG notes and scripts).
+      - name: Check out the release's commit
+        if: steps.apple.outputs.status == 'accepted'
+        run: git checkout -q "$SHA" -- scripts Resources CHANGELOG.md
+
+      - name: Import signing certificate
+        if: steps.apple.outputs.status == 'accepted'
+        env:
+          DEVELOPER_ID_P12: ${{ secrets.DEVELOPER_ID_P12 }}
+          DEVELOPER_ID_P12_PASSWORD: ${{ secrets.DEVELOPER_ID_P12_PASSWORD }}
+          NOTARY_APPLE_ID: ${{ secrets.NOTARY_APPLE_ID }}
+          NOTARY_PASSWORD: ${{ secrets.NOTARY_PASSWORD }}
+        run: scripts/import-signing-cert.sh
+
+      - name: Staple, package and check
+        if: steps.apple.outputs.status == 'accepted'
+        env:
+          NOTARY_APPLE_ID: ${{ secrets.NOTARY_APPLE_ID }}
+          NOTARY_PASSWORD: ${{ secrets.NOTARY_PASSWORD }}
+        run: |
+          xcrun stapler staple dist/TwoDegrees.app
+          APP_NOTARIZED=1 scripts/make-dmg.sh "$TAG"
+          cp dist/TwoDegrees-*.dmg dist/TwoDegrees.dmg
+          scripts/check-gatekeeper.sh
+
+      - name: Publish
+        if: steps.apple.outputs.status == 'accepted'
+        env:
+          ARTIFACT_ID: ${{ matrix.build.artifact }}
+        run: |
+          scripts/publish-release.sh "$TAG" "$SHA" signed
+          gh api -X DELETE "repos/$GITHUB_REPOSITORY/actions/artifacts/$ARTIFACT_ID"
+          echo "::notice::Published $TAG, signed and notarized."

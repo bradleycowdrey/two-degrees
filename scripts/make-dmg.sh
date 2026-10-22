@@ -35,8 +35,9 @@ except Exception: print("")')"
 }
 
 # Notarize and staple the app itself first, so it carries its own ticket: an app the updater
-# copies out of the DMG opens without needing to ask Apple online.
-if $NOTARIZE; then
+# copies out of the DMG opens without needing to ask Apple online. APP_NOTARIZED=1 means the release
+# workflow already did this (finish-release.yml, once Apple accepted the app).
+if $NOTARIZE && [[ "${APP_NOTARIZED:-}" != "1" ]]; then
   ditto -c -k --keepParent dist/TwoDegrees.app "$WORK/TwoDegrees.zip"
   notarize "$WORK/TwoDegrees.zip"
   xcrun stapler staple dist/TwoDegrees.app
