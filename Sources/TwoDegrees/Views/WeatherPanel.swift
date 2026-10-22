@@ -505,7 +505,12 @@ private struct CityChips: View {
                 let on = city.id == store.activeID
                 Button { store.select(city) } label: {
                     HStack(spacing: ui.pt(6)) {
-                        Text(city.name).font(ui.font(13, on ? .semibold : .medium))
+                        // Always as wide as the semibold (selected) name, so selecting a city never
+                        // changes the row's width and the Add | Edit capsule stays put.
+                        ZStack {
+                            Text(city.name).font(ui.font(13, .semibold)).hidden()
+                            Text(city.name).font(ui.font(13, on ? .semibold : .medium))
+                        }
                         if let forecast = store.forecasts[city.id] {
                             Text("\(store.unit.value(forecast.now.temperature))°")
                                 .font(ui.font(13, .medium))

@@ -77,6 +77,9 @@
     background: var(--border); color: var(--secondary); font-size: 13px; font-weight: 500; transition: background .15s, color .15s; }
   .chip:hover { background: var(--border-strong); color: var(--text); }
   .chip[aria-current="true"] { background: var(--cream); color: var(--bg); font-weight: 600; }
+  /* The name always takes its bold (selected) width, so selecting a city never reflows the row. */
+  .chip .n { display: inline-flex; flex-direction: column; }
+  .chip .n::after { content: attr(data-n); font-weight: 600; height: 0; overflow: hidden; visibility: hidden; }
   .chip .t { font-variant-numeric: tabular-nums; opacity: .72; font-weight: 500; }
   .chip-wrap { position: relative; display: inline-flex; }
   .chip-x { position: absolute; top: -6px; right: -6px; width: 20px; height: 20px; border: 0; border-radius: 50%; padding: 0; cursor: pointer;
@@ -681,7 +684,7 @@
     el.innerHTML = state.cities.map((c, i) => {
       const d = state.data[keyOf(c)];
       const t = d ? `<span class="t">${deg(d.current.t, state.unit)}°</span>` : '';
-      return `<span class="chip-wrap"><button type="button" class="chip" data-i="${i}" aria-current="${i === state.active}">${esc(c.name)}${t}</button>` +
+      return `<span class="chip-wrap"><button type="button" class="chip" data-i="${i}" aria-current="${i === state.active}"><span class="n" data-n="${esc(c.name)}">${esc(c.name)}</span>${t}</button>` +
         (state.cities.length > 1 ? `<button type="button" class="chip-x" data-x="${i}" aria-label="Remove ${esc(c.name)}">×</button>` : '') + `</span>`;
     }).join('') +
       listControls();

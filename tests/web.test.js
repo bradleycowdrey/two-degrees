@@ -102,9 +102,13 @@ async function setSize(page, size) {
     check(/degrees Fahrenheit, -?\d+ Celsius/.test(label || ''), t('screen readers hear both units'));
     check((await page.$$('.hour[role="img"][aria-label]')).length === 24, t('24 labelled hours'));
 
-    // Switch city.
+    // Switch city. Selecting a chip must not move any chip or the Add | Edit controls.
+    const chipBoxes = () => page.$$eval('.chip[data-i], #addBtn', (els) => els.map((e) => { const r = e.getBoundingClientRect(); return [r.x, r.y, r.width].map((v) => v.toFixed(1)).join(','); }).join(' '));
+    const boxesBefore = await chipBoxes();
     await page.click('.chip[data-i="1"]');
     check((await page.textContent('.place h2')).trim() === 'London' && await page.getAttribute('.chip[data-i="1"]', 'aria-current') === 'true', t('switching to London'));
+    const boxesAfter = await chipBoxes();
+    check(boxesBefore === boxesAfter, t(`selecting a city moves nothing in the city row (${boxesBefore} → ${boxesAfter})`));
 
     // Add a city from search, no duplicates, Escape closes.
     await page.click('#addBtn');

@@ -3,6 +3,14 @@
 Two Degrees updates itself: when a new version is out, the app shows a banner with an **Update** button
 (or use **Check for Updates** in the ⋯ menu). Every version is on [Releases](https://github.com/bradleycowdrey/two-degrees/releases).
 
+## [0.3.8] - 2026-10-22
+
+- **The menu bar panel opens centred under Two Degrees' menu bar item**, instead of hanging off to one side of
+  it. Near the edge of the screen it stays fully on screen.
+- Fixed: picking a different city moved the **+** | **✎** buttons (and could push them onto their own line),
+  because the selected city's name is bolder and wider. Each city now keeps the same width whether it's selected or
+  not, so nothing in the row moves. Same in the web app.
+
 ## [0.3.7] - 2026-10-21
 
 - **Signed and notarized by Apple.** Two Degrees is now signed with a Developer ID and checked by Apple, so it opens
@@ -89,6 +97,7 @@ Also new on [bradcowdrey.com/two-degrees](https://bradcowdrey.com/two-degrees) s
 - First release: the weather in °F and °C at once, in the Dock (a live temperature on the icon) and the menu bar,
   with the next 24 hours, a 5-day forecast, up to five cities and a Share button. Data from Open-Meteo.
 
+[0.3.8]: https://github.com/bradleycowdrey/two-degrees/releases/tag/v0.3.8
 [0.3.7]: https://github.com/bradleycowdrey/two-degrees/releases/tag/v0.3.7
 [0.3.5]: https://github.com/bradleycowdrey/two-degrees/releases/tag/v0.3.5
 [0.3.4]: https://github.com/bradleycowdrey/two-degrees/releases/tag/v0.3.4
