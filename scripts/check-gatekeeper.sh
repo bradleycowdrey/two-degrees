@@ -9,9 +9,10 @@ spctl -a -vv -t exec "$APP" 2>&1 | tee "$RUNNER_TEMP/gk.txt"
 grep -q "source=Notarized Developer ID" "$RUNNER_TEMP/gk.txt" || { echo "::error::Gatekeeper doesn't accept the app as notarized"; exit 1; }
 xcrun stapler validate "$APP"
 codesign --verify --strict "$DMG"
-# Read codesign's output whole: piping it into grep -q under pipefail fails when grep stops early (SIGPIPE).
-DMG_SIG="$(codesign -dv "$DMG" 2>&1)"
-grep -q '^Authority=Developer ID Application' <<<"$DMG_SIG" || { echo "::error::The DMG isn't signed with the Developer ID"; echo "$DMG_SIG"; exit 1; }
+# Authority lines need -dvv. Read the output whole: grep -q in a pipe under pipefail can SIGPIPE codesign.
+DMG_SIG="$(codesign -dvv "$DMG" 2>&1)"
+grep -q '^Authority=Developer ID Application' <<<"$DMG_SIG" \
+  || { echo "::error::The DMG isn't signed with the Developer ID:%0A${DMG_SIG//$'\n'/%0A}"; exit 1; }
 spctl -a -vv -t open --context context:primary-signature "$DMG" || echo "(DMG notarization still with Apple)"
 APP_TEAM="$(codesign -dv "$APP" 2>&1 | sed -n 's/^TeamIdentifier=//p')"
 WIDGET_TEAM="$(codesign -dv "$APP/Contents/PlugIns/TwoDegreesWidget.appex" 2>&1 | sed -n 's/^TeamIdentifier=//p')"
