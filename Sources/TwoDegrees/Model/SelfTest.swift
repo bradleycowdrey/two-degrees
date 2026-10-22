@@ -258,6 +258,34 @@ enum SelfTest {
         termsDefaults.set("an-older-version", forKey: Terms.key)
         check(!Terms.accepted(in: termsDefaults), "terms: after the terms change, it asks again")
 
+        // 8b. The menu bar panel: click the menu bar item, and the panel opens centred under it.
+        if let item = NSApp.windows.first(where: { $0.className.contains("StatusBarWindow") && $0.isVisible }),
+           let button = findStatusButton(in: item.contentView) {
+            let others = Set(NSApp.windows.map(ObjectIdentifier.init))
+            button.performClick(nil)
+            var panel: NSWindow?
+            for _ in 0..<20 where panel == nil {
+                try? await Task.sleep(for: .milliseconds(250))
+                panel = NSApp.windows.first { !others.contains(ObjectIdentifier($0)) && $0.isVisible && $0.frame.width > 100 }
+                    ?? NSApp.windows.first { $0.isVisible && $0.className.contains("MenuBarExtra") }
+            }
+            try? await Task.sleep(for: .seconds(0.8))
+            if let panel, let visible = (panel.screen ?? NSScreen.main)?.visibleFrame {
+                let expected = MenuBarPlacement.centeredX(itemMidX: item.frame.midX, width: panel.frame.width, visible: visible)
+                check(abs(panel.frame.minX - expected) <= 1 && panel.frame.maxY <= item.frame.minY + 1,
+                      "menu bar panel opens centred under its item: item centre \(Int(item.frame.midX)), panel \(Int(panel.frame.minX))–\(Int(panel.frame.maxX)) (centre \(Int(panel.frame.midX))), expected left \(Int(expected))")
+                if let content = panel.contentView, let rep = content.bitmapImageRepForCachingDisplay(in: content.bounds) {
+                    content.cacheDisplay(in: content.bounds, to: rep)
+                    try? rep.representation(using: .png, properties: [:])?.write(to: dir.appendingPathComponent("menu-bar-panel.png"))
+                }
+                panel.orderOut(nil)
+            } else {
+                check(false, "menu bar panel: clicking the menu bar item opened no panel")
+            }
+        } else {
+            check(false, "menu bar panel: no menu bar item found")
+        }
+
         // 9. Logic checks that need no UI.
         let fromTag = try? Updater.release(fromTagPage: URL(string: "https://github.com/bradleycowdrey/two-degrees/releases/tag/v1.2.3")!)
         check(fromTag?.version == "1.2.3" && fromTag?.dmg.lastPathComponent == "TwoDegrees-1.2.3.dmg", "update fallback reads the version from the release page")
@@ -289,6 +317,13 @@ enum SelfTest {
               "\(label): window \(Int(window.frame.width))x\(Int(window.frame.height)), panel \(Int(panelWidth)) wide, content \(Int(contentHeight)) tall"
               + (scrolls ? " (scrolls: screen allows \(Int(maxBodyHeight)))" : " (fits)")
               + (widthOK ? "" : " WIDTH MISMATCH") + (onScreen ? "" : " OFFSCREEN"))
+    }
+
+    private static func findStatusButton(in view: NSView?) -> NSButton? {
+        guard let view else { return nil }
+        if let button = view as? NSButton { return button }
+        for sub in view.subviews { if let b = findStatusButton(in: sub) { return b } }
+        return nil
     }
 
     private static func snapshot(host: HostWindow, dir: URL, name: String) {

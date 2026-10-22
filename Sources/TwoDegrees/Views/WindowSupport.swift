@@ -82,6 +82,21 @@ enum WindowPlacement: String, CaseIterable, Identifiable {
     }
 }
 
+/// The menu bar panel opens horizontally centred under the app's menu bar item (macOS puts it with
+/// its left edge at the item), kept on screen.
+enum MenuBarPlacement {
+    /// The left edge for a panel `width` wide centred under an item whose centre is at `itemMidX`.
+    static func centeredX(itemMidX: CGFloat, width: CGFloat, visible: CGRect) -> CGFloat {
+        let x = (itemMidX - width / 2).rounded()
+        return min(max(x, visible.minX), max(visible.minX, visible.maxX - width))
+    }
+
+    /// The screen frame of this app's menu bar item: the status bar window AppKit makes for it.
+    static var itemFrame: CGRect? {
+        NSApp.windows.first { $0.className.contains("StatusBarWindow") && $0.isVisible }?.frame
+    }
+}
+
 /// Holds the NSWindow hosting the panel (the menu bar popover or the desktop window), and keeps
 /// that window fully on screen: after any resize, from SwiftUI or from us, it is pulled back
 /// inside the screen's visible area (top edge first, so the header is never lost).
@@ -99,8 +114,18 @@ final class HostWindow {
         guard let window else { return }
         for name in [NSWindow.didResizeNotification, NSWindow.didChangeScreenNotification] {
             observers.append(NotificationCenter.default.addObserver(forName: name, object: window, queue: .main) { [weak self] _ in
+                self?.centerUnderMenuBarItem()
                 self?.keepOnScreen()
             })
+        }
+        if !isDesktop {
+            // macOS places the panel each time it opens; centre it again then.
+            for name in [NSWindow.didBecomeKeyNotification, NSWindow.didMoveNotification] {
+                observers.append(NotificationCenter.default.addObserver(forName: name, object: window, queue: .main) { [weak self] _ in
+                    self?.centerUnderMenuBarItem()
+                })
+            }
+            centerUnderMenuBarItem()
         }
         if isDesktop {
             observers.append(NotificationCenter.default.addObserver(forName: WindowPlacement.didRequest, object: nil, queue: .main) { [weak self] _ in
@@ -133,6 +158,17 @@ final class HostWindow {
                     window.animator().alphaValue = 1
                 }
             }
+        }
+    }
+
+    /// Centres the menu bar panel under the menu bar item. Does nothing for the desktop window, or a
+    /// panel that's already there (so moving it doesn't loop through didMove).
+    func centerUnderMenuBarItem() {
+        guard !isDesktop, let window, let item = MenuBarPlacement.itemFrame,
+              let visible = (window.screen ?? NSScreen.main)?.visibleFrame else { return }
+        let x = MenuBarPlacement.centeredX(itemMidX: item.midX, width: window.frame.width, visible: visible)
+        if abs(window.frame.origin.x - x) > 0.5 {
+            window.setFrameOrigin(NSPoint(x: x, y: window.frame.origin.y))
         }
     }
 

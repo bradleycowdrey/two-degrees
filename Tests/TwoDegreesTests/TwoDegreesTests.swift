@@ -296,6 +296,17 @@ final class MoreLogicTests: XCTestCase {
         XCTAssertEqual(WindowPlacement.topLeft(for: .edge(.center), size: size, visible: screen), NSPoint(x: 474, y: 884))
         XCTAssertEqual(WindowPlacement.topLeft(for: .edge(.right), size: size, visible: screen), NSPoint(x: 932, y: 884))
     }
+
+    func testMenuBarPanelCentersUnderItsItem() {
+        let screen = CGRect(x: 0, y: 0, width: 1440, height: 875)
+        // Centred under the item.
+        XCTAssertEqual(MenuBarPlacement.centeredX(itemMidX: 1000, width: 400, visible: screen), 800)
+        // Near a screen edge it stays on screen.
+        XCTAssertEqual(MenuBarPlacement.centeredX(itemMidX: 1400, width: 400, visible: screen), 1040)
+        XCTAssertEqual(MenuBarPlacement.centeredX(itemMidX: 50, width: 400, visible: screen), 0)
+        // A second display to the right.
+        XCTAssertEqual(MenuBarPlacement.centeredX(itemMidX: 2000, width: 300, visible: CGRect(x: 1440, y: 0, width: 1920, height: 1055)), 1850)
+    }
 }
 
 @MainActor
