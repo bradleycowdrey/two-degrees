@@ -23,19 +23,17 @@ create() {
     --title "Two Degrees ${TAG##*v}" \
     --notes-file "$RUNNER_TEMP/notes.md" 2>&1
 }
-# GitHub won't let the workflow token create a tag on a commit that changes .github/workflows (HTTP 403).
-# Then tag an empty "Release" commit on top of it instead: same files, so the tag still holds exactly the
-# code that was built and notarized.
+# GitHub won't let the workflow token create a tag whose .github/workflows differ from the default
+# branch's (HTTP 403). Then tag the default branch instead, but only if everything outside CI (.github,
+# scripts) is identical to the built commit, so the tag holds exactly the app that was built and notarized.
 if ! OUT="$(create "$SHA")"; then
-  if [[ "$OUT" == *"HTTP 403"* ]] && ! gh api "repos/$GITHUB_REPOSITORY/git/refs/tags/$TAG" >/dev/null 2>&1; then
+  HEAD_SHA="$(git rev-parse HEAD)"
+  if [[ "$OUT" == *"HTTP 403"* ]] && git diff --quiet "$SHA" "$HEAD_SHA" -- . ':!.github' ':!scripts'; then
     echo "$OUT"
-    TREE="$(gh api "repos/$GITHUB_REPOSITORY/git/commits/$SHA" -q .tree.sha)"
-    RELEASE_SHA="$(gh api -X POST "repos/$GITHUB_REPOSITORY/git/commits" -f message="Release $TAG" \
-      -f tree="$TREE" -f "parents[]=$SHA" -q .sha)"
-    echo "Tagging $TAG on $RELEASE_SHA (same files as $SHA)."
-    OUT="$(create "$RELEASE_SHA")" || { echo "::error::Couldn't publish $TAG:%0A${OUT//$'\n'/%0A}"; exit 1; }
+    echo "Tagging $TAG on $HEAD_SHA: only CI files differ from $SHA."
+    OUT="$(create "$HEAD_SHA")" || { echo "::error::Couldn't publish $TAG:%0A${OUT//$'\n'/%0A}"; exit 1; }
   else
-    echo "::error::Couldn't publish $TAG:%0A${OUT//$'\n'/%0A}"
+    echo "::error::Couldn't publish $TAG:%0A${OUT//$'\n'/%0A}%0AIf this is a 403, push the tag yourself (git push origin $SHA:refs/tags/$TAG) and run Finish release again."
     exit 1
   fi
 fi
