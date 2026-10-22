@@ -16,7 +16,13 @@ else
 fi
 printf '%s\n\n%s\n' "${CHANGES:-See CHANGELOG.md for what changed.}" \
   "**Install:** download the DMG, open it and drag Two Degrees into Applications.$OPEN For a widget: right-click the desktop, choose Edit Widgets and search for Two Degrees. Made by Bradley Cowdrey · bradcowdrey.com" > "$RUNNER_TEMP/notes.md"
-gh release create "$TAG" dist/*.dmg dist/*.sha256 \
+ls -l dist/*.dmg dist/*.sha256
+# On failure, gh's message goes into the error annotation, which can be read without the log.
+if ! OUT="$(gh release create "$TAG" dist/*.dmg dist/*.sha256 \
   --repo "$GITHUB_REPOSITORY" --target "$SHA" --latest \
   --title "Two Degrees ${TAG##*v}" \
-  --notes-file "$RUNNER_TEMP/notes.md"
+  --notes-file "$RUNNER_TEMP/notes.md" 2>&1)"; then
+  echo "::error::Couldn't publish $TAG:%0A${OUT//$'\n'/%0A}"
+  exit 1
+fi
+echo "$OUT"
