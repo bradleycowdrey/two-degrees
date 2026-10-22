@@ -22,7 +22,8 @@ if ! OUT="$(gh release create "$TAG" dist/*.dmg dist/*.sha256 \
   --repo "$GITHUB_REPOSITORY" --target "$SHA" --latest \
   --title "Two Degrees ${TAG##*v}" \
   --notes-file "$RUNNER_TEMP/notes.md" 2>&1)"; then
-  echo "::error::Couldn't publish $TAG:%0A${OUT//$'\n'/%0A}"
+  # GitHub won't let the workflow token create a tag on a commit that changes .github/workflows.
+  echo "::error::Couldn't publish $TAG:%0A${OUT//$'\n'/%0A}%0AIf this is a 403 and $SHA changes .github/workflows, push the tag yourself (git push origin $SHA:refs/tags/$TAG) and run Finish release again."
   exit 1
 fi
 echo "$OUT"
