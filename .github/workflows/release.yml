@@ -16,9 +16,8 @@ permissions:
 jobs:
   release:
     runs-on: macos-15
-    # Notarizing two submissions (the app, then the DMG) can take hours while Apple reviews a new
-    # developer account; afterwards it's minutes.
-    timeout-minutes: 420
+    # Notarizing the app can take an hour or more while Apple reviews a new developer account.
+    timeout-minutes: 240
     env:
       HAS_SIGNING_CERT: ${{ secrets.DEVELOPER_ID_P12 != '' }}
     steps:
@@ -80,15 +79,16 @@ jobs:
       - name: Check Gatekeeper accepts it
         if: env.HAS_SIGNING_CERT == 'true'
         run: |
-          # Exactly what a Mac checks on first launch: Developer ID, notarized, ticket stapled to the
-          # app and the DMG, and the widget signed by the same team.
+          # What a Mac checks when the app is opened: Developer ID, notarized, ticket stapled to the app,
+          # and the widget signed by the same team. The DMG is signed; its own notarization is submitted
+          # without waiting (see make-dmg.sh), so its check here is informational.
           set -o pipefail
           DMG="$(ls dist/TwoDegrees-*.dmg)"
           spctl -a -vv -t exec dist/TwoDegrees.app 2>&1 | tee "$RUNNER_TEMP/gk.txt"
           grep -q "source=Notarized Developer ID" "$RUNNER_TEMP/gk.txt" || { echo "::error::Gatekeeper doesn't accept the app as notarized"; exit 1; }
-          spctl -a -vv -t open --context context:primary-signature "$DMG"
           xcrun stapler validate dist/TwoDegrees.app
-          xcrun stapler validate "$DMG"
+          codesign --verify --strict "$DMG" && codesign -dv "$DMG" 2>&1 | grep -E '^(Authority=Developer ID|TeamIdentifier)'
+          spctl -a -vv -t open --context context:primary-signature "$DMG" || echo "(DMG notarization still with Apple)"
           APP_TEAM="$(codesign -dv dist/TwoDegrees.app 2>&1 | sed -n 's/^TeamIdentifier=//p')"
           WIDGET_TEAM="$(codesign -dv dist/TwoDegrees.app/Contents/PlugIns/TwoDegreesWidget.appex 2>&1 | sed -n 's/^TeamIdentifier=//p')"
           echo "app team $APP_TEAM, widget team $WIDGET_TEAM"

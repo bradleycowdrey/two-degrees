@@ -89,6 +89,7 @@ Also new on [bradcowdrey.com/two-degrees](https://bradcowdrey.com/two-degrees) s
 - First release: the weather in °F and °C at once, in the Dock (a live temperature on the icon) and the menu bar,
   with the next 24 hours, a 5-day forecast, up to five cities and a Share button. Data from Open-Meteo.
 
+[0.3.7]: https://github.com/bradleycowdrey/two-degrees/releases/tag/v0.3.7
 [0.3.5]: https://github.com/bradleycowdrey/two-degrees/releases/tag/v0.3.5
 [0.3.4]: https://github.com/bradleycowdrey/two-degrees/releases/tag/v0.3.4
 [0.3.3]: https://github.com/bradleycowdrey/two-degrees/releases/tag/v0.3.3

@@ -74,9 +74,13 @@ if [[ -n "${CODESIGN_IDENTITY:-}" && "${CODESIGN_IDENTITY}" != "-" ]]; then
   codesign --sign "$CODESIGN_IDENTITY" --timestamp "$DMG"
 fi
 
+# The DMG is submitted too, but not waited for: Apple has taken more than three hours to review it
+# while the app inside cleared in under one. The app carries its own stapled ticket, which is what
+# Gatekeeper checks when it's opened; the DMG's ticket follows online once Apple finishes.
 if $NOTARIZE; then
-  notarize "$DMG"
-  xcrun stapler staple "$DMG"
+  xcrun notarytool submit "$DMG" --apple-id "$NOTARY_APPLE_ID" --password "$NOTARY_PASSWORD" \
+    --team-id "$NOTARY_TEAM_ID" --output-format json \
+    || echo "::warning::Couldn't submit the DMG for notarization; the app inside is notarized and stapled"
 fi
 
 shasum -a 256 "$DMG" | tee "$DMG.sha256"
