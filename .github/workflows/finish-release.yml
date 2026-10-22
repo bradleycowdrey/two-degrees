@@ -94,10 +94,11 @@ jobs:
                exit 1 ;;
           esac
 
-      # Package exactly the release's commit (its DMG layout, CHANGELOG notes and scripts).
-      - name: Check out the release's commit
+      # Package the DMG exactly as at the release's commit (its layout and CHANGELOG notes). The checks
+      # and publishing scripts come from main, so a fix to them applies to builds already with Apple.
+      - name: Check out the release's DMG layout and notes
         if: steps.apple.outputs.status == 'accepted'
-        run: git checkout -q "$SHA" -- scripts Resources CHANGELOG.md
+        run: git checkout -q "$SHA" -- scripts/make-dmg.sh scripts/dmg-settings.py Resources CHANGELOG.md
 
       - name: Import signing certificate
         if: steps.apple.outputs.status == 'accepted'
