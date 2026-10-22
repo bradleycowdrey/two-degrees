@@ -3,6 +3,12 @@
 Two Degrees updates itself: when a new version is out, the app shows a banner with an **Update** button
 (or use **Check for Updates** in the ⋯ menu). Every version is on [Releases](https://github.com/bradleycowdrey/two-degrees/releases).
 
+## [0.3.9] - 2026-10-22
+
+- **Share is in the header now**, the first round button, left of °F | °C (it used to sit in the footer).
+- **A more compact 5-day forecast.** Opened, each day takes less height, so all five fit in less space.
+- Web app: the header fits on the narrowest phones; below 360px the logo stands in for the name.
+
 ## [0.3.8] - 2026-10-22
 
 - **The menu bar panel opens centred under Two Degrees' menu bar item**, instead of hanging off to one side of
@@ -97,6 +103,7 @@ Also new on [bradcowdrey.com/two-degrees](https://bradcowdrey.com/two-degrees) s
 - First release: the weather in °F and °C at once, in the Dock (a live temperature on the icon) and the menu bar,
   with the next 24 hours, a 5-day forecast, up to five cities and a Share button. Data from Open-Meteo.
 
+[0.3.9]: https://github.com/bradleycowdrey/two-degrees/releases/tag/v0.3.9
 [0.3.8]: https://github.com/bradleycowdrey/two-degrees/releases/tag/v0.3.8
 [0.3.7]: https://github.com/bradleycowdrey/two-degrees/releases/tag/v0.3.7
 [0.3.5]: https://github.com/bradleycowdrey/two-degrees/releases/tag/v0.3.5
