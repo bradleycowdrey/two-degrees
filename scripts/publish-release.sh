@@ -17,13 +17,26 @@ fi
 printf '%s\n\n%s\n' "${CHANGES:-See CHANGELOG.md for what changed.}" \
   "**Install:** download the DMG, open it and drag Two Degrees into Applications.$OPEN For a widget: right-click the desktop, choose Edit Widgets and search for Two Degrees. Made by Bradley Cowdrey · bradcowdrey.com" > "$RUNNER_TEMP/notes.md"
 ls -l dist/*.dmg dist/*.sha256
-# On failure, gh's message goes into the error annotation, which can be read without the log.
-if ! OUT="$(gh release create "$TAG" dist/*.dmg dist/*.sha256 \
-  --repo "$GITHUB_REPOSITORY" --target "$SHA" --latest \
-  --title "Two Degrees ${TAG##*v}" \
-  --notes-file "$RUNNER_TEMP/notes.md" 2>&1)"; then
-  # GitHub won't let the workflow token create a tag on a commit that changes .github/workflows.
-  echo "::error::Couldn't publish $TAG:%0A${OUT//$'\n'/%0A}%0AIf this is a 403 and $SHA changes .github/workflows, push the tag yourself (git push origin $SHA:refs/tags/$TAG) and run Finish release again."
-  exit 1
+create() {
+  gh release create "$TAG" dist/*.dmg dist/*.sha256 \
+    --repo "$GITHUB_REPOSITORY" --target "$1" --latest \
+    --title "Two Degrees ${TAG##*v}" \
+    --notes-file "$RUNNER_TEMP/notes.md" 2>&1
+}
+# GitHub won't let the workflow token create a tag on a commit that changes .github/workflows (HTTP 403).
+# Then tag an empty "Release" commit on top of it instead: same files, so the tag still holds exactly the
+# code that was built and notarized.
+if ! OUT="$(create "$SHA")"; then
+  if [[ "$OUT" == *"HTTP 403"* ]] && ! gh api "repos/$GITHUB_REPOSITORY/git/refs/tags/$TAG" >/dev/null 2>&1; then
+    echo "$OUT"
+    TREE="$(gh api "repos/$GITHUB_REPOSITORY/git/commits/$SHA" -q .tree.sha)"
+    RELEASE_SHA="$(gh api -X POST "repos/$GITHUB_REPOSITORY/git/commits" -f message="Release $TAG" \
+      -f tree="$TREE" -f "parents[]=$SHA" -q .sha)"
+    echo "Tagging $TAG on $RELEASE_SHA (same files as $SHA)."
+    OUT="$(create "$RELEASE_SHA")" || { echo "::error::Couldn't publish $TAG:%0A${OUT//$'\n'/%0A}"; exit 1; }
+  else
+    echo "::error::Couldn't publish $TAG:%0A${OUT//$'\n'/%0A}"
+    exit 1
+  fi
 fi
 echo "$OUT"
