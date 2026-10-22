@@ -159,15 +159,15 @@
   /* Each day's low and high ride the ends of its bar, so a bar reads as that day's range on the shared scale.
      --lab is the room kept either side of the scale for a label at its far end. */
   .day { --lab: 46px; --pad: 8px; display: grid; grid-template-columns: 52px 32px minmax(0, 1fr); align-items: center; gap: 10px;
-    min-height: 48px; padding-block: 2px; border-top: 0.5px solid var(--border-strong); font-variant-numeric: tabular-nums; }
+    min-height: 40px; padding-block: 0; border-top: 0.5px solid var(--border-strong); font-variant-numeric: tabular-nums; }
   .day:first-child { border-top: 0; }
   .day .d { font-size: 15px; font-weight: 600; }
   .day .ic { position: relative; display: flex; justify-content: center; }
-  .day .ic svg { width: 24px; height: 24px; }
-  .day .p { position: absolute; top: 100%; margin-top: 1px; font-size: 10px; font-weight: 600; line-height: 1; color: var(--rain); }
-  .day .track { position: relative; height: 40px; }
+  .day .ic svg { width: 22px; height: 22px; }
+  .day .p { position: absolute; top: 100%; margin-top: -2px; font-size: 10px; font-weight: 600; line-height: 1; color: var(--rain); }
+  .day .track { position: relative; height: 36px; }
   .day .bar { position: absolute; left: var(--lab); right: var(--lab); top: 50%; margin-top: -3px; background: none; box-shadow: none; }   /* no empty track: the ticks carry the scale */
-  .day .lo, .day .hi { position: absolute; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; line-height: 1.15;
+  .day .lo, .day .hi { position: absolute; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; line-height: 1.1;
     background: var(--tile); white-space: nowrap; }   /* the tile colour hides the empty track behind the label */
   .day .lo { align-items: flex-end; padding-right: var(--pad); }
   .day .hi { align-items: flex-start; padding-left: var(--pad); }
@@ -201,7 +201,7 @@
   .status.live .dot { background: #6FD39C; }
   .status a { text-decoration: underline; text-decoration-color: var(--border-strong); text-underline-offset: 2px; }
   .status a:hover { color: var(--text); }
-  /* Footer: status and Share on one row, the credit on its own full-width line beneath. */
+  /* Footer: the status line, the credit on its own full-width line beneath. */
   .foot { display: flex; flex-direction: column; gap: 8px; padding-top: 2px; }
   .foot-row { display: flex; align-items: center; gap: 10px; }
   .foot-row .status { flex: 1; min-width: 0; }
@@ -214,6 +214,10 @@
   .pill svg { width: 14px; height: 14px; }
 
   .share-wrap { position: relative; }
+  /* Share sits in the header: its menu drops down from the header's left edge, so it stays inside the panel. */
+  .hdr { position: relative; }
+  .hdr .share-wrap { position: static; }
+  .menu.share { top: 40px; bottom: auto; right: auto; left: 0; max-width: 100%; }
   .menu { position: absolute; right: 0; bottom: 38px; z-index: 5; width: 270px; padding: 6px; border-radius: 12px;
     background: rgba(42,37,32,.96); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
     box-shadow: 0 0 0 0.5px var(--border-strong), 0 12px 32px rgba(0,0,0,.5); font-size: 13px; }
@@ -287,8 +291,12 @@
   @media (max-width: 460px) {
     .panel { padding: 25px 14px 16px; border-radius: 24px; }
     .tile { padding: 16px; }
-    .hdr { gap: 8px; }
-    .hdr h1 { font-size: 17px; }
+    /* The header fits a phone with Share in it: tighter gaps, no spacer element (its two gaps), narrower °F/°C. */
+    .hdr { gap: 6px; }
+    .hdr .sp { display: none; }
+    .hdr .share-wrap { margin-left: auto; }
+    .hdr .seg button { min-width: 36px; padding: 0 8px; }
+    .hdr h1 { font-size: 16px; }
     .cities { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 0 -14px; padding: 2px 14px; }
     .cities::-webkit-scrollbar { display: none; }
     .chip-wrap, .chip { flex: none; }
@@ -309,6 +317,10 @@
     .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .day { --lab: 42px; --pad: 6px; grid-template-columns: 44px 30px minmax(0, 1fr); gap: 8px; }
   }
+  /* The narrowest phones: the logo stands for the name (still read out). */
+  @media (max-width: 359px) {
+    .hdr h1 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 
@@ -321,6 +333,12 @@
     </svg>
     <h1 id="appName">Two Degrees</h1>
     <span class="sp"></span>
+    <div class="share-wrap">
+      <button type="button" class="circle" id="shareBtn" aria-haspopup="menu" aria-expanded="false" title="Share Two Degrees" aria-label="Share Two Degrees">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7.5 7.5 12 3l4.5 4.5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>
+      </button>
+      <div class="menu share" id="shareMenu" role="menu" hidden></div>
+    </div>
     <div class="seg" role="group" aria-label="Larger unit">
       <button type="button" id="unitF" aria-pressed="true" title="Show °F large">°F</button>
       <button type="button" id="unitC" aria-pressed="false" title="Show °C large">°C</button>
@@ -366,13 +384,6 @@
   <footer class="foot">
     <div class="foot-row">
     <div class="status" id="status"><span class="dot"></span><span id="statusText" title="">Loading…</span><span aria-hidden="true">·</span><a href="https://open-meteo.com/" target="_blank" rel="noopener" title="Weather data by Open-Meteo.com">Data: Open-Meteo</a></div>
-    <div class="share-wrap">
-      <button type="button" class="pill" id="shareBtn" aria-haspopup="menu" aria-expanded="false" title="Share Two Degrees">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7.5 7.5 12 3l4.5 4.5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>
-        Share
-      </button>
-      <div class="menu" id="shareMenu" role="menu" hidden></div>
-    </div>
     </div>
     <a class="brand" href="https://bradcowdrey.com" target="_blank" rel="noopener">Made by Bradley Cowdrey. Free. Forever. · bradcowdrey.com ↗</a>
   </footer>

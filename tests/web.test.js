@@ -9,7 +9,7 @@ try { playwright = require('playwright'); } catch { playwright = require(path.jo
 
 const PAGE = 'file://' + path.resolve(__dirname, '../docs/app.html');
 const SHOTS = process.argv[2];
-const VIEWPORTS = [['phone', 390, 844], ['tablet', 768, 1024], ['desktop', 1280, 900]];
+const VIEWPORTS = [['small phone', 320, 640], ['phone', 390, 844], ['tablet', 768, 1024], ['desktop', 1280, 900]];
 const SIZES = ['extraSmall', 'small', 'medium', 'large', 'extraLarge'];
 const FOOTER = 'Made by Bradley Cowdrey. Free. Forever. · bradcowdrey.com ↗';
 
@@ -39,7 +39,7 @@ async function layoutProblems(page) {
     }
     for (const sel of ['.hdr h1', '.place h2', '.stat .v', '.stat .s', '.day .d', '.foot .brand', '#statusText', '.chip']) {
       for (const e of document.querySelectorAll(sel)) {
-        if (e.offsetParent === null) continue;
+        if (e.offsetParent === null || getComputedStyle(e).clipPath === 'inset(50%)') continue;   // hidden, or visually hidden on purpose
         if (e.scrollWidth > e.clientWidth + 1 && getComputedStyle(e).textOverflow !== 'ellipsis') problems.push(`${sel} clipped ("${e.textContent.trim().slice(0, 30)}")`);
       }
     }
@@ -143,9 +143,12 @@ async function setSize(page, size) {
     check((await page.$$('.chip-x')).length === 0, t('the last city cannot be removed'));
     check(await page.getAttribute('#editBtn', 'aria-pressed') === 'false', t('Edit turns itself off at one city'));
 
-    // Share menu.
+    // Share menu, from the header's left.
+    check(await page.$eval('.hdr', (h) => h.contains(document.querySelector('#shareBtn')) && h.scrollWidth <= h.clientWidth), t('Share is in the header, and the header fits'));
     await page.click('#shareBtn');
     check(await page.isVisible('#shareMenu') && (await page.$$('#shareMenu [data-share]')).length >= 3, t('Share opens its menu'));
+    const shareBox = await page.locator('#shareMenu').boundingBox();
+    check(shareBox.x >= 0 && shareBox.x + shareBox.width <= w, t(`the Share menu stays on screen (${Math.round(shareBox.x)}–${Math.round(shareBox.x + shareBox.width)} of ${w})`));
     await page.click('[data-share="web"]');
     await page.waitForSelector('#toast:not([hidden])');
     const copied = await page.evaluate(() => navigator.clipboard.readText()).catch(() => '');

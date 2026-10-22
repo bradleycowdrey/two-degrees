@@ -161,15 +161,18 @@ private struct WeatherPanelContent: View {
                 .fixedSize()
                 .layoutPriority(1)
             Spacer(minLength: ui.s)
-            UnitToggle()
-            HeaderCircleButton(symbol: "arrow.clockwise", help: "Refresh") {
-                Task { await store.refresh() }
+            HStack(spacing: ui.s) {
+                shareButton
+                UnitToggle()
+                HeaderCircleButton(symbol: "arrow.clockwise", help: "Refresh") {
+                    Task { await store.refresh() }
+                }
+                .disabled(store.loading)
+                if compact {
+                    HeaderCircleButton(symbol: "macwindow", help: "Open as Window") { tearOff() }
+                }
+                MoreMenu(compact: compact, closeHost: { host.window?.close() })
             }
-            .disabled(store.loading)
-            if compact {
-                HeaderCircleButton(symbol: "macwindow", help: "Open as Window") { tearOff() }
-            }
-            MoreMenu(compact: compact, closeHost: { host.window?.close() })
         }
     }
 
@@ -212,14 +215,11 @@ private struct WeatherPanelContent: View {
         host.window?.close()             // the panel goes away in the same beat
     }
 
-    /// Status and Share on one row, the credit on its own full-width line beneath.
+    /// The status line, the credit on its own full-width line beneath.
     private var footer: some View {
         VStack(alignment: .leading, spacing: ui.s) {
-            HStack(spacing: ui.pt(10)) {
-                StatusLine()
-                Spacer(minLength: ui.s)
-                shareButton
-            }
+            StatusLine()
+                .frame(maxWidth: .infinity, alignment: .leading)
             Link(destination: Brand.website) {
                 Text("Made by \(Brand.author). Free. Forever. · \(Brand.websiteHost) ↗")
                     .multilineTextAlignment(.leading)
@@ -237,10 +237,11 @@ private struct WeatherPanelContent: View {
             subject: Text("Two Degrees for Mac"),
             message: Text(Brand.shareMessage)
         ) {
-            Label("Share", systemImage: "square.and.arrow.up")
+            HeaderCircle(symbol: "square.and.arrow.up")
         }
-        .buttonStyle(PillButtonStyle(small: true))
+        .buttonStyle(.plain)
         .help("Share Two Degrees")
+        .accessibilityLabel("Share Two Degrees")
     }
 }
 
@@ -465,29 +466,38 @@ private struct MoreMenu: View {
 
 /// Outlined circle button matching the ⋯ menu, for header actions.
 private struct HeaderCircleButton: View {
-    @Environment(\.metrics) private var ui
-    @Environment(\.isEnabled) private var isEnabled
     let symbol: String
     let help: String
     let action: () -> Void
-    @State private var hovering = false
 
     var body: some View {
         Button(action: action) {
-            Image(systemName: symbol)
-                .font(ui.font(13, .semibold))
-                .foregroundStyle(hovering && isEnabled ? Palette.textPrimary : Palette.textSecondary)
-                .frame(width: ui.pt(32), height: ui.pt(32))
-                .background(Circle().fill(hovering && isEnabled ? Palette.border : Palette.raisedTile))
-                .overlay(Circle().strokeBorder(Palette.borderStrong, lineWidth: 0.5))
-                .contentShape(Circle())
-                .opacity(isEnabled ? 1 : 0.5)
+            HeaderCircle(symbol: symbol)
         }
         .buttonStyle(.plain)
-        .onHover { hovering = $0 }
-        .animation(.easeOut(duration: 0.15), value: hovering)
         .help(help)
         .accessibilityLabel(help)
+    }
+}
+
+/// The round header control's look, shared by its buttons and the Share link.
+private struct HeaderCircle: View {
+    @Environment(\.metrics) private var ui
+    @Environment(\.isEnabled) private var isEnabled
+    let symbol: String
+    @State private var hovering = false
+
+    var body: some View {
+        Image(systemName: symbol)
+            .font(ui.font(13, .semibold))
+            .foregroundStyle(hovering && isEnabled ? Palette.textPrimary : Palette.textSecondary)
+            .frame(width: ui.pt(32), height: ui.pt(32))
+            .background(Circle().fill(hovering && isEnabled ? Palette.border : Palette.raisedTile))
+            .overlay(Circle().strokeBorder(Palette.borderStrong, lineWidth: 0.5))
+            .contentShape(Circle())
+            .opacity(isEnabled ? 1 : 0.5)
+            .onHover { hovering = $0 }
+            .animation(.easeOut(duration: 0.15), value: hovering)
     }
 }
 
@@ -1065,7 +1075,7 @@ private struct DayRow: View {
                             .font(ui.font(10, .semibold))
                             .foregroundStyle(Palette.rain)
                             .fixedSize()
-                            .offset(y: ui.pt(12))
+                            .offset(y: ui.pt(10))
                     }
                 }
             RangeBar(low: day.low, high: day.high, scaleLow: low, scaleHigh: high, ticks: ticks, now: now) {
@@ -1079,11 +1089,10 @@ private struct DayRow: View {
                     Text("\(other.value(day.high))\(other.symbol)").font(ui.font(12)).foregroundStyle(Palette.textMuted)
                 }
             }
-            .frame(height: ui.pt(40))
+            .frame(height: ui.pt(36))
         }
         .monospacedDigit()
-        .frame(minHeight: ui.pt(48))
-        .padding(.vertical, ui.pt(2))
+        .frame(minHeight: ui.pt(40))   // compact rows: the two-line labels fill the height
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(name): \(Condition.name(day.code)). Low \(Speech.temperature(day.low)). High \(Speech.temperature(day.high)).\(day.rainChance >= 20 ? " \(day.rainChance) percent chance of rain." : "")")
     }
