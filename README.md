@@ -90,8 +90,8 @@ Two Degrees is distributed directly, not through the Mac App Store.
 
 1. Download [TwoDegrees.dmg](https://github.com/bradleycowdrey/two-degrees/releases/latest/download/TwoDegrees.dmg) (all versions are on [Releases](https://github.com/bradleycowdrey/two-degrees/releases)).
 2. Open the DMG and drag **Two Degrees** to **Applications**.
-3. First launch: if macOS says it can't verify the app, **right-click Two Degrees → Open → Open**, or run
-   `xattr -dr com.apple.quarantine /Applications/TwoDegrees.app`
+3. Open it. Two Degrees is signed with a Developer ID and notarized by Apple (since 0.3.7), so it opens with a
+   double-click. The first time, it asks you to agree to the [Terms of Use and Privacy](https://bradcowdrey.com/legal).
 4. Add your cities with the **+** button.
 
 ## Build from source
