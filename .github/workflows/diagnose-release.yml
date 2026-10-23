@@ -15,28 +15,25 @@ jobs:
   diagnose:
     runs-on: macos-15
     steps:
-      - name: Install the latest release and test what makes chronod keep its widget
+      - uses: actions/checkout@v4
+      - name: Compare what chronod does with each build's widget
         run: |
           exec > >(tee /tmp/report.txt) 2>&1
-          curl -fsSL -o /tmp/td.dmg https://github.com/bradleycowdrey/two-degrees/releases/latest/download/TwoDegrees.dmg
-          hdiutil attach -nobrowse -quiet -mountpoint /tmp/td /tmp/td.dmg
-          echo "== dates inside the DMG"; stat -f '%Sm  %N' /tmp/td/TwoDegrees.app /tmp/td/TwoDegrees.app/Contents /tmp/td/TwoDegrees.app/Contents/PlugIns/TwoDegreesWidget.appex /tmp/td/TwoDegrees.app/Contents/PlugIns/TwoDegreesWidget.appex/Contents/Info.plist
-          ditto /tmp/td/TwoDegrees.app /Applications/TwoDegrees.app
-          hdiutil detach -quiet /tmp/td
-          A=/Applications/TwoDegrees.app; W=$A/Contents/PlugIns/TwoDegreesWidget.appex
           LSREG=/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
-          echo "== dates installed"; stat -f '%Sm  %N' $A $W $W/Contents/Info.plist
-          chrono() { sleep 6; log show --last "$1" --style compact --predicate 'process == "chronod" AND eventMessage CONTAINS[c] "twodegrees"' | grep -v '^Timestamp' | cut -c1-400 | tail -12; }
-          echo "== A: as released"; open $A; chrono 20s
-          osascript -e 'quit app "TwoDegrees"' || pkill -x TwoDegrees || true
-          echo "== B: same app, files given today's date"
-          find $A -exec touch -h {} +
-          stat -f '%Sm  %N' $A $W
-          codesign --verify --deep --strict $A && echo "signature still valid"
-          "$LSREG" -f -R $A; open $A; chrono 20s
-          echo "== pluginkit"; pluginkit -m -v -i com.bradcowdrey.twodegrees.widget || true
-          echo "== the self-test build (ad-hoc, built here) for comparison"
-          echo "(see the Self-test workflow)"
+          A=/Applications/TwoDegrees.app; W=$A/Contents/PlugIns/TwoDegreesWidget.appex
+          trial() {   # $1 = label; the app to try is at /tmp/try/TwoDegrees.app
+            pkill -x TwoDegrees || true; sleep 1
+            rm -rf $A; ditto /tmp/try/TwoDegrees.app $A
+            "$LSREG" -f -R $A; open $A; sleep 8
+            echo "== $1: $(plutil -extract CFBundleShortVersionString raw $A/Contents/Info.plist), $(codesign -dvv $W 2>&1 | grep -m1 Authority || echo ad-hoc)"
+            log show --last 12s --style compact --predicate 'process == "chronod" AND eventMessage CONTAINS[c] "twodegrees"' \
+              | grep -E "shouldn't cache|Added extensions|descriptor|error|fail" | grep -v '^Timestamp' | cut -c1-330 | tail -6
+          }
+          dmg() { rm -rf /tmp/try; mkdir -p /tmp/try; curl -fsSL -o /tmp/x.dmg "$1"; hdiutil attach -nobrowse -quiet -mountpoint /tmp/m /tmp/x.dmg; ditto /tmp/m/TwoDegrees.app /tmp/try/TwoDegrees.app; hdiutil detach -quiet /tmp/m; }
+          dmg https://github.com/bradleycowdrey/two-degrees/releases/download/v0.3.5/TwoDegrees-0.3.5.dmg; trial "0.3.5 release (ad-hoc)"
+          dmg https://github.com/bradleycowdrey/two-degrees/releases/latest/download/TwoDegrees.dmg; trial "latest release (Developer ID)"
+          scripts/build-app.sh 0.0.0-diag >/dev/null; rm -rf /tmp/try; mkdir -p /tmp/try; ditto dist/TwoDegrees.app /tmp/try/TwoDegrees.app; trial "built here (ad-hoc)"
+          echo "== widget descriptors chronod knows"; log show --last 2m --style compact --predicate 'process == "chronod" AND eventMessage CONTAINS[c] "descriptor"' | grep -ci twodegrees
       - name: Publish to ci-diagnose branch
         if: always()
         run: |
