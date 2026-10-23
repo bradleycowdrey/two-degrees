@@ -60,8 +60,13 @@ struct PhoneView: View {
                 }
             }
         }
-        // bradcowdrey.com's signature crimson rule, just under the status bar.
-        .safeAreaInset(edge: .top, spacing: 0) { Palette.crimson.frame(height: 3) }
+        // bradcowdrey.com's signature crimson rule, just under the status bar, which stays solid so
+        // the page scrolls away beneath it rather than behind the clock.
+        .safeAreaInset(edge: .top, spacing: 0) {
+            Palette.crimson.frame(height: 3)
+                .frame(maxWidth: .infinity)
+                .background(Palette.bg.ignoresSafeArea(edges: .top))
+        }
         .background(Palette.bg.ignoresSafeArea())
         .environment(\.metrics, ui)
         .environment(\.colorScheme, .dark)

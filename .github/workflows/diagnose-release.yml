@@ -1,0 +1,43 @@
+name: Diagnose release widget
+
+# Installs the published Two Degrees release the way a person does, opens it, and reports what macOS
+# thinks of its widget: signature, entitlements, Gatekeeper, registration and the widget's own log.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [.github/workflows/diagnose-release.yml]
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: macos-15
+    steps:
+      - name: Install the latest release and look at its widget
+        run: |
+          set -x
+          curl -fsSL -o /tmp/td.dmg https://github.com/bradleycowdrey/two-degrees/releases/latest/download/TwoDegrees.dmg
+          hdiutil attach -nobrowse -quiet -mountpoint /tmp/td /tmp/td.dmg
+          ditto /tmp/td/TwoDegrees.app /Applications/TwoDegrees.app
+          hdiutil detach -quiet /tmp/td
+          A=/Applications/TwoDegrees.app; W=$A/Contents/PlugIns/TwoDegreesWidget.appex
+          plutil -extract CFBundleShortVersionString raw $A/Contents/Info.plist
+          codesign -dvvv $A 2>&1 | grep -E 'Authority|TeamIdentifier|flags|Identifier'
+          codesign -dvvv $W 2>&1 | grep -E 'Authority|TeamIdentifier|flags|Identifier'
+          codesign -d --entitlements - --xml $A 2>/dev/null | plutil -p - || echo "(app: no entitlements)"
+          codesign -d --entitlements - --xml $W 2>/dev/null | plutil -p - || echo "(widget: no entitlements)"
+          codesign --verify --deep --strict --verbose=2 $A
+          spctl -a -vv -t exec $A
+          spctl -a -vv -t exec $W || true
+          open $A; sleep 8
+          pluginkit -m -v -i com.bradcowdrey.twodegrees.widget || true
+          # Start the widget extension the way WidgetKit would, and capture what it and chronod say.
+          log stream --style compact --predicate 'process == "TwoDegreesWidget" OR process == "chronod" OR eventMessage CONTAINS[c] "twodegrees"' > /tmp/stream.txt 2>&1 &
+          LP=$!
+          $W/Contents/MacOS/TwoDegreesWidget > /tmp/ext.txt 2>&1 & EP=$!
+          sleep 10; kill $EP $LP 2>/dev/null || true
+          echo "== extension run"; cat /tmp/ext.txt | tail -30
+          echo "== log"; grep -v '^Filtering' /tmp/stream.txt | tail -80
+          log show --last 3m --style compact --predicate 'eventMessage CONTAINS[c] "twodegrees" AND (messageType == error OR messageType == fault OR eventMessage CONTAINS[c] "sandbox" OR eventMessage CONTAINS[c] "deny")' | tail -60

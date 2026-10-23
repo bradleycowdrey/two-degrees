@@ -1,0 +1,75 @@
+name: iPhone TestFlight
+
+# Uploads the iPhone app to App Store Connect (TestFlight) whenever VERSION changes on main, or on
+# demand. Needs an App Store Connect API key in three secrets: ASC_KEY_ID, ASC_ISSUER_ID and ASC_KEY_P8
+# (the .p8 file's contents), plus the app created in App Store Connect with bundle ID
+# com.bradcowdrey.twodegrees. Signing is automatic: Xcode makes the certificates and profiles it
+# needs through the API key. Without the secrets this does nothing.
+on:
+  push:
+    branches: [main]
+    paths: [VERSION]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  upload:
+    runs-on: macos-15
+    timeout-minutes: 60
+    env:
+      HAS_KEY: ${{ secrets.ASC_KEY_P8 != '' && secrets.ASC_KEY_ID != '' && secrets.ASC_ISSUER_ID != '' }}
+    steps:
+      - name: Waiting for the App Store Connect key
+        if: env.HAS_KEY != 'true'
+        run: echo "::notice::No App Store Connect API key yet (ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8), so nothing to upload."
+      - uses: actions/checkout@v4
+        if: env.HAS_KEY == 'true'
+        with:
+          fetch-depth: 0
+      - name: Team
+        if: env.HAS_KEY == 'true'
+        env:
+          DEVELOPER_ID_P12: ${{ secrets.DEVELOPER_ID_P12 }}
+          DEVELOPER_ID_P12_PASSWORD: ${{ secrets.DEVELOPER_ID_P12_PASSWORD }}
+          NOTARY_APPLE_ID: ${{ secrets.NOTARY_APPLE_ID }}
+          NOTARY_PASSWORD: ${{ secrets.NOTARY_PASSWORD }}
+          NOTARY_TEAM_ID: ${{ secrets.NOTARY_TEAM_ID }}
+        run: |
+          # The team comes from the secret if set, else from the Developer ID certificate (same team).
+          if [[ -n "$NOTARY_TEAM_ID" ]]; then echo "DERIVED_TEAM_ID=$NOTARY_TEAM_ID" >> "$GITHUB_ENV"; else scripts/import-signing-cert.sh; fi
+      - name: Archive and upload
+        if: env.HAS_KEY == 'true'
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: |
+          VERSION="$(tr -d '[:space:]' < VERSION)"; BUILD="$(git rev-list --count HEAD)"
+          KEY="$RUNNER_TEMP/AuthKey_$ASC_KEY_ID.p8"; printf '%s\n' "$ASC_KEY_P8" > "$KEY"
+          AUTH=(-allowProvisioningUpdates -authenticationKeyPath "$KEY" -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID")
+          command -v xcodegen >/dev/null || brew install xcodegen
+          xcodegen generate --quiet
+          LOG="$RUNNER_TEMP/archive.log"
+          xcodebuild -project TwoDegrees.xcodeproj -scheme TwoDegreesPhone -configuration Release \
+            -destination "generic/platform=iOS" -archivePath "$RUNNER_TEMP/TwoDegrees.xcarchive" \
+            MARKETING_VERSION="$VERSION" CURRENT_PROJECT_VERSION="$BUILD" \
+            DEVELOPMENT_TEAM="$DERIVED_TEAM_ID" CODE_SIGN_STYLE=Automatic CODE_SIGN_IDENTITY="Apple Development" \
+            "${AUTH[@]}" archive > "$LOG" 2>&1 \
+            || { grep -E "(error|fatal):" "$LOG" | sort -u | head -25 | sed 's/^/::error::/'; tail -40 "$LOG"; exit 1; }
+          cat > "$RUNNER_TEMP/export.plist" <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>destination</key><string>upload</string>
+            <key>signingStyle</key><string>automatic</string>
+            <key>teamID</key><string>$DERIVED_TEAM_ID</string>
+          </dict></plist>
+          PLIST
+          xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/TwoDegrees.xcarchive" \
+            -exportOptionsPlist "$RUNNER_TEMP/export.plist" -exportPath "$RUNNER_TEMP/export" "${AUTH[@]}" > "$RUNNER_TEMP/export.log" 2>&1 \
+            || { grep -iE "error" "$RUNNER_TEMP/export.log" | sort -u | head -25 | sed 's/^/::error::/'; tail -40 "$RUNNER_TEMP/export.log"; exit 1; }
+          rm -f "$KEY"
+          echo "::notice::Uploaded Two Degrees for iPhone $VERSION (build $BUILD) to App Store Connect. It shows in TestFlight once Apple finishes processing it."
