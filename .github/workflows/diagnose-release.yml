@@ -15,33 +15,28 @@ jobs:
   diagnose:
     runs-on: macos-15
     steps:
-      - name: Install the latest release and look at its widget
+      - name: Install the latest release and test what makes chronod keep its widget
         run: |
           exec > >(tee /tmp/report.txt) 2>&1
-          set -x
           curl -fsSL -o /tmp/td.dmg https://github.com/bradleycowdrey/two-degrees/releases/latest/download/TwoDegrees.dmg
           hdiutil attach -nobrowse -quiet -mountpoint /tmp/td /tmp/td.dmg
+          echo "== dates inside the DMG"; stat -f '%Sm  %N' /tmp/td/TwoDegrees.app /tmp/td/TwoDegrees.app/Contents /tmp/td/TwoDegrees.app/Contents/PlugIns/TwoDegreesWidget.appex /tmp/td/TwoDegrees.app/Contents/PlugIns/TwoDegreesWidget.appex/Contents/Info.plist
           ditto /tmp/td/TwoDegrees.app /Applications/TwoDegrees.app
           hdiutil detach -quiet /tmp/td
           A=/Applications/TwoDegrees.app; W=$A/Contents/PlugIns/TwoDegreesWidget.appex
-          plutil -extract CFBundleShortVersionString raw $A/Contents/Info.plist
-          codesign -dvvv $A 2>&1 | grep -E 'Authority|TeamIdentifier|flags|Identifier'
-          codesign -dvvv $W 2>&1 | grep -E 'Authority|TeamIdentifier|flags|Identifier'
-          codesign -d --entitlements - --xml $A 2>/dev/null | plutil -p - || echo "(app: no entitlements)"
-          codesign -d --entitlements - --xml $W 2>/dev/null | plutil -p - || echo "(widget: no entitlements)"
-          codesign --verify --deep --strict --verbose=2 $A
-          spctl -a -vv -t exec $A
-          spctl -a -vv -t exec $W || true
-          open $A; sleep 8
-          pluginkit -m -v -i com.bradcowdrey.twodegrees.widget || true
-          # Start the widget extension the way WidgetKit would, and capture what it and chronod say.
-          log stream --style compact --predicate 'process == "TwoDegreesWidget" OR process == "chronod" OR eventMessage CONTAINS[c] "twodegrees"' > /tmp/stream.txt 2>&1 &
-          LP=$!
-          $W/Contents/MacOS/TwoDegreesWidget > /tmp/ext.txt 2>&1 & EP=$!
-          sleep 10; kill $EP $LP 2>/dev/null || true
-          echo "== extension run"; cat /tmp/ext.txt | tail -30
-          echo "== log"; grep -v '^Filtering' /tmp/stream.txt | tail -80
-          log show --last 3m --style compact --predicate 'eventMessage CONTAINS[c] "twodegrees" AND (messageType == error OR messageType == fault OR eventMessage CONTAINS[c] "sandbox" OR eventMessage CONTAINS[c] "deny")' | tail -60
+          LSREG=/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
+          echo "== dates installed"; stat -f '%Sm  %N' $A $W $W/Contents/Info.plist
+          chrono() { sleep 6; log show --last "$1" --style compact --predicate 'process == "chronod" AND eventMessage CONTAINS[c] "twodegrees"' | grep -v '^Timestamp' | cut -c1-400 | tail -12; }
+          echo "== A: as released"; open $A; chrono 20s
+          osascript -e 'quit app "TwoDegrees"' || pkill -x TwoDegrees || true
+          echo "== B: same app, files given today's date"
+          find $A -exec touch -h {} +
+          stat -f '%Sm  %N' $A $W
+          codesign --verify --deep --strict $A && echo "signature still valid"
+          "$LSREG" -f -R $A; open $A; chrono 20s
+          echo "== pluginkit"; pluginkit -m -v -i com.bradcowdrey.twodegrees.widget || true
+          echo "== the self-test build (ad-hoc, built here) for comparison"
+          echo "(see the Self-test workflow)"
       - name: Publish to ci-diagnose branch
         if: always()
         run: |
