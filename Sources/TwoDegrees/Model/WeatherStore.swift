@@ -1,6 +1,10 @@
 import SwiftUI
+#if os(macOS)
 import AppKit
 import ServiceManagement
+#else
+import UIKit
+#endif
 
 /// What the menu bar shows next to (or instead of) the icon.
 enum MenuBarStyle: String, CaseIterable, Identifiable {
@@ -57,9 +61,16 @@ final class WeatherStore: ObservableObject {
         timer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
             Task { @MainActor in await self?.refreshIfDue() }
         }
+        #if os(macOS)
         NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { [weak self] _ in
             Task { @MainActor in await self?.refresh() }
         }
+        #else
+        // Coming back to the app refreshes anything older than one refresh interval.
+        NotificationCenter.default.addObserver(forName: UIApplication.willEnterForegroundNotification, object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor in await self?.refreshIfDue() }
+        }
+        #endif
         Task { await refresh() }
     }
 
@@ -150,9 +161,12 @@ final class WeatherStore: ObservableObject {
     // MARK: Dock
 
     func refreshDock() {
+        #if os(macOS)
         DockTile.update(store: self)
+        #endif
     }
 
+    #if os(macOS)
     // MARK: Open at login
 
     var opensAtLogin: Bool {
@@ -162,16 +176,26 @@ final class WeatherStore: ObservableObject {
             objectWillChange.send()
         }
     }
+    #endif
 
     // MARK: Share
 
-    /// Copies a one-line reading for the active city, both units.
-    func copyReading() {
-        guard let forecast = activeForecast else { return }
+    /// A one-line reading for the active city, both units.
+    var readingText: String? {
+        guard let forecast = activeForecast else { return nil }
         let f = TempUnit.fahrenheit.value(forecast.now.temperature), c = TempUnit.celsius.value(forecast.now.temperature)
-        let text = "\(active.name): \(f)°F / \(c)°C, \(Condition.name(forecast.now.code).lowercased()). Via Two Degrees."
+        return "\(active.name): \(f)°F / \(c)°C, \(Condition.name(forecast.now.code).lowercased()). Via Two Degrees."
+    }
+
+    /// Copies the reading to the clipboard.
+    func copyReading() {
+        guard let text = readingText else { return }
+        #if os(macOS)
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(text, forType: .string)
+        #else
+        UIPasteboard.general.string = text
+        #endif
     }
 
     // MARK: Persistence

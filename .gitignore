@@ -8,3 +8,4 @@ TwoDegrees.xcodeproj/
 build/
 node_modules/
 package-lock.json
+build-ios/

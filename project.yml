@@ -1,10 +1,12 @@
-# XcodeGen spec: the app plus its WidgetKit extension. scripts/build-app.sh generates
-# TwoDegrees.xcodeproj from this (the project file itself isn't committed).
+# XcodeGen spec: the Mac app and the iPhone app, each with its WidgetKit extension.
+# scripts/build-app.sh and scripts/build-ios.sh generate TwoDegrees.xcodeproj from this (the project
+# file itself isn't committed).
 name: TwoDegrees
 options:
   bundleIdPrefix: com.bradcowdrey
   deploymentTarget:
     macOS: "14.0"
+    iOS: "17.0"
 settings:
   base:
     SWIFT_VERSION: "5.10"
@@ -51,4 +53,55 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.bradcowdrey.twodegrees.widget
         INFOPLIST_FILE: Resources/Widget-Info.plist
         CODE_SIGN_ENTITLEMENTS: Resources/Widget.entitlements
+        SKIP_INSTALL: YES
+
+  # The iPhone app: the same panel parts, store, forecast and widget code as the Mac app.
+  TwoDegreesPhone:
+    type: application
+    platform: iOS
+    sources:
+      - path: Sources/TwoDegreesPhone
+      - path: Sources/TwoDegrees/Brand.swift
+      - path: Sources/TwoDegrees/Model/Weather.swift
+      - path: Sources/TwoDegrees/Model/WeatherStore.swift
+      - path: Sources/TwoDegrees/Model/WidgetData.swift
+      - path: Sources/TwoDegrees/Views/Palette.swift
+      - path: Sources/TwoDegrees/Views/PanelParts.swift
+      - path: Sources/TwoDegrees/Views/WeatherSymbol.swift
+      - path: Sources/TwoDegrees/Views/WidgetViews.swift
+      - path: Resources/iOS/Assets.xcassets
+      - path: Resources/Fonts
+        type: folder
+        buildPhase: resources
+    settings:
+      base:
+        PRODUCT_NAME: TwoDegrees
+        PRODUCT_BUNDLE_IDENTIFIER: com.bradcowdrey.twodegrees
+        INFOPLIST_FILE: Resources/iOS/Info.plist
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        TARGETED_DEVICE_FAMILY: "1,2"
+        ARCHS: "$(ARCHS_STANDARD)"
+        ENABLE_HARDENED_RUNTIME: NO
+    dependencies:
+      - target: TwoDegreesPhoneWidget
+        embed: true
+    scheme: {}
+  TwoDegreesPhoneWidget:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: Sources/TwoDegreesWidget
+      - path: Sources/TwoDegrees/Model/Weather.swift
+      - path: Sources/TwoDegrees/Model/WidgetData.swift
+      - path: Sources/TwoDegrees/Views/Palette.swift
+      - path: Sources/TwoDegrees/Views/WeatherSymbol.swift
+      - path: Sources/TwoDegrees/Views/WidgetViews.swift
+    settings:
+      base:
+        PRODUCT_NAME: TwoDegreesWidget
+        PRODUCT_BUNDLE_IDENTIFIER: com.bradcowdrey.twodegrees.widget
+        INFOPLIST_FILE: Resources/iOS/Widget-Info.plist
+        TARGETED_DEVICE_FAMILY: "1,2"
+        ARCHS: "$(ARCHS_STANDARD)"
+        ENABLE_HARDENED_RUNTIME: NO
         SKIP_INSTALL: YES

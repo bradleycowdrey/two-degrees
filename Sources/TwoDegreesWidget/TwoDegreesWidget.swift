@@ -2,7 +2,7 @@ import WidgetKit
 import SwiftUI
 import AppIntents
 
-// Desktop and Notification Center widget: one city's weather in °F and °C at once.
+// Mac desktop and Notification Center, iPhone Home Screen and Lock Screen: one city's weather in °F and °C at once.
 // Each widget picks its own city (search any place), so it needs no shared storage with the app.
 
 @main
@@ -20,8 +20,15 @@ struct TwoDegreesWidget: Widget {
         }
         .configurationDisplayName("Two Degrees")
         .description("The weather in °F and °C at once.")
-        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
+        .supportedFamilies(Self.families)
     }
+
+    #if os(iOS)
+    /// Home Screen sizes, plus the Lock Screen's.
+    static let families: [WidgetFamily] = [.systemSmall, .systemMedium, .systemLarge, .accessoryInline, .accessoryCircular, .accessoryRectangular]
+    #else
+    static let families: [WidgetFamily] = [.systemSmall, .systemMedium, .systemLarge]
+    #endif
 }
 
 // MARK: - Settings

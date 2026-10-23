@@ -67,6 +67,11 @@ struct WidgetView: View {
                 switch family ?? environmentFamily {
                 case .systemMedium: MediumView(entry: entry)
                 case .systemLarge: LargeView(entry: entry)
+                #if os(iOS)
+                case .accessoryInline: InlineAccessory(entry: entry)
+                case .accessoryCircular: CircularAccessory(entry: entry)
+                case .accessoryRectangular: RectangularAccessory(entry: entry)
+                #endif
                 default: SmallView(entry: entry)
                 }
             }
@@ -295,3 +300,84 @@ private struct DaysList: View {
         }
     }
 }
+
+#if os(iOS)
+// MARK: - Lock Screen
+
+// The Lock Screen draws these in one tint, so they carry no colours of their own: the larger unit is
+// the accented part, the other unit sits beside or beneath it.
+
+/// One line above the clock: "☀︎ 57°F · 14°C".
+private struct InlineAccessory: View {
+    let entry: WeatherEntry
+
+    var body: some View {
+        let now = entry.forecast.now, unit = entry.unit, other = entry.unit.other
+        Label {
+            Text("\(unit.value(now.temperature))\(unit.symbol) · \(other.value(now.temperature))\(other.symbol)")
+        } icon: {
+            Image(systemName: Condition.symbol(now.code, isDay: now.isDay))
+        }
+        .accessibilityLabel("\(entry.city.name): \(Speech.temperature(now.temperature))")
+    }
+}
+
+/// A round gauge-sized reading: the larger unit, the other beneath it.
+private struct CircularAccessory: View {
+    let entry: WeatherEntry
+
+    var body: some View {
+        let now = entry.forecast.now, unit = entry.unit, other = entry.unit.other
+        ZStack {
+            AccessoryWidgetBackground()
+            VStack(spacing: -1) {
+                Text("\(unit.value(now.temperature))°")
+                    .font(.system(size: 22, weight: .semibold))
+                    .widgetAccentable()
+                Text("\(other.value(now.temperature))\(other.symbol)")
+                    .font(.system(size: 11, weight: .medium))
+                    .opacity(0.75)
+            }
+            .monospacedDigit()
+            .minimumScaleFactor(0.6)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(entry.city.name): \(Speech.temperature(now.temperature))")
+    }
+}
+
+/// City, both units, and the condition with today's range.
+private struct RectangularAccessory: View {
+    let entry: WeatherEntry
+
+    var body: some View {
+        let now = entry.forecast.now, unit = entry.unit, other = entry.unit.other
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 4) {
+                Image(systemName: Condition.symbol(now.code, isDay: now.isDay))
+                Text(entry.city.name).lineLimit(1)
+            }
+            .font(.system(size: 13, weight: .semibold))
+            HStack(alignment: .firstTextBaseline, spacing: 5) {
+                Text("\(unit.value(now.temperature))\(unit.symbol)")
+                    .font(.system(size: 22, weight: .semibold))
+                    .widgetAccentable()
+                Text("\(other.value(now.temperature))\(other.symbol)")
+                    .font(.system(size: 14, weight: .medium))
+                    .opacity(0.75)
+            }
+            .monospacedDigit()
+            if let today = entry.forecast.days.first?.including(now.temperature) {
+                Text(entry.failed ? "Offline · \(entry.forecast.fetchedAt.formatted(date: .omitted, time: .shortened))"
+                                  : "\(Condition.name(now.code)) · \(unit.value(today.low))–\(unit.value(today.high))°")
+                    .font(.system(size: 12, weight: .medium))
+                    .opacity(0.75)
+                    .lineLimit(1)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(entry.city.name): \(Speech.temperature(now.temperature)), \(Condition.name(now.code))")
+    }
+}
+#endif

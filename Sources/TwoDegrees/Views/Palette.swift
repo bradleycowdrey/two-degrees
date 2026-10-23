@@ -1,5 +1,9 @@
 import SwiftUI
+#if canImport(AppKit)
 import AppKit
+#else
+import UIKit
+#endif
 import CoreText
 
 /// bradcowdrey.com design tokens (warm near-black, cream, crimson; Inter-like 400/500 weights),
@@ -88,7 +92,7 @@ enum AppFont: String, CaseIterable, Identifiable {
     }
 }
 
-/// Registers the Inter files bundled in Contents/Resources/Fonts for this process only.
+/// Registers the Inter files bundled in the app's Fonts folder for this process only.
 enum FontRegistry {
     private(set) static var interAvailable = false
 
@@ -99,7 +103,11 @@ enum FontRegistry {
         for file in files where file.pathExtension.lowercased() == "ttf" {
             CTFontManagerRegisterFontsForURL(file as CFURL, .process, nil)
         }
+        #if canImport(AppKit)
         interAvailable = NSFont(name: "Inter-Regular", size: 12) != nil
+        #else
+        interAvailable = UIFont(name: "Inter-Regular", size: 12) != nil
+        #endif
     }
 }
 

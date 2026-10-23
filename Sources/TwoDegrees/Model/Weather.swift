@@ -271,3 +271,10 @@ enum OpenMeteo {
         return formatter.date(from: string)
     }
 }
+
+/// Both units, as VoiceOver says them.
+enum Speech {
+    static func temperature(_ celsius: Double) -> String {
+        "\(TempUnit.fahrenheit.value(celsius)) degrees Fahrenheit, \(TempUnit.celsius.value(celsius)) Celsius"
+    }
+}
