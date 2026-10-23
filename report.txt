@@ -1,0 +1,31 @@
+== 0.3.5 release (ad-hoc): 0.3.5, ad-hoc
+2026-10-23 01:38:48.983 Df chronod[456:235a] [com.apple.chrono:database] Clearing descriptor cache for com.bradcowdrey.twodegrees.widget
+2026-10-23 01:38:49.347 Df chronod[456:235a] [com.apple.chrono:extensions-verbose] Added extensions: [<WidgetExtension - identifier: com.bradcowdrey.twodegrees::com.bradcowdrey.twodegrees.widget, version: 32, containerVersion: 32, lastModifiedDate: 1970-01-01T00:00:00Z isInternal: false>]
+2026-10-23 01:38:49.348 Df chronod[456:162b] [com.apple.chrono:descriptor] Queuing extension added events: com.bradcowdrey.twodegrees::com.bradcowdrey.twodegrees.widget
+2026-10-23 01:38:49.348 E  chronod[456:162b] [com.apple.chrono:descriptor] Requested to add extension, but purging instead because we shouldn't cache it: <WidgetExtension - identifier: com.bradcowdrey.twodegrees::com.bradcowdrey.twodegrees.widget, version: 32, containerVersion: 32, lastModifiedDate: 1970-01-01T00:00:00Z isIntern
+2026-10-23 01:38:49.348 Df chronod[456:162b] [com.apple.chrono:descriptor] Purging descriptors for extensions: [com.bradcowdrey.twodegrees::com.bradcowdrey.twodegrees.widget]
+2026-10-23 01:38:49.348 Df chronod[456:162b] [com.apple.chrono:database] Clearing descriptor cache for com.bradcowdrey.twodegrees.widget
+== latest release (Developer ID): 0.3.9, Authority=Developer ID Application: Bradley Cowdrey (2XV97FZ86G)
+2026-10-23 01:39:08.500 Df chronod[456:22ae] [com.apple.chrono:database] Clearing descriptor cache for com.bradcowdrey.twodegrees.widget
+2026-10-23 01:39:08.669 Df chronod[456:2845] [com.apple.chrono:extensions-verbose] Added extensions: [<WidgetExtension - identifier: com.bradcowdrey.twodegrees::com.bradcowdrey.twodegrees.widget, version: 50, containerVersion: 50, lastModifiedDate: 1970-01-01T00:00:00Z isInternal: false>]
+2026-10-23 01:39:08.670 Df chronod[456:2844] [com.apple.chrono:descriptor] Queuing extension added events: com.bradcowdrey.twodegrees::com.bradcowdrey.twodegrees.widget
+2026-10-23 01:39:08.670 E  chronod[456:2844] [com.apple.chrono:descriptor] Requested to add extension, but purging instead because we shouldn't cache it: <WidgetExtension - identifier: com.bradcowdrey.twodegrees::com.bradcowdrey.twodegrees.widget, version: 50, containerVersion: 50, lastModifiedDate: 1970-01-01T00:00:00Z isIntern
+2026-10-23 01:39:08.670 Df chronod[456:2844] [com.apple.chrono:descriptor] Purging descriptors for extensions: [com.bradcowdrey.twodegrees::com.bradcowdrey.twodegrees.widget]
+2026-10-23 01:39:08.670 Df chronod[456:2844] [com.apple.chrono:database] Clearing descriptor cache for com.bradcowdrey.twodegrees.widget
+[32m==>[0m [1mDownloading bottle manifests[0m
+✔︎ Bottle Manifest xcodegen (2.46.0)
+[32m==>[0m [1mFetching downloads for: [32mxcodegen[39m[0m
+✔︎ Bottle xcodegen (2.46.0)
+dist/TwoDegrees.app/Contents/PlugIns/TwoDegreesWidget.appex: replacing existing signature
+dist/TwoDegrees.app: replacing existing signature
+dist/TwoDegrees.app: valid on disk
+dist/TwoDegrees.app: satisfies its Designated Requirement
+== built here (ad-hoc): 0.0.0-diag, ad-hoc
+2026-10-23 01:40:40.736 Df chronod[456:42ae] [com.apple.chrono:descriptor] Purging descriptors for extensions: [com.bradcowdrey.twodegrees::com.bradcowdrey.twodegrees.widget]
+2026-10-23 01:40:40.737 Df chronod[456:42ae] [com.apple.chrono:database] Clearing descriptor cache for com.bradcowdrey.twodegrees.widget
+2026-10-23 01:40:42.609 Df chronod[456:3f3a] [com.apple.chrono:descriptor] Queuing extension added events: com.bradcowdrey.twodegrees::com.bradcowdrey.twodegrees.widget
+2026-10-23 01:40:42.609 E  chronod[456:3f3a] [com.apple.chrono:descriptor] Requested to add extension, but purging instead because we shouldn't cache it: <WidgetExtension - identifier: com.bradcowdrey.twodegrees::com.bradcowdrey.twodegrees.widget, version: 1, containerVersion: 1, lastModifiedDate: 1970-01-01T00:00:00Z isInternal
+2026-10-23 01:40:42.609 Df chronod[456:3f3a] [com.apple.chrono:descriptor] Purging descriptors for extensions: [com.bradcowdrey.twodegrees::com.bradcowdrey.twodegrees.widget]
+2026-10-23 01:40:42.609 Df chronod[456:3f3a] [com.apple.chrono:database] Clearing descriptor cache for com.bradcowdrey.twodegrees.widget
+== widget descriptors chronod knows
+22
