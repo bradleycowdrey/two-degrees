@@ -1,0 +1,23 @@
+ALL PASSED (22 passed)
+PASS forecast loads for New York
+PASS forecast loads for London
+PASS forecast loads for Tokyo
+PASS switch the larger unit to °C
+PASS switch it back to °F
+PASS city search finds Denver (Colorado, United States)
+PASS add Denver: selected and its forecast loads
+PASS remove Denver
+PASS widget loads Denver (1.3 s)
+PASS small widget draws Denver
+PASS medium widget draws Denver
+PASS large widget draws Denver
+PASS lock-circular widget draws Denver
+PASS lock-rectangular widget draws Denver
+PASS lock-inline widget draws Denver
+PASS widget loads Zurich (0.3 s)
+PASS small widget draws Zurich
+PASS medium widget draws Zurich
+PASS large widget draws Zurich
+PASS lock-circular widget draws Zurich
+PASS lock-rectangular widget draws Zurich
+PASS lock-inline widget draws Zurich
