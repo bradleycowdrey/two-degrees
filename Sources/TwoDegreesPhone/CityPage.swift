@@ -18,9 +18,8 @@ struct CityPage: View {
                     header(forecast)
                         .padding(.top, ui.pt(36))
                         .padding(.bottom, ui.pt(26))
-                        .background(GeometryReader { proxy in
-                            Color.clear.preference(key: HeaderOffsetKey.self, value: proxy.frame(in: .named("page")).minY)
-                        })
+                        // Where the header is in the scroll view, read on every scroll.
+                        .onGeometryChange(for: CGFloat.self) { proxy in proxy.frame(in: .named("page")).minY } action: { offset = $0 }
                     if let forecast {
                         HourlyCard(forecast: forecast)
                         DailyCard(forecast: forecast).id("days")
@@ -48,7 +47,6 @@ struct CityPage: View {
                 .frame(maxWidth: .infinity)
             }
             .coordinateSpace(name: "page")
-            .onPreferenceChange(HeaderOffsetKey.self) { offset = $0 }
             .refreshable { await store.refresh() }
             .overlay(alignment: .top) { compactHeader(forecast) }
             .task {
@@ -157,11 +155,6 @@ struct CityPage: View {
         .frame(maxWidth: .infinity)
         .padding(.top, ui.pt(8))
     }
-}
-
-private struct HeaderOffsetKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
 }
 
 // MARK: - Cards
