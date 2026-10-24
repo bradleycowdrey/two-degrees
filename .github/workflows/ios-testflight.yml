@@ -16,7 +16,8 @@ permissions:
 
 jobs:
   upload:
-    runs-on: macos-15
+    # App Store Connect only accepts apps built with the iOS 26 SDK (Xcode 26) or later.
+    runs-on: macos-26
     timeout-minutes: 60
     env:
       HAS_KEY: ${{ secrets.ASC_KEY_P8 != '' && secrets.ASC_KEY_ID != '' && secrets.ASC_ISSUER_ID != '' }}
@@ -28,6 +29,12 @@ jobs:
         if: env.HAS_KEY == 'true'
         with:
           fetch-depth: 0
+      - name: Newest Xcode
+        if: env.HAS_KEY == 'true'
+        run: |
+          XC="$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)"
+          sudo xcode-select -s "$XC"
+          xcodebuild -version
       - name: Team
         if: env.HAS_KEY == 'true'
         env:
