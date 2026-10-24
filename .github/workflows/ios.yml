@@ -2,7 +2,7 @@ name: iPhone
 
 # Builds the iPhone app and its widget, runs it in the iOS Simulator with live data (--selftest:
 # forecasts, units, city search, the widget's data path, every widget size drawn), and photographs
-# the first-launch terms, the main screen and the 5-day forecast. Results go to the ci-shots-ios
+# the first-launch terms, a city page at rest and scrolled, and the city list. Results go to the ci-shots-ios
 # branch; the job fails if any check fails.
 on:
   push:
@@ -55,11 +55,17 @@ jobs:
           sleep 2; xcrun simctl io "$DEVICE" screenshot "$OUT/phone-2-main.png"
           xcrun simctl terminate "$DEVICE" $ID || true
           cp "$DOCS"/*.png "$DOCS/report.txt" "$OUT/" 2>/dev/null || true
-          # 3. The five-day forecast, opened.
+          # 3. Scrolled down: the header shrunk to one line, the 10-day forecast and the detail tiles.
           rm -f "$DOCS/report.txt"
           xcrun simctl launch "$DEVICE" $ID --selftest --show-days
           for i in $(seq 1 120); do [ -f "$DOCS/report.txt" ] && break; sleep 1; done
-          sleep 3; xcrun simctl io "$DEVICE" screenshot "$OUT/phone-3-five-days.png"
+          sleep 3; xcrun simctl io "$DEVICE" screenshot "$OUT/phone-3-scrolled.png"
+          xcrun simctl terminate "$DEVICE" $ID || true
+          # 4. The city list.
+          rm -f "$DOCS/report.txt"
+          xcrun simctl launch "$DEVICE" $ID --selftest --show-list
+          for i in $(seq 1 120); do [ -f "$DOCS/report.txt" ] && break; sleep 1; done
+          sleep 3; xcrun simctl io "$DEVICE" screenshot "$OUT/phone-4-city-list.png"
           cat "$OUT/report.txt" 2>/dev/null || echo "no report"
       - name: Publish to ci-shots-ios branch
         if: always() && github.event_name != 'pull_request'

@@ -7,8 +7,10 @@ import WidgetKit
 @MainActor
 enum PhoneSelfTest {
     nonisolated static let isActive = ProcessInfo.processInfo.arguments.contains("--selftest")
-    /// Opens the five-day forecast and scrolls to it, for a screenshot.
+    /// Scrolls the city page down to the 10-day forecast, for a screenshot.
     nonisolated static let showDays = ProcessInfo.processInfo.arguments.contains("--show-days")
+    /// Opens the city list at launch, for a screenshot.
+    nonisolated static let showList = ProcessInfo.processInfo.arguments.contains("--show-list")
 
     private static var lines: [String] = []
     private static var failures = 0
@@ -21,14 +23,14 @@ enum PhoneSelfTest {
     static func run(store: WeatherStore) async {
         let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
 
-        // 1. Every starter city's forecast loads.
+        // 1. Every starter city's forecast loads, with the ten days the iPhone shows.
         for _ in 0..<40 where store.cities.contains(where: { store.forecasts[$0.id] == nil }) {
             try? await Task.sleep(for: .milliseconds(500))
         }
         for city in store.cities {
             let forecast = store.forecasts[city.id]
-            check(forecast != nil && (forecast?.days.count ?? 0) >= 5 && (forecast?.upcomingHours.count ?? 0) >= 6,
-                  "forecast loads for \(city.name)")
+            check(forecast != nil && (forecast?.days.count ?? 0) >= 10 && (forecast?.upcomingHours.count ?? 0) >= 24,
+                  "forecast loads for \(city.name): \(forecast?.days.count ?? 0) days, \(forecast?.upcomingHours.count ?? 0) hours")
         }
 
         // 2. Unit switch, both ways.

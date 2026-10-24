@@ -162,7 +162,7 @@ enum OpenMeteo {
             .init(name: "latitude", value: String(format: "%.4f", city.latitude)),
             .init(name: "longitude", value: String(format: "%.4f", city.longitude)),
             .init(name: "timezone", value: "auto"),
-            .init(name: "forecast_days", value: "6"),
+            .init(name: "forecast_days", value: "11"),   // the iPhone shows 10 days; the Mac and widgets 5
             .init(name: "current", value: "temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,is_day"),
             .init(name: "hourly", value: "temperature_2m,weather_code,precipitation_probability,is_day"),
             .init(name: "daily", value: "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset"),
