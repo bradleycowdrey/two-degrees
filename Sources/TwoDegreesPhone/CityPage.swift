@@ -330,21 +330,21 @@ private struct DetailTiles: View {
         let now = forecast.now, unit = store.unit, other = unit.other
         let today = forecast.days.first?.including(now.temperature)
         LazyVGrid(columns: [GridItem(.flexible(), spacing: ui.pt(10)), GridItem(.flexible(), spacing: ui.pt(10))], spacing: ui.pt(10)) {
-            Tile(title: "Feels like", icon: "thermometer.medium",
+            DetailTile(title: "Feels like", icon: "thermometer.medium",
                  value: "\(unit.value(now.feelsLike))°", sub: "\(other.value(now.feelsLike))\(other.symbol)",
                  note: feelsNote(now))
-            Tile(title: "Humidity", icon: "humidity",
+            DetailTile(title: "Humidity", icon: "humidity",
                  value: "\(Int(now.humidity.rounded()))%", sub: nil,
                  note: now.humidity >= 70 ? "It’s humid right now." : (now.humidity <= 30 ? "The air is dry right now." : "Comfortable right now."))
-            Tile(title: "Wind", icon: "wind",
+            DetailTile(title: "Wind", icon: "wind",
                  value: unit == .fahrenheit ? "\(mph(now.wind)) mph" : "\(Int(now.wind.rounded())) km/h",
                  sub: unit == .fahrenheit ? "\(Int(now.wind.rounded())) km/h" : "\(mph(now.wind)) mph",
                  note: windNote(now.wind))
-            Tile(title: "Rain", icon: "drop.fill",
+            DetailTile(title: "Rain", icon: "drop.fill",
                  value: "\(today?.rainChance ?? 0)%", sub: "chance today",
                  note: rainNote)
             sunTile(today)
-            Tile(title: "Today", icon: "arrow.up.and.down",
+            DetailTile(title: "Today", icon: "arrow.up.and.down",
                  value: today.map { "\(unit.value($0.low))–\(unit.value($0.high))°" } ?? "–",
                  sub: today.map { "\(other.value($0.low))–\(other.value($0.high))\(other.symbol)" },
                  note: "Today’s low and high, both units.")
@@ -381,15 +381,15 @@ private struct DetailTiles: View {
     private func sunTile(_ today: Forecast.Day?) -> some View {
         let time = { (date: Date?) in date.map { Forecast.format($0, "jmm") } ?? "–" }
         if let sunset = today?.sunset, forecast.now.time < sunset {
-            Tile(title: "Sunset", icon: "sunset.fill", value: time(sunset), sub: nil, note: "Sunrise: \(time(today?.sunrise))")
+            DetailTile(title: "Sunset", icon: "sunset.fill", value: time(sunset), sub: nil, note: "Sunrise: \(time(today?.sunrise))")
         } else {
             let tomorrow = forecast.days.dropFirst().first
-            Tile(title: "Sunrise", icon: "sunrise.fill", value: time(tomorrow?.sunrise), sub: nil, note: "Sunset: \(time(tomorrow?.sunset))")
+            DetailTile(title: "Sunrise", icon: "sunrise.fill", value: time(tomorrow?.sunrise), sub: nil, note: "Sunset: \(time(tomorrow?.sunset))")
         }
     }
 }
 
-private struct Tile: View {
+private struct DetailTile: View {
     @Environment(\.metrics) private var ui
     let title: String
     let icon: String
