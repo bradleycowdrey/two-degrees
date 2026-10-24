@@ -3,8 +3,8 @@ name: iPhone TestFlight
 # Uploads the iPhone app to App Store Connect (TestFlight) whenever VERSION changes on main, or on
 # demand. Needs an App Store Connect API key in three secrets: ASC_KEY_ID, ASC_ISSUER_ID and ASC_KEY_P8
 # (the .p8 file's contents), plus the app created in App Store Connect with bundle ID
-# com.bradcowdrey.twodegrees. Signing is automatic: Xcode makes the certificates and profiles it
-# needs through the API key. Without the secrets this does nothing.
+# com.bradcowdrey.twodegrees. Signing is automatic: Xcode makes the Apple Distribution certificate and
+# App Store profiles it needs through the API key (distribution signing needs no registered devices). Without the secrets this does nothing.
 on:
   push:
     branches: [main]
@@ -55,7 +55,7 @@ jobs:
           xcodebuild -project TwoDegrees.xcodeproj -scheme TwoDegreesPhone -configuration Release \
             -destination "generic/platform=iOS" -archivePath "$RUNNER_TEMP/TwoDegrees.xcarchive" \
             MARKETING_VERSION="$VERSION" CURRENT_PROJECT_VERSION="$BUILD" \
-            DEVELOPMENT_TEAM="$DERIVED_TEAM_ID" CODE_SIGN_STYLE=Automatic CODE_SIGN_IDENTITY="Apple Development" \
+            DEVELOPMENT_TEAM="$DERIVED_TEAM_ID" CODE_SIGN_STYLE=Automatic CODE_SIGN_IDENTITY="Apple Distribution" \
             "${AUTH[@]}" archive > "$LOG" 2>&1 \
             || { grep -E "(error|fatal):" "$LOG" | sort -u | head -25 | sed 's/^/::error::/'; tail -40 "$LOG"; exit 1; }
           cat > "$RUNNER_TEMP/export.plist" <<PLIST
