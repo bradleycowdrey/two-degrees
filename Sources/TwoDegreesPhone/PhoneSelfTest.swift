@@ -33,6 +33,11 @@ enum PhoneSelfTest {
                   "forecast loads for \(city.name): \(forecast?.days.count ?? 0) days, \(forecast?.upcomingHours.count ?? 0) hours")
         }
 
+        if let forecast = store.activeForecast {
+            check(forecast.days.first?.uvIndex != nil && forecast.now.windDirection != nil,
+                  "UV index and wind direction arrive (UV \(forecast.days.first?.uvIndex.map { String($0) } ?? "none"), wind from \(forecast.now.windDirection.map(Meteo.compass) ?? "none"))")
+        }
+
         // 2. Unit switch, both ways.
         let unit = store.unit
         store.unit = unit.other

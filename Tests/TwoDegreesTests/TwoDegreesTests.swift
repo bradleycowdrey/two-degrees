@@ -297,6 +297,14 @@ final class MoreLogicTests: XCTestCase {
         XCTAssertEqual(WindowPlacement.topLeft(for: .edge(.right), size: size, visible: screen), NSPoint(x: 932, y: 884))
     }
 
+    func testWeatherTerms() {
+        // Magnus formula: 20 °C at 50 % → about 9.3 °C; saturated air → the temperature itself.
+        XCTAssertEqual(Meteo.dewPoint(celsius: 20, humidity: 50), 9.3, accuracy: 0.1)
+        XCTAssertEqual(Meteo.dewPoint(celsius: 15, humidity: 100), 15, accuracy: 0.05)
+        XCTAssertEqual([0.0, 2.9, 3, 6, 8, 11].map(Meteo.uvLevel), ["Low", "Low", "Moderate", "High", "Very high", "Extreme"])
+        XCTAssertEqual([0.0, 22, 23, 90, 180, 270, 337, 350, 359, -10].map(Meteo.compass), ["N", "N", "NE", "E", "S", "W", "NW", "N", "N", "N"])
+    }
+
     func testMenuBarPanelCentersUnderItsItem() {
         let screen = CGRect(x: 0, y: 0, width: 1440, height: 875)
         // Centred under the item.

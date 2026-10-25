@@ -341,19 +341,16 @@ private struct DetailTiles: View {
                  note: feelsNote(now))
             DetailTile(title: "Humidity", icon: "humidity",
                  value: "\(Int(now.humidity.rounded()))%", sub: nil,
-                 note: now.humidity >= 70 ? "It’s humid right now." : (now.humidity <= 30 ? "The air is dry right now." : "Comfortable right now."))
+                 note: dewNote(now))
             DetailTile(title: "Wind", icon: "wind",
                  value: unit == .fahrenheit ? "\(mph(now.wind)) mph" : "\(Int(now.wind.rounded())) km/h",
                  sub: unit == .fahrenheit ? "\(Int(now.wind.rounded())) km/h" : "\(mph(now.wind)) mph",
-                 note: windNote(now.wind))
+                 note: windNote(now))
             DetailTile(title: "Rain", icon: "drop.fill",
                  value: "\(today?.rainChance ?? 0)%", sub: "chance today",
                  note: rainNote)
             sunTile(today)
-            DetailTile(title: "Today", icon: "arrow.up.and.down",
-                 value: today.map { "\(unit.value($0.low))–\(unit.value($0.high))\(unit.symbol)" } ?? "–",
-                 sub: today.map { "\(other.value($0.low))–\(other.value($0.high))\(other.symbol)" },
-                 note: "Today’s low and high, both units.")
+            uvTile(today)
         }
     }
 
@@ -366,13 +363,34 @@ private struct DetailTiles: View {
         return "Similar to the actual temperature."
     }
 
-    private func windNote(_ kmh: Double) -> String {
-        switch kmh {
+    /// How strong, and from where: "A light breeze from the NW."
+    private func windNote(_ now: Forecast.Now) -> String {
+        let strength: String
+        switch now.wind {
         case ..<2: return "Calm."
-        case ..<12: return "A light breeze."
-        case ..<29: return "A moderate breeze."
-        case ..<50: return "A strong breeze."
-        default: return "Gale-force wind."
+        case ..<12: strength = "A light breeze"
+        case ..<29: strength = "A moderate breeze"
+        case ..<50: strength = "A strong breeze"
+        default: strength = "Gale-force wind"
+        }
+        return now.windDirection.map { "\(strength) from the \(Meteo.compass($0))." } ?? "\(strength)."
+    }
+
+    /// The dew point in both units, as Apple's Weather gives it under humidity.
+    private func dewNote(_ now: Forecast.Now) -> String {
+        let dew = Meteo.dewPoint(celsius: now.temperature, humidity: now.humidity)
+        return "The dew point is \(store.unit.value(dew))\(store.unit.symbol) · \(store.unit.other.value(dew))\(store.unit.other.symbol) right now."
+    }
+
+    /// Today's peak UV index, its level, and whether to cover up.
+    @ViewBuilder
+    private func uvTile(_ today: Forecast.Day?) -> some View {
+        if let uv = today?.uvIndex {
+            DetailTile(title: "UV index", icon: "sun.max.fill",
+                       value: "\(Int(uv.rounded()))", sub: Meteo.uvLevel(uv),
+                       note: uv >= 3 ? "Use sun protection around midday." : "Low for the rest of the day.")
+        } else {
+            DetailTile(title: "UV index", icon: "sun.max.fill", value: "–", sub: nil, note: "Pull down to refresh.")
         }
     }
 

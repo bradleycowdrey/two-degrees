@@ -38,6 +38,8 @@ struct Forecast: Codable {
         var wind: Double
         var code: Int
         var isDay: Bool
+        /// Degrees the wind comes from (0 = north). Absent in forecasts saved before it was fetched.
+        var windDirection: Double? = nil
     }
 
     struct Hour: Codable, Identifiable {
@@ -57,6 +59,8 @@ struct Forecast: Codable {
         var rainChance: Int
         var sunrise: Date?
         var sunset: Date?
+        /// The day's highest UV index. Absent in forecasts saved before it was fetched.
+        var uvIndex: Double? = nil
         var id: Date { date }
 
         /// This day with its range widened to include a reading, so today never contradicts "now".
@@ -163,9 +167,9 @@ enum OpenMeteo {
             .init(name: "longitude", value: String(format: "%.4f", city.longitude)),
             .init(name: "timezone", value: "auto"),
             .init(name: "forecast_days", value: "11"),   // the iPhone shows 10 days; the Mac and widgets 5
-            .init(name: "current", value: "temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,is_day"),
+            .init(name: "current", value: "temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,wind_direction_10m,is_day"),
             .init(name: "hourly", value: "temperature_2m,weather_code,precipitation_probability,is_day"),
-            .init(name: "daily", value: "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset"),
+            .init(name: "daily", value: "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset,uv_index_max"),
         ]
         var request = URLRequest(url: components.url!, timeoutInterval: 20)
         request.setValue("TwoDegrees", forHTTPHeaderField: "User-Agent")
@@ -207,6 +211,7 @@ enum OpenMeteo {
             let relative_humidity_2m: Double
             let weather_code: Int
             let wind_speed_10m: Double
+            let wind_direction_10m: Double?
             let is_day: Int
         }
         struct Hourly: Decodable {
@@ -224,6 +229,7 @@ enum OpenMeteo {
             let precipitation_probability_max: [Int?]
             let sunrise: [String?]
             let sunset: [String?]
+            let uv_index_max: [Double?]?
         }
         let timezone: String
         let current: Current
@@ -235,7 +241,7 @@ enum OpenMeteo {
                 time: OpenMeteo.date(current.time) ?? Date(),
                 temperature: current.temperature_2m, feelsLike: current.apparent_temperature,
                 humidity: current.relative_humidity_2m, wind: current.wind_speed_10m,
-                code: current.weather_code, isDay: current.is_day == 1)
+                code: current.weather_code, isDay: current.is_day == 1, windDirection: current.wind_direction_10m)
             let hours: [Forecast.Hour] = hourly.time.indices.compactMap { i in
                 guard let time = OpenMeteo.date(hourly.time[i]), let t = hourly.temperature_2m[i] else { return nil }
                 return .init(time: time, temperature: t, code: hourly.weather_code[i] ?? 3,
@@ -245,7 +251,8 @@ enum OpenMeteo {
                 guard let date = OpenMeteo.date(daily.time[i]), let hi = daily.temperature_2m_max[i], let lo = daily.temperature_2m_min[i] else { return nil }
                 return .init(date: date, code: daily.weather_code[i] ?? 3, high: hi, low: lo,
                              rainChance: daily.precipitation_probability_max[i] ?? 0,
-                             sunrise: daily.sunrise[i].flatMap(OpenMeteo.date), sunset: daily.sunset[i].flatMap(OpenMeteo.date))
+                             sunrise: daily.sunrise[i].flatMap(OpenMeteo.date), sunset: daily.sunset[i].flatMap(OpenMeteo.date),
+                             uvIndex: daily.uv_index_max.flatMap { i < $0.count ? $0[i] : nil })
             }
             return Forecast(now: now, hours: hours, days: days, timeZone: timezone, fetchedAt: Date())
         }
@@ -276,5 +283,33 @@ enum OpenMeteo {
 enum Speech {
     static func temperature(_ celsius: Double) -> String {
         "\(TempUnit.fahrenheit.value(celsius)) degrees Fahrenheit, \(TempUnit.celsius.value(celsius)) Celsius"
+    }
+}
+
+/// Weather terms shared by the apps: dew point, UV levels and compass points.
+enum Meteo {
+    /// Dew point in °C from temperature (°C) and relative humidity (%), by the Magnus formula.
+    static func dewPoint(celsius t: Double, humidity rh: Double) -> Double {
+        let a = 17.62, b = 243.12
+        let gamma = log(max(rh, 1) / 100) + a * t / (b + t)
+        return b * gamma / (a - gamma)
+    }
+
+    /// The WHO's UV index categories.
+    static func uvLevel(_ index: Double) -> String {
+        switch index {
+        case ..<3: return "Low"
+        case ..<6: return "Moderate"
+        case ..<8: return "High"
+        case ..<11: return "Very high"
+        default: return "Extreme"
+        }
+    }
+
+    /// "N", "NE", … for a direction in degrees.
+    static func compass(_ degrees: Double) -> String {
+        let points = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
+        let i = Int(((degrees.truncatingRemainder(dividingBy: 360) + 360).truncatingRemainder(dividingBy: 360) + 22.5) / 45) % 8
+        return points[i]
     }
 }
