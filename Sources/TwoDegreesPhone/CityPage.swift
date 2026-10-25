@@ -87,8 +87,7 @@ struct CityPage: View {
                 // Tap the reading to swap which unit is large.
                 Button { withAnimation(.snappy) { store.toggleUnit() } } label: {
                     HStack(alignment: .top, spacing: ui.pt(6)) {
-                        Text("\(unit.value(now.temperature))\(unit.symbol)")
-                            .font(.system(size: ui.pt(96), weight: .thin))
+                        Reading.text(unit.value(now.temperature), unit, size: ui.pt(96), weight: .thin, unitWeight: .light)
                             .tracking(-2)
                         Text("\(other.value(now.temperature))\(other.symbol)")
                             .font(.system(size: ui.pt(30), weight: .light))
@@ -220,7 +219,7 @@ private struct HourlyCard: View {
                                     .font(ui.font(11, .semibold))
                                     .foregroundStyle(Palette.rain)
                             }
-                            Text("\(unit.value(temperature))\(unit.symbol)").font(ui.font(18, .medium))
+                            Text("\(unit.value(temperature))°").font(ui.font(18, .medium))
                             Text("\(other.value(temperature))\(other.symbol)").font(ui.font(13)).opacity(0.6)
                         }
                         .monospacedDigit()
@@ -293,7 +292,7 @@ private struct DailyRow: View {
 
     private func temperature(_ celsius: Double, alignment: HorizontalAlignment) -> some View {
         VStack(alignment: alignment, spacing: 0) {
-            Text("\(store.unit.value(celsius))\(store.unit.symbol)").font(ui.font(17, .medium))
+            Text("\(store.unit.value(celsius))°").font(ui.font(17, .medium))
             Text("\(store.unit.other.value(celsius))\(store.unit.other.symbol)").font(ui.font(11)).opacity(0.6)
         }
         .lineLimit(1)

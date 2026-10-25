@@ -53,6 +53,16 @@ extension Forecast {
 
 // MARK: - Views
 
+/// The big reading, drawn the way the Mac panel draws it: the number, then its unit smaller and raised to
+/// the top of the number ("69°F"). Small numbers elsewhere show just "69°", next to the other unit with
+/// its symbol ("21°C"), so it's always clear which is which.
+enum Reading {
+    static func text(_ value: Int, _ unit: TempUnit, size: CGFloat, weight: Font.Weight, unitWeight: Font.Weight = .medium) -> Text {
+        Text("\(value)").font(.system(size: size, weight: weight))
+            + Text(unit.symbol).font(.system(size: size * 0.42, weight: unitWeight)).baselineOffset(size * 0.36)
+    }
+}
+
 struct WidgetView: View {
     @Environment(\.widgetFamily) private var environmentFamily
     let entry: WeatherEntry
@@ -99,8 +109,7 @@ private struct NowBlock: View {
             }
             Spacer(minLength: 2)
             HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text("\(unit.value(now.temperature))\(unit.symbol)")
-                    .font(.system(size: big, weight: .semibold))
+                Reading.text(unit.value(now.temperature), unit, size: big, weight: .semibold)
                     .tracking(-big * 0.03)
                     .foregroundStyle(Palette.textPrimary)
                     .widgetAccentable()
@@ -212,7 +221,7 @@ private struct HoursRow: View {
                         .foregroundStyle(index == 0 ? Palette.cream : Palette.textMuted)
                     WeatherSymbol(code: hour.code, isDay: hour.isDay, size: 14)
                         .frame(height: 18)
-                    Text("\(unit.value(hour.temperature))\(unit.symbol)")
+                    Text("\(unit.value(hour.temperature))°")
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(Palette.textPrimary)
                     Text("\(other.value(hour.temperature))\(other.symbol)")
@@ -256,7 +265,7 @@ private struct DaysList: View {
                         .frame(width: 20)
                     // The low and high ride the ends of the bar, on one scale shared by all five days.
                     GeometryReader { proxy in
-                        let room: CGFloat = 38, gap: CGFloat = 4   // fits "100°F"
+                        let room: CGFloat = 32, gap: CGFloat = 4   // fits "100°"
                         let width = max(proxy.size.width - 2 * room, 1), span = max(high - low, 1)
                         let x = { (t: Double) in room + CGFloat((t - low) / span) * width }
                         ZStack(alignment: .leading) {
@@ -270,13 +279,13 @@ private struct DaysList: View {
                                     .frame(width: 8, height: 8)
                                     .offset(x: x(now) - 4)
                             }
-                            Text("\(unit.value(day.low))\(unit.symbol)")
+                            Text("\(unit.value(day.low))°")
                                 .font(.system(size: 12, weight: .semibold))
                                 .foregroundStyle(Palette.textSecondary)
                                 .fixedSize()
                                 .padding(.trailing, gap)
                                 .frame(width: x(day.low), alignment: .trailing)
-                            Text("\(unit.value(day.high))\(unit.symbol)")
+                            Text("\(unit.value(day.high))°")
                                 .font(.system(size: 12, weight: .semibold))
                                 .foregroundStyle(Palette.textPrimary)
                                 .fixedSize()
@@ -331,8 +340,7 @@ private struct CircularAccessory: View {
         ZStack {
             AccessoryWidgetBackground()
             VStack(spacing: -1) {
-                Text("\(unit.value(now.temperature))\(unit.symbol)")
-                    .font(.system(size: 22, weight: .semibold))
+                Reading.text(unit.value(now.temperature), unit, size: 22, weight: .semibold)
                     .widgetAccentable()
                 Text("\(other.value(now.temperature))\(other.symbol)")
                     .font(.system(size: 11, weight: .medium))
@@ -359,8 +367,7 @@ private struct RectangularAccessory: View {
             }
             .font(.system(size: 13, weight: .semibold))
             HStack(alignment: .firstTextBaseline, spacing: 5) {
-                Text("\(unit.value(now.temperature))\(unit.symbol)")
-                    .font(.system(size: 22, weight: .semibold))
+                Reading.text(unit.value(now.temperature), unit, size: 22, weight: .semibold)
                     .widgetAccentable()
                 Text("\(other.value(now.temperature))\(other.symbol)")
                     .font(.system(size: 14, weight: .medium))

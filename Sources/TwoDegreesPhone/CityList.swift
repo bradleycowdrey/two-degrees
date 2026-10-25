@@ -179,7 +179,7 @@ struct CityCard: View {
                 if let forecast {
                     let now = forecast.now
                     HStack(alignment: .top, spacing: ui.pt(4)) {
-                        Text("\(unit.value(now.temperature))\(unit.symbol)").font(.system(size: ui.pt(40), weight: .light))
+                        Reading.text(unit.value(now.temperature), unit, size: ui.pt(44), weight: .light, unitWeight: .light)
                     }
                     Text("\(other.value(now.temperature))\(other.symbol)").font(ui.font(15, .medium)).opacity(0.8)
                     Spacer(minLength: ui.pt(4))
