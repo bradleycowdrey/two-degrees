@@ -211,11 +211,12 @@ private struct HourlyCard: View {
                                     .font(ui.font(11, .semibold))
                                     .foregroundStyle(Palette.rain)
                             }
-                            Text("\(unit.value(temperature))\(unit.symbol)").font(ui.font(20, .medium))
+                            Text("\(unit.value(temperature))\(unit.symbol)").font(ui.font(18, .medium))
                             Text("\(other.value(temperature))\(other.symbol)").font(ui.font(13)).opacity(0.6)
                         }
                         .monospacedDigit()
-                        .frame(width: ui.pt(54))
+                        .lineLimit(1)
+                        .frame(width: ui.pt(62))
                         .accessibilityElement(children: .ignore)
                         .accessibilityLabel("\(index == 0 ? "Now" : Forecast.format(hour.time, "j")): \(Condition.name(hour.code)), \(Speech.temperature(temperature))")
                     }
@@ -261,14 +262,16 @@ private struct DailyRow: View {
         HStack(spacing: ui.pt(10)) {
             Text(name)
                 .font(ui.font(18, .medium))
-                .frame(width: ui.pt(58), alignment: .leading)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+                .frame(width: ui.pt(52), alignment: .leading)
             VStack(spacing: 0) {
                 WeatherSymbol(code: day.code, isDay: true, size: ui.pt(20))
                 if day.rainChance >= 20 {
                     Text("\(day.rainChance)%").font(ui.font(11, .semibold)).foregroundStyle(Palette.rain)
                 }
             }
-            .frame(width: ui.pt(34))
+            .frame(width: ui.pt(32))
             temperature(day.low, alignment: .trailing).opacity(0.65)
             bar
             temperature(day.high, alignment: .leading)
@@ -281,10 +284,13 @@ private struct DailyRow: View {
 
     private func temperature(_ celsius: Double, alignment: HorizontalAlignment) -> some View {
         VStack(alignment: alignment, spacing: 0) {
-            Text("\(store.unit.value(celsius))\(store.unit.symbol)").font(ui.font(18, .medium))
+            Text("\(store.unit.value(celsius))\(store.unit.symbol)").font(ui.font(17, .medium))
             Text("\(store.unit.other.value(celsius))\(store.unit.other.symbol)").font(ui.font(11)).opacity(0.6)
         }
-        .frame(width: ui.pt(38), alignment: alignment == .leading ? .leading : .trailing)
+        .lineLimit(1)
+        .minimumScaleFactor(0.8)
+        // Wide enough for "100°F" on one line.
+        .frame(width: ui.pt(50), alignment: alignment == .leading ? .leading : .trailing)
     }
 
     /// This day's low to high on the ten days' shared scale, with a dot for right now on today.

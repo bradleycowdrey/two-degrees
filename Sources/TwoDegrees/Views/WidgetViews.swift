@@ -369,7 +369,7 @@ private struct RectangularAccessory: View {
             .monospacedDigit()
             if let today = entry.forecast.days.first?.including(now.temperature) {
                 Text(entry.failed ? "Offline · \(entry.forecast.fetchedAt.formatted(date: .omitted, time: .shortened))"
-                                  : "\(Condition.name(now.code)) · \(unit.value(today.low))–\(unit.value(today.high))\(unit.symbol)")
+                                  : "\(unit.value(today.low))–\(unit.value(today.high))\(unit.symbol) · \(other.value(today.low))–\(other.value(today.high))\(other.symbol)")
                     .font(.system(size: 12, weight: .medium))
                     .opacity(0.75)
                     .lineLimit(1)
