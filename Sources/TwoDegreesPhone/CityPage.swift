@@ -128,7 +128,7 @@ struct CityPage: View {
             .padding(.bottom, ui.pt(12))
             .frame(maxWidth: .infinity)
             .background(
-                LinearGradient(stops: [.init(color: sky.top, location: 0), .init(color: sky.top, location: 0.82), .init(color: sky.top.opacity(0), location: 1)],
+                LinearGradient(stops: [.init(color: sky.top, location: 0), .init(color: sky.top, location: 0.93), .init(color: sky.top.opacity(0), location: 1)],
                                startPoint: .top, endPoint: .bottom)
                     .ignoresSafeArea(edges: .top)
             )

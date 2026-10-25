@@ -3,6 +3,15 @@
 Two Degrees updates itself: when a new version is out, the app shows a banner with an **Update** button
 (or use **Check for Updates** in the ⋯ menu). Every version is on [Releases](https://github.com/bradleycowdrey/two-degrees/releases).
 
+## [0.4.0] - 2026-10-25
+
+- **Two Degrees for iPhone**, laid out like Apple's Weather: swipe between your cities, each on its own
+  sky, with a large reading in °F and °C that shrinks into one line as you scroll, the next 24 hours, a
+  10-day forecast, and tiles for feels like, humidity, wind, rain and sunrise or sunset. Tap the reading
+  to swap which unit is large. The city list lets you search, reorder and swipe cities away.
+- **iPhone widgets**: small, medium and large on the Home Screen, plus three Lock Screen widgets.
+- Available through TestFlight while it's in testing.
+
 ## [0.3.9] - 2026-10-22
 
 - **Share is in the header now**, the first round button, left of °F | °C (it used to sit in the footer).
@@ -103,6 +112,7 @@ Also new on [bradcowdrey.com/two-degrees](https://bradcowdrey.com/two-degrees) s
 - First release: the weather in °F and °C at once, in the Dock (a live temperature on the icon) and the menu bar,
   with the next 24 hours, a 5-day forecast, up to five cities and a Share button. Data from Open-Meteo.
 
+[0.4.0]: https://github.com/bradleycowdrey/two-degrees/releases/tag/v0.4.0
 [0.3.9]: https://github.com/bradleycowdrey/two-degrees/releases/tag/v0.3.9
 [0.3.8]: https://github.com/bradleycowdrey/two-degrees/releases/tag/v0.3.8
 [0.3.7]: https://github.com/bradleycowdrey/two-degrees/releases/tag/v0.3.7
