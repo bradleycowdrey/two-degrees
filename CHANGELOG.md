@@ -3,6 +3,10 @@
 Two Degrees updates itself: when a new version is out, the app shows a banner with an **Update** button
 (or use **Check for Updates** in the ⋯ menu). Every version is on [Releases](https://github.com/bradleycowdrey/two-degrees/releases).
 
+## [0.4.2] - 2026-10-25
+
+- iPad: Two Degrees fills the screen, with larger text and a wider column.
+
 ## [0.4.1] - 2026-10-25
 
 - **°F and °C on every number**, in the iPhone app and in every widget on Mac and iPhone (it used to be
@@ -123,6 +127,7 @@ Also new on [bradcowdrey.com/two-degrees](https://bradcowdrey.com/two-degrees) s
 - First release: the weather in °F and °C at once, in the Dock (a live temperature on the icon) and the menu bar,
   with the next 24 hours, a 5-day forecast, up to five cities and a Share button. Data from Open-Meteo.
 
+[0.4.2]: https://github.com/bradleycowdrey/two-degrees/releases/tag/v0.4.2
 [0.4.1]: https://github.com/bradleycowdrey/two-degrees/releases/tag/v0.4.1
 [0.4.0]: https://github.com/bradleycowdrey/two-degrees/releases/tag/v0.4.0
 [0.3.9]: https://github.com/bradleycowdrey/two-degrees/releases/tag/v0.3.9
