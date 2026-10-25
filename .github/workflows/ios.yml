@@ -66,6 +66,14 @@ jobs:
           xcrun simctl launch "$DEVICE" $ID --selftest --show-list
           for i in $(seq 1 120); do [ -f "$DOCS/report.txt" ] && break; sleep 1; done
           sleep 3; xcrun simctl io "$DEVICE" screenshot "$OUT/phone-4-city-list.png"
+          xcrun simctl terminate "$DEVICE" $ID || true
+          # 5. The iPhone's text size turned up to an accessibility size: the page must still fit.
+          xcrun simctl ui "$DEVICE" content_size accessibility-medium || true
+          rm -f "$DOCS/report.txt"
+          xcrun simctl launch "$DEVICE" $ID --selftest
+          for i in $(seq 1 120); do [ -f "$DOCS/report.txt" ] && break; sleep 1; done
+          sleep 3; xcrun simctl io "$DEVICE" screenshot "$OUT/phone-5-large-text.png"
+          xcrun simctl ui "$DEVICE" content_size large || true
           cat "$OUT/report.txt" 2>/dev/null || echo "no report"
       - name: Publish to ci-shots-ios branch
         if: always() && github.event_name != 'pull_request'

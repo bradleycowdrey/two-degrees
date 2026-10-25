@@ -9,6 +9,8 @@ struct CityPage: View {
     let city: City
     /// How far the header has scrolled up (0 at rest, negative as it goes).
     @State private var offset: CGFloat = 0
+    /// Height of the pinned one-line header; the page is hidden beneath it, as in Apple's Weather.
+    @State private var bandHeight: CGFloat = 0
 
     var body: some View {
         let forecast = store.forecasts[city.id]
@@ -48,6 +50,14 @@ struct CityPage: View {
             }
             .coordinateSpace(name: "page")
             .refreshable { await store.refresh() }
+            // Once the one-line header is pinned, the page scrolls away under it instead of showing through.
+            .mask(alignment: .top) {
+                VStack(spacing: 0) {
+                    Color.clear.frame(height: collapse > 0.75 ? bandHeight : 0)
+                    LinearGradient(colors: [.clear, .black], startPoint: .top, endPoint: .bottom).frame(height: collapse > 0.75 ? ui.pt(10) : 0)
+                    Color.black
+                }
+            }
             .overlay(alignment: .top) { compactHeader(forecast) }
             .task {
                 if PhoneSelfTest.showDays && city.id == store.activeID {
@@ -114,7 +124,6 @@ struct CityPage: View {
     private func compactHeader(_ forecast: Forecast?) -> some View {
         if let forecast, collapse > 0.75 {
             let now = forecast.now, unit = store.unit, other = unit.other
-            let sky = Sky.colors(code: now.code, isDay: now.isDay)
             VStack(spacing: ui.pt(2)) {
                 Text(city.name).font(ui.font(28))
                 Text("\(unit.value(now.temperature))\(unit.symbol) · \(other.value(now.temperature))\(other.symbol)  |  \(Condition.name(now.code))")
@@ -127,13 +136,9 @@ struct CityPage: View {
             .minimumScaleFactor(0.7)
             .padding(.horizontal, ui.pt(16))
             .padding(.top, ui.pt(6))
-            .padding(.bottom, ui.pt(12))
+            .padding(.bottom, ui.pt(10))
             .frame(maxWidth: .infinity)
-            .background(
-                LinearGradient(stops: [.init(color: sky.top, location: 0), .init(color: sky.top, location: 0.93), .init(color: sky.top.opacity(0), location: 1)],
-                               startPoint: .top, endPoint: .bottom)
-                    .ignoresSafeArea(edges: .top)
-            )
+            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { bandHeight = $0 }
             .opacity(Double((collapse - 0.75) * 4))
             .accessibilityHidden(true)
         }
@@ -268,10 +273,10 @@ private struct DailyRow: View {
             VStack(spacing: 0) {
                 WeatherSymbol(code: day.code, isDay: true, size: ui.pt(20))
                 if day.rainChance >= 20 {
-                    Text("\(day.rainChance)%").font(ui.font(11, .semibold)).foregroundStyle(Palette.rain)
+                    Text("\(day.rainChance)%").font(ui.font(11, .semibold)).foregroundStyle(Palette.rain).fixedSize()
                 }
             }
-            .frame(width: ui.pt(32))
+            .frame(width: ui.pt(36))
             temperature(day.low, alignment: .trailing).opacity(0.65)
             bar
             temperature(day.high, alignment: .leading)

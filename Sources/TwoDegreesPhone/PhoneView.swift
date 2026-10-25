@@ -4,12 +4,15 @@ import SwiftUI
 /// that city's sky, with a bottom bar of page dots, Share and the city list.
 struct PhoneView: View {
     @EnvironmentObject private var store: WeatherStore
+    @Environment(\.dynamicTypeSize) private var dynamicType
     @AppStorage(Terms.key) private var agreedVersion = ""
     /// The city list. `--show-list` (CI screenshots) opens it at launch.
     @State private var showingList = PhoneSelfTest.showList
 
     var body: some View {
-        let ui = Metrics(scale: store.uiSize.scale, family: store.appFont)
+        // The iPhone's own text size (Settings → Display & Brightness → Text Size) scales everything, on top
+        // of the app's Text Size choice.
+        let ui = Metrics(scale: store.uiSize.scale * Self.scale(for: dynamicType), family: store.appFont)
         let sky = store.activeForecast?.sky ?? (code: 3, isDay: true)
         TabView(selection: Binding(get: { store.activeID }, set: { id in
             if let city = store.cities.first(where: { $0.id == id }) { store.select(city) }
@@ -68,6 +71,23 @@ struct PhoneView: View {
         .background(.ultraThinMaterial, ignoresSafeAreaEdges: .bottom)
         .overlay(alignment: .top) { Divider().overlay(Color.white.opacity(0.15)) }
         .environment(\.colorScheme, .dark)
+    }
+}
+
+extension PhoneView {
+    /// How much each system text size scales the layout. The largest accessibility sizes are capped so
+    /// a city page still fits the screen's width.
+    static func scale(for size: DynamicTypeSize) -> CGFloat {
+        switch size {
+        case .xSmall: return 0.86
+        case .small: return 0.9
+        case .medium: return 0.95
+        case .large: return 1.0
+        case .xLarge: return 1.07
+        case .xxLarge: return 1.14
+        case .xxxLarge: return 1.21
+        default: return 1.3   // accessibility sizes
+        }
     }
 }
 
