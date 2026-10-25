@@ -1,0 +1,68 @@
+name: App Store screenshots
+
+# Photographs the iPhone app in the Simulator at the sizes App Store Connect requires: iPhone 6.9"
+# (1320 × 2868) and iPad 13" (2064 × 2752), with live weather and a 9:41 status bar, plus a picture of
+# the widgets. Results go to the appstore-screenshots branch. Run it from the Actions tab.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  shots:
+    runs-on: macos-15
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Build for the Simulator
+        run: scripts/build-ios.sh 1.0
+      - name: Photograph
+        run: |
+          OUT="$RUNNER_TEMP/shots"; mkdir -p "$OUT"
+          ID=com.bradcowdrey.twodegrees
+          pick() {   # newest available simulator whose name matches $1
+            xcrun simctl list devices available -j | python3 -c '
+          import json,sys,re
+          want=sys.argv[1]
+          d=json.load(sys.stdin)["devices"]
+          m=[(r,x) for r,xs in d.items() if "iOS" in r for x in xs if re.search(want, x["name"])]
+          m.sort(key=lambda p:p[0]); print(m[-1][1]["udid"] if m else "")' "$1"
+          }
+          shoot() {   # $1 = device, $2 = prefix
+            D="$1"; P="$2"
+            xcrun simctl boot "$D"; xcrun simctl bootstatus "$D" -b
+            xcrun simctl status_bar "$D" override --time 9:41 --batteryState charged --batteryLevel 100 --wifiBars 3 --cellularBars 4 || true
+            xcrun simctl install "$D" dist/ios/TwoDegrees.app
+            DOCS="$(xcrun simctl get_app_container "$D" $ID data)/Documents"
+            n=1
+            for flags in "" "--show-days" "--show-tiles" "--show-list"; do
+              mkdir -p "$DOCS"; rm -f "$DOCS/report.txt"
+              xcrun simctl launch "$D" $ID --selftest $flags
+              for i in $(seq 1 120); do [ -f "$DOCS/report.txt" ] && break; sleep 1; done
+              sleep 4
+              xcrun simctl io "$D" screenshot "$OUT/$P-$n.png"
+              xcrun simctl terminate "$D" $ID || true
+              n=$((n+1))
+            done
+            cp "$DOCS"/widget-*.png "$OUT/" 2>/dev/null || true
+            xcrun simctl shutdown "$D" || true
+          }
+          PHONE=$(pick 'iPhone .* Pro Max'); PAD=$(pick 'iPad Pro 13')
+          echo "iPhone: $PHONE  iPad: $PAD"
+          shoot "$PHONE" iphone
+          [ -n "$PAD" ] && shoot "$PAD" ipad || echo "::warning::No 13-inch iPad Pro simulator; skipped the iPad set"
+          # The widgets, on a sky, at the iPhone size (the Simulator can't place widgets on its Home Screen).
+          python3 -m pip install --quiet pillow
+          python3 scripts/appstore-widgets.py "$OUT" "$OUT/iphone-5.png"
+          sips -g pixelWidth -g pixelHeight "$OUT"/iphone-*.png "$OUT"/ipad-*.png 2>/dev/null | grep -E 'png|pixel'
+      - name: Publish to appstore-screenshots branch
+        run: |
+          cd "$RUNNER_TEMP/shots"
+          echo "$GITHUB_SHA" > commit.txt
+          git init -q -b appstore-screenshots
+          git config user.name "ci"; git config user.email "ci@users.noreply.github.com"
+          git add -A && git commit -qm "App Store screenshots for $GITHUB_SHA"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" appstore-screenshots
