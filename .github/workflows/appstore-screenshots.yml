@@ -22,6 +22,7 @@ jobs:
       - name: Photograph
         run: |
           OUT="$RUNNER_TEMP/shots"; mkdir -p "$OUT"
+          exec > >(tee "$OUT/log.txt") 2>&1
           ID=com.bradcowdrey.twodegrees
           pick() {   # newest available simulator whose name matches $1
             xcrun simctl list devices available -j | python3 -c '
@@ -55,10 +56,11 @@ jobs:
           shoot "$PHONE" iphone
           [ -n "$PAD" ] && shoot "$PAD" ipad || echo "::warning::No 13-inch iPad Pro simulator; skipped the iPad set"
           # The widgets, on a sky, at the iPhone size (the Simulator can't place widgets on its Home Screen).
-          python3 -m pip install --quiet pillow
-          python3 scripts/appstore-widgets.py "$OUT" "$OUT/iphone-5.png"
-          sips -g pixelWidth -g pixelHeight "$OUT"/iphone-*.png "$OUT"/ipad-*.png 2>/dev/null | grep -E 'png|pixel'
+          python3 -m venv "$RUNNER_TEMP/venv" && "$RUNNER_TEMP/venv/bin/pip" install --quiet pillow
+          "$RUNNER_TEMP/venv/bin/python" scripts/appstore-widgets.py "$OUT" "$OUT/iphone-5.png"
+          for f in "$OUT"/iphone-*.png "$OUT"/ipad-*.png; do [ -f "$f" ] && echo "$(basename "$f"): $(sips -g pixelWidth -g pixelHeight "$f" | awk '/pixel/ {printf "%s ", $2}')"; done
       - name: Publish to appstore-screenshots branch
+        if: always()
         run: |
           cd "$RUNNER_TEMP/shots"
           echo "$GITHUB_SHA" > commit.txt
