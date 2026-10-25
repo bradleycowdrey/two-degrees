@@ -303,6 +303,7 @@ final class MoreLogicTests: XCTestCase {
         XCTAssertEqual(Meteo.dewPoint(celsius: 15, humidity: 100), 15, accuracy: 0.05)
         XCTAssertEqual([0.0, 2.9, 3, 6, 8, 11].map(Meteo.uvLevel), ["Low", "Low", "Moderate", "High", "Very high", "Extreme"])
         XCTAssertEqual([0.0, 22, 23, 90, 180, 270, 337, 350, 359, -10].map(Meteo.compass), ["N", "N", "NE", "E", "S", "W", "NW", "N", "N", "N"])
+        XCTAssertEqual([0.0, 135, 315].map(Meteo.compassName), ["north", "southeast", "northwest"])
     }
 
     func testMenuBarPanelCentersUnderItsItem() {

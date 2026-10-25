@@ -306,6 +306,12 @@ enum Meteo {
         }
     }
 
+    /// "north", "northeast", … for a direction in degrees, for sentences.
+    static func compassName(_ degrees: Double) -> String {
+        ["N": "north", "NE": "northeast", "E": "east", "SE": "southeast",
+         "S": "south", "SW": "southwest", "W": "west", "NW": "northwest"][compass(degrees)] ?? compass(degrees)
+    }
+
     /// "N", "NE", … for a direction in degrees.
     static func compass(_ degrees: Double) -> String {
         let points = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]

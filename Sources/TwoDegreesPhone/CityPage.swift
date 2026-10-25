@@ -377,7 +377,7 @@ private struct DetailTiles: View {
         case ..<50: strength = "A strong breeze"
         default: strength = "Gale-force wind"
         }
-        return now.windDirection.map { "\(strength) from the \(Meteo.compass($0))." } ?? "\(strength)."
+        return now.windDirection.map { "\(strength) from the \(Meteo.compassName($0))." } ?? "\(strength)."
     }
 
     /// The dew point in both units, as Apple's Weather gives it under humidity.
@@ -399,8 +399,10 @@ private struct DetailTiles: View {
     }
 
     private var rainNote: String {
-        if let wet = forecast.upcomingHours.dropFirst().prefix(12).first(where: { $0.rainChance >= 40 }) {
-            return "\(Condition.isSnow(wet.code) ? "Snow" : "Rain") possible around \(Forecast.format(wet.time, "j"))."
+        // Same rule and words as the hourly summary (Summary.line), so the two never disagree.
+        if let wet = forecast.upcomingHours.dropFirst().prefix(12).first(where: { $0.rainChance >= 50 }) {
+            let what = Condition.isSnow(wet.code) ? "Snow" : ([95, 96, 99].contains(wet.code) ? "Storms" : "Rain")
+            return "\(what) likely around \(Forecast.format(wet.time, "j"))."
         }
         return "None expected in the next 12 hours."
     }
