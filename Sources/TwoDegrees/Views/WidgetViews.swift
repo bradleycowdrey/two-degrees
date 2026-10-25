@@ -99,7 +99,7 @@ private struct NowBlock: View {
             }
             Spacer(minLength: 2)
             HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text("\(unit.value(now.temperature))°")
+                Text("\(unit.value(now.temperature))\(unit.symbol)")
                     .font(.system(size: big, weight: .semibold))
                     .tracking(-big * 0.03)
                     .foregroundStyle(Palette.textPrimary)
@@ -212,7 +212,7 @@ private struct HoursRow: View {
                         .foregroundStyle(index == 0 ? Palette.cream : Palette.textMuted)
                     WeatherSymbol(code: hour.code, isDay: hour.isDay, size: 14)
                         .frame(height: 18)
-                    Text("\(unit.value(hour.temperature))°")
+                    Text("\(unit.value(hour.temperature))\(unit.symbol)")
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(Palette.textPrimary)
                     Text("\(other.value(hour.temperature))\(other.symbol)")
@@ -256,7 +256,7 @@ private struct DaysList: View {
                         .frame(width: 20)
                     // The low and high ride the ends of the bar, on one scale shared by all five days.
                     GeometryReader { proxy in
-                        let room: CGFloat = 30, gap: CGFloat = 4
+                        let room: CGFloat = 38, gap: CGFloat = 4   // fits "100°F"
                         let width = max(proxy.size.width - 2 * room, 1), span = max(high - low, 1)
                         let x = { (t: Double) in room + CGFloat((t - low) / span) * width }
                         ZStack(alignment: .leading) {
@@ -270,13 +270,13 @@ private struct DaysList: View {
                                     .frame(width: 8, height: 8)
                                     .offset(x: x(now) - 4)
                             }
-                            Text("\(unit.value(day.low))°")
+                            Text("\(unit.value(day.low))\(unit.symbol)")
                                 .font(.system(size: 12, weight: .semibold))
                                 .foregroundStyle(Palette.textSecondary)
                                 .fixedSize()
                                 .padding(.trailing, gap)
                                 .frame(width: x(day.low), alignment: .trailing)
-                            Text("\(unit.value(day.high))°")
+                            Text("\(unit.value(day.high))\(unit.symbol)")
                                 .font(.system(size: 12, weight: .semibold))
                                 .foregroundStyle(Palette.textPrimary)
                                 .fixedSize()
@@ -331,7 +331,7 @@ private struct CircularAccessory: View {
         ZStack {
             AccessoryWidgetBackground()
             VStack(spacing: -1) {
-                Text("\(unit.value(now.temperature))°")
+                Text("\(unit.value(now.temperature))\(unit.symbol)")
                     .font(.system(size: 22, weight: .semibold))
                     .widgetAccentable()
                 Text("\(other.value(now.temperature))\(other.symbol)")
@@ -369,7 +369,7 @@ private struct RectangularAccessory: View {
             .monospacedDigit()
             if let today = entry.forecast.days.first?.including(now.temperature) {
                 Text(entry.failed ? "Offline · \(entry.forecast.fetchedAt.formatted(date: .omitted, time: .shortened))"
-                                  : "\(Condition.name(now.code)) · \(unit.value(today.low))–\(unit.value(today.high))°")
+                                  : "\(Condition.name(now.code)) · \(unit.value(today.low))–\(unit.value(today.high))\(unit.symbol)")
                     .font(.system(size: 12, weight: .medium))
                     .opacity(0.75)
                     .lineLimit(1)

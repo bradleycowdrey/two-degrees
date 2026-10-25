@@ -73,7 +73,7 @@ struct CityPage: View {
                 // Tap the reading to swap which unit is large.
                 Button { withAnimation(.snappy) { store.toggleUnit() } } label: {
                     HStack(alignment: .top, spacing: ui.pt(6)) {
-                        Text("\(unit.value(now.temperature))°")
+                        Text("\(unit.value(now.temperature))\(unit.symbol)")
                             .font(.system(size: ui.pt(96), weight: .thin))
                             .tracking(-2)
                         Text("\(other.value(now.temperature))\(other.symbol)")
@@ -82,6 +82,8 @@ struct CityPage: View {
                             .padding(.top, ui.pt(18))
                     }
                     .monospacedDigit()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.5)
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
@@ -91,7 +93,7 @@ struct CityPage: View {
                     .font(ui.font(20, .medium))
                     .opacity(0.9)
                 if let today = forecast.days.first?.including(now.temperature) {
-                    Text("H:\(unit.value(today.high))°  L:\(unit.value(today.low))°")
+                    Text("H:\(unit.value(today.high))\(unit.symbol)  L:\(unit.value(today.low))\(unit.symbol)")
                         .font(ui.font(20, .medium))
                     Text("H:\(other.value(today.high))\(other.symbol)  L:\(other.value(today.low))\(other.symbol)")
                         .font(ui.font(15))
@@ -209,8 +211,8 @@ private struct HourlyCard: View {
                                     .font(ui.font(11, .semibold))
                                     .foregroundStyle(Palette.rain)
                             }
-                            Text("\(unit.value(temperature))°").font(ui.font(20, .medium))
-                            Text("\(other.value(temperature))°").font(ui.font(13)).opacity(0.6)
+                            Text("\(unit.value(temperature))\(unit.symbol)").font(ui.font(20, .medium))
+                            Text("\(other.value(temperature))\(other.symbol)").font(ui.font(13)).opacity(0.6)
                         }
                         .monospacedDigit()
                         .frame(width: ui.pt(54))
@@ -279,8 +281,8 @@ private struct DailyRow: View {
 
     private func temperature(_ celsius: Double, alignment: HorizontalAlignment) -> some View {
         VStack(alignment: alignment, spacing: 0) {
-            Text("\(store.unit.value(celsius))°").font(ui.font(18, .medium))
-            Text("\(store.unit.other.value(celsius))°").font(ui.font(11)).opacity(0.6)
+            Text("\(store.unit.value(celsius))\(store.unit.symbol)").font(ui.font(18, .medium))
+            Text("\(store.unit.other.value(celsius))\(store.unit.other.symbol)").font(ui.font(11)).opacity(0.6)
         }
         .frame(width: ui.pt(38), alignment: alignment == .leading ? .leading : .trailing)
     }
@@ -324,7 +326,7 @@ private struct DetailTiles: View {
         let today = forecast.days.first?.including(now.temperature)
         LazyVGrid(columns: [GridItem(.flexible(), spacing: ui.pt(10)), GridItem(.flexible(), spacing: ui.pt(10))], spacing: ui.pt(10)) {
             DetailTile(title: "Feels like", icon: "thermometer.medium",
-                 value: "\(unit.value(now.feelsLike))°", sub: "\(other.value(now.feelsLike))\(other.symbol)",
+                 value: "\(unit.value(now.feelsLike))\(unit.symbol)", sub: "\(other.value(now.feelsLike))\(other.symbol)",
                  note: feelsNote(now))
             DetailTile(title: "Humidity", icon: "humidity",
                  value: "\(Int(now.humidity.rounded()))%", sub: nil,
@@ -338,7 +340,7 @@ private struct DetailTiles: View {
                  note: rainNote)
             sunTile(today)
             DetailTile(title: "Today", icon: "arrow.up.and.down",
-                 value: today.map { "\(unit.value($0.low))–\(unit.value($0.high))°" } ?? "–",
+                 value: today.map { "\(unit.value($0.low))–\(unit.value($0.high))\(unit.symbol)" } ?? "–",
                  sub: today.map { "\(other.value($0.low))–\(other.value($0.high))\(other.symbol)" },
                  note: "Today’s low and high, both units.")
         }

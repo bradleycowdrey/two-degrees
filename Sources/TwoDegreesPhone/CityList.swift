@@ -179,12 +179,12 @@ struct CityCard: View {
                 if let forecast {
                     let now = forecast.now
                     HStack(alignment: .top, spacing: ui.pt(4)) {
-                        Text("\(unit.value(now.temperature))°").font(.system(size: ui.pt(46), weight: .light))
+                        Text("\(unit.value(now.temperature))\(unit.symbol)").font(.system(size: ui.pt(44), weight: .light))
                     }
                     Text("\(other.value(now.temperature))\(other.symbol)").font(ui.font(15, .medium)).opacity(0.8)
                     Spacer(minLength: ui.pt(4))
                     if let today = forecast.days.first?.including(now.temperature) {
-                        Text("H:\(unit.value(today.high))°  L:\(unit.value(today.low))°").font(ui.font(14, .medium)).opacity(0.9)
+                        Text("H:\(unit.value(today.high))\(unit.symbol)  L:\(unit.value(today.low))\(unit.symbol)").font(ui.font(14, .medium)).opacity(0.9)
                     }
                 } else {
                     Text("––°").font(.system(size: ui.pt(46), weight: .light)).opacity(0.5)
