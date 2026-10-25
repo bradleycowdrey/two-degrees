@@ -243,6 +243,9 @@ final class Updater: ObservableObject {
     # Tell LaunchServices about the new version. Without this it keeps the old build number, and
     # macOS rejects the widget's content ("Bundle version did not match"), leaving it blank.
     /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$TARGET"
+    # End the widget process still running the old version's code (its network is cut once its app is
+    # replaced, so its widgets stay grey). macOS starts the new version's widget when it's next needed.
+    /usr/bin/pkill -x TwoDegreesWidget
     echo "$(date) relaunching"
     /usr/bin/open "$TARGET"
     """

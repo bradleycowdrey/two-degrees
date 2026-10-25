@@ -412,6 +412,13 @@ final class InstallScriptTests: XCTestCase {
 
     func marker(_ url: URL) -> String? { try? String(contentsOf: url.appendingPathComponent("Contents/marker"), encoding: .utf8) }
 
+    func testUpdateEndsTheOldWidgetProcess() {
+        // The old version's widget process must not outlive the update (its widgets would stay grey).
+        let script = Updater.installScript
+        XCTAssertTrue(script.contains("/usr/bin/pkill -x TwoDegreesWidget"))
+        XCTAssertLessThan(script.range(of: "pkill")!.lowerBound, script.range(of: "/usr/bin/open")!.lowerBound)
+    }
+
     func testRegistersTheNewVersionWithLaunchServices() {
         // Without this, macOS keeps the old build number and rejects the widget's content.
         XCTAssertTrue(Updater.installScript.contains("lsregister -f \"$TARGET\""))

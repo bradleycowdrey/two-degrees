@@ -110,10 +110,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // against it and throws the widget's content away on a mismatch (an app swapped in place by an
         // update keeps the old record), which leaves the widget blank. Re-registering heals that.
         LSRegisterURL(Bundle.main.bundleURL as CFURL, true)
+        // A widget process left over from before an update keeps running the old code, and its network is
+        // cut, so widgets go grey (and a newly picked city never loads). End it; macOS starts this
+        // version's widget as soon as a widget needs it.
+        Self.endWidgetProcesses()
         // Then redraw the widgets, so after an update they show the new version right away instead of
         // at their next scheduled refresh.
         WidgetCenter.shared.reloadAllTimelines()
         Terms.askIfNeeded()   // first run only, and after a material change to the terms
+    }
+
+    static func endWidgetProcesses() {
+        guard !SelfTest.isActive else { return }
+        let pkill = Process()
+        pkill.executableURL = URL(fileURLWithPath: "/usr/bin/pkill")
+        pkill.arguments = ["-x", "TwoDegreesWidget"]
+        try? pkill.run()
+        pkill.waitUntilExit()
     }
 
     @MainActor
