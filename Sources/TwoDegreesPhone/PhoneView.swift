@@ -5,6 +5,7 @@ import SwiftUI
 struct PhoneView: View {
     @EnvironmentObject private var store: WeatherStore
     @Environment(\.dynamicTypeSize) private var dynamicType
+    @Environment(\.horizontalSizeClass) private var sizeClass
     @AppStorage(Terms.key) private var agreedVersion = ""
     /// The city list. `--show-list` (CI screenshots) opens it at launch.
     @State private var showingList = PhoneSelfTest.showList
@@ -12,7 +13,8 @@ struct PhoneView: View {
     var body: some View {
         // The iPhone's own text size (Settings → Display & Brightness → Text Size) scales everything, on top
         // of the app's Text Size choice.
-        let ui = Metrics(scale: store.uiSize.scale * Self.scale(for: dynamicType), family: store.appFont)
+        // On iPad (full width), everything is larger, so the page reads at arm's length.
+        let ui = Metrics(scale: store.uiSize.scale * Self.scale(for: dynamicType) * (sizeClass == .regular ? 1.4 : 1), family: store.appFont)
         let sky = store.activeForecast?.sky ?? (code: 3, isDay: true)
         TabView(selection: Binding(get: { store.activeID }, set: { id in
             if let city = store.cities.first(where: { $0.id == id }) { store.select(city) }

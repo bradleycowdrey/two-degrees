@@ -45,7 +45,7 @@ struct CityPage: View {
                 }
                 .padding(.horizontal, ui.pt(16))
                 .padding(.bottom, ui.pt(72))             // room above the bottom bar
-                .frame(maxWidth: 600)                    // iPad: a readable column
+                .frame(maxWidth: ui.pt(600))             // iPad: a readable column, scaled with the text
                 .frame(maxWidth: .infinity)
             }
             .coordinateSpace(name: "page")
