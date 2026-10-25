@@ -9,6 +9,8 @@ enum PhoneSelfTest {
     nonisolated static let isActive = ProcessInfo.processInfo.arguments.contains("--selftest")
     /// Scrolls the city page down to the 10-day forecast, for a screenshot.
     nonisolated static let showDays = ProcessInfo.processInfo.arguments.contains("--show-days")
+    /// Scrolls the city page to the bottom of its detail tiles, for a screenshot.
+    nonisolated static let showTiles = ProcessInfo.processInfo.arguments.contains("--show-tiles")
     /// Opens the city list at launch, for a screenshot.
     nonisolated static let showList = ProcessInfo.processInfo.arguments.contains("--show-list")
 

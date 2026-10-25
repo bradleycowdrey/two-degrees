@@ -61,6 +61,12 @@ jobs:
           for i in $(seq 1 120); do [ -f "$DOCS/report.txt" ] && break; sleep 1; done
           sleep 3; xcrun simctl io "$DEVICE" screenshot "$OUT/phone-3-scrolled.png"
           xcrun simctl terminate "$DEVICE" $ID || true
+          # 3b. The bottom of the page: the detail tiles.
+          rm -f "$DOCS/report.txt"
+          xcrun simctl launch "$DEVICE" $ID --selftest --show-tiles
+          for i in $(seq 1 120); do [ -f "$DOCS/report.txt" ] && break; sleep 1; done
+          sleep 3; xcrun simctl io "$DEVICE" screenshot "$OUT/phone-3b-tiles.png"
+          xcrun simctl terminate "$DEVICE" $ID || true
           # 4. The city list.
           rm -f "$DOCS/report.txt"
           xcrun simctl launch "$DEVICE" $ID --selftest --show-list

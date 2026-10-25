@@ -25,7 +25,7 @@ struct CityPage: View {
                     if let forecast {
                         HourlyCard(forecast: forecast)
                         DailyCard(forecast: forecast).id("days")
-                        DetailTiles(forecast: forecast)
+                        DetailTiles(forecast: forecast).id("tiles")
                         footer
                     } else {
                         Card(title: "Forecast", icon: "clock") {
@@ -63,6 +63,10 @@ struct CityPage: View {
                 if PhoneSelfTest.showDays && city.id == store.activeID {
                     try? await Task.sleep(for: .seconds(2.5))
                     withAnimation { reader.scrollTo("days", anchor: .top) }
+                }
+                if PhoneSelfTest.showTiles && city.id == store.activeID {
+                    try? await Task.sleep(for: .seconds(2.5))
+                    withAnimation { reader.scrollTo("tiles", anchor: .bottom) }
                 }
             }
         }
