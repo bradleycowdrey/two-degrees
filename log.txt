@@ -1,0 +1,194 @@
+iPhone: 9F3D563E-AF8A-4089-B32E-3ADADEB067F0  iPad: 5A602664-A209-462C-9B02-6E51FACDFED6
+Monitoring boot status for iPhone 16 Pro Max (9F3D563E-AF8A-4089-B32E-3ADADEB067F0).
+[2026-10-25 16:35:44 +0000] Status=2, isTerminal=NO, Elapsed=00:34.
+	Waiting on Data Migration
+		Reason:Running plugin com.apple.-0LaunchServicesMigrator (00LaunchServicesMigrator.migrator, user-agnostic)
+		Migration Elapsed:00:29 seconds
+
+[2026-10-25 16:35:45 +0000] Status=2, isTerminal=NO, Elapsed=00:35.
+	Waiting on Data Migration
+		Reason:Running plugin com.apple.-0LaunchServicesMigrator (00LaunchServicesMigrator.migrator, user-agnostic)
+		Migration Elapsed:00:30 seconds
+
+[2026-10-25 16:35:46 +0000] Status=2, isTerminal=NO, Elapsed=00:36.
+	Waiting on Data Migration
+		Reason:Running plugin com.apple.-0LaunchServicesMigrator (00LaunchServicesMigrator.migrator, user-agnostic)
+		Migration Elapsed:00:31 seconds
+
+[2026-10-25 16:35:47 +0000] Status=2, isTerminal=NO, Elapsed=00:37.
+	Waiting on Data Migration
+		Reason:Running plugin com.apple.-0LaunchServicesMigrator (00LaunchServicesMigrator.migrator, user-agnostic)
+		Migration Elapsed:00:32 seconds
+
+[2026-10-25 16:35:48 +0000] Status=2, isTerminal=NO, Elapsed=00:38.
+	Waiting on Data Migration
+		Reason:Running plugin com.apple.-0LaunchServicesMigrator (00LaunchServicesMigrator.migrator, user-agnostic)
+		Migration Elapsed:00:33 seconds
+
+[2026-10-25 16:35:49 +0000] Status=2, isTerminal=NO, Elapsed=00:39.
+	Waiting on Data Migration
+		Reason:Running plugin com.apple.-0LaunchServicesMigrator (00LaunchServicesMigrator.migrator, user-agnostic)
+		Migration Elapsed:00:34 seconds
+
+[2026-10-25 16:35:50 +0000] Status=2, isTerminal=NO, Elapsed=00:40.
+	Waiting on Data Migration
+		Reason:Running plugin com.apple.-0LaunchServicesMigrator (00LaunchServicesMigrator.migrator, user-agnostic)
+		Migration Elapsed:00:35 seconds
+
+[2026-10-25 16:35:51 +0000] Status=2, isTerminal=NO, Elapsed=00:41.
+	Waiting on Data Migration
+		Reason:Running plugin com.apple.-0LaunchServicesMigrator (00LaunchServicesMigrator.migrator, user-agnostic)
+		Migration Elapsed:00:36 seconds
+
+[2026-10-25 16:35:52 +0000] Status=2, isTerminal=NO, Elapsed=00:42.
+	Waiting on Data Migration
+		Reason:Running plugin com.apple.-0LaunchServicesMigrator (00LaunchServicesMigrator.migrator, user-agnostic)
+		Migration Elapsed:00:37 seconds
+
+[2026-10-25 16:35:53 +0000] Status=2, isTerminal=NO, Elapsed=00:43.
+	Waiting on Data Migration
+		Reason:Running plugin com.apple.-0LaunchServicesMigrator (00LaunchServicesMigrator.migrator, user-agnostic)
+		Migration Elapsed:00:38 seconds
+
+[2026-10-25 16:35:54 +0000] Status=2, isTerminal=NO, Elapsed=00:44.
+	Waiting on Data Migration
+		Reason:Running plugin com.apple.-0LaunchServicesMigrator (00LaunchServicesMigrator.migrator, user-agnostic)
+		Migration Elapsed:00:39 seconds
+
+[2026-10-25 16:35:58 +0000] Status=2, isTerminal=NO, Elapsed=00:48.
+	Waiting on Data Migration
+		Reason:Running plugin com.apple.securityd.KeychainMigrator (KeychainMigrator.migrator, user-agnostic)
+		Migration Elapsed:00:40 seconds
+
+[2026-10-25 16:36:00 +0000] Status=2, isTerminal=NO, Elapsed=00:50.
+	Waiting on Data Migration
+		Reason:Running plugin com.apple.MobileSafari.migrator (MobileSafari.migrator)
+		Migration Elapsed:00:43 seconds
+
+[2026-10-25 16:36:02 +0000] Status=4, isTerminal=NO, Elapsed=00:51.
+	Waiting on System App
+
+[2026-10-25 16:36:03 +0000] Status=4, isTerminal=NO, Elapsed=00:52.
+	Waiting on System App
+
+[2026-10-25 16:36:04 +0000] Status=4, isTerminal=NO, Elapsed=00:53.
+	Waiting on System App
+
+[2026-10-25 16:36:04 +0000] Status=4, isTerminal=NO, Elapsed=00:54.
+	Waiting on System App
+
+[2026-10-25 16:36:05 +0000] Status=4, isTerminal=NO, Elapsed=00:54.
+	Waiting on System App
+
+[2026-10-25 16:36:05 +0000] Status=4, isTerminal=NO, Elapsed=00:55.
+	Waiting on System App
+
+[2026-10-25 16:36:07 +0000] Status=4, isTerminal=NO, Elapsed=00:57.
+	Waiting on System App
+
+[2026-10-25 16:36:08 +0000] Status=4, isTerminal=NO, Elapsed=00:57.
+	Waiting on System App
+
+[2026-10-25 16:36:08 +0000] Status=4, isTerminal=NO, Elapsed=00:58.
+	Waiting on System App
+
+[2026-10-25 16:36:10 +0000] Status=4, isTerminal=NO, Elapsed=00:59.
+	Waiting on System App
+
+[2026-10-25 16:36:15 +0000] Status=4294967295, isTerminal=YES, Elapsed=01:04.
+	Finished
+
+com.bradcowdrey.twodegrees: 7005
+Detected file type 'PNG' from extension
+Wrote screenshot to: /Users/runner/work/_temp/shots/iphone-1.png
+com.bradcowdrey.twodegrees: 8208
+Detected file type 'PNG' from extension
+Wrote screenshot to: /Users/runner/work/_temp/shots/iphone-2.png
+com.bradcowdrey.twodegrees: 8310
+Detected file type 'PNG' from extension
+Wrote screenshot to: /Users/runner/work/_temp/shots/iphone-3.png
+com.bradcowdrey.twodegrees: 8953
+Detected file type 'PNG' from extension
+Wrote screenshot to: /Users/runner/work/_temp/shots/iphone-4.png
+Monitoring boot status for iPad Pro 13-inch (M4) (5A602664-A209-462C-9B02-6E51FACDFED6).
+[2026-10-25 16:39:18 +0000] Status=2, isTerminal=NO, Elapsed=00:38.
+	Waiting on Data Migration
+		Reason:Running plugin com.apple.-0LaunchServicesMigrator (00LaunchServicesMigrator.migrator, user-agnostic)
+		Migration Elapsed:00:35 seconds
+
+[2026-10-25 16:39:19 +0000] Status=2, isTerminal=NO, Elapsed=00:39.
+	Waiting on Data Migration
+		Reason:Running plugin com.apple.-0LaunchServicesMigrator (00LaunchServicesMigrator.migrator, user-agnostic)
+		Migration Elapsed:00:36 seconds
+
+[2026-10-25 16:39:24 +0000] Status=2, isTerminal=NO, Elapsed=00:43.
+	Waiting on Data Migration
+		Reason:Running plugin com.apple.securityd.KeychainMigrator (KeychainMigrator.migrator, user-agnostic)
+		Migration Elapsed:00:37 seconds
+
+[2026-10-25 16:39:26 +0000] Status=2, isTerminal=NO, Elapsed=00:45.
+	Waiting on Data Migration
+		Reason:Running plugin com.apple.appleaccount.migrator (AppleAccountMigrator.migrator)
+		Migration Elapsed:00:41 seconds
+
+[2026-10-25 16:39:28 +0000] Status=4, isTerminal=NO, Elapsed=00:48.
+	Waiting on System App
+
+[2026-10-25 16:39:29 +0000] Status=4, isTerminal=NO, Elapsed=00:48.
+	Waiting on System App
+
+[2026-10-25 16:39:30 +0000] Status=4, isTerminal=NO, Elapsed=00:49.
+	Waiting on System App
+
+[2026-10-25 16:39:30 +0000] Status=4, isTerminal=NO, Elapsed=00:50.
+	Waiting on System App
+
+[2026-10-25 16:39:31 +0000] Status=4, isTerminal=NO, Elapsed=00:51.
+	Waiting on System App
+
+[2026-10-25 16:39:32 +0000] Status=4, isTerminal=NO, Elapsed=00:52.
+	Waiting on System App
+
+[2026-10-25 16:39:33 +0000] Status=4, isTerminal=NO, Elapsed=00:52.
+	Waiting on System App
+
+[2026-10-25 16:39:34 +0000] Status=4, isTerminal=NO, Elapsed=00:53.
+	Waiting on System App
+
+[2026-10-25 16:39:35 +0000] Status=4, isTerminal=NO, Elapsed=00:54.
+	Waiting on System App
+
+[2026-10-25 16:39:35 +0000] Status=4, isTerminal=NO, Elapsed=00:55.
+	Waiting on System App
+
+[2026-10-25 16:39:36 +0000] Status=4, isTerminal=NO, Elapsed=00:56.
+	Waiting on System App
+
+[2026-10-25 16:39:44 +0000] Status=4294967295, isTerminal=YES, Elapsed=01:03.
+	Finished
+
+com.bradcowdrey.twodegrees: 22600
+Detected file type 'PNG' from extension
+Wrote screenshot to: /Users/runner/work/_temp/shots/ipad-1.png
+com.bradcowdrey.twodegrees: 24170
+Detected file type 'PNG' from extension
+Wrote screenshot to: /Users/runner/work/_temp/shots/ipad-2.png
+com.bradcowdrey.twodegrees: 25005
+Detected file type 'PNG' from extension
+Wrote screenshot to: /Users/runner/work/_temp/shots/ipad-3.png
+com.bradcowdrey.twodegrees: 25248
+Detected file type 'PNG' from extension
+Wrote screenshot to: /Users/runner/work/_temp/shots/ipad-4.png
+
+[notice] A new release of pip is available: 26.2.1 -> 26.2.2
+[notice] To update, run: /Users/runner/work/_temp/venv/bin/python3.14 -m pip install --upgrade pip
+wrote /Users/runner/work/_temp/shots/iphone-5.png
+iphone-1.png: 1320 2868 
+iphone-2.png: 1320 2868 
+iphone-3.png: 1320 2868 
+iphone-4.png: 1320 2868 
+iphone-5.png: 1320 2868 
+ipad-1.png: 2064 2752 
+ipad-2.png: 2064 2752 
+ipad-3.png: 2064 2752 
+ipad-4.png: 2064 2752 
