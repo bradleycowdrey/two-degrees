@@ -35,7 +35,7 @@ THE FORECAST
 WIDGETS
 • Small, medium and large Home Screen widgets
 • Lock Screen widgets: a line above the clock, a circle, and a rectangle
-• Each widget picks its own city and which unit is large
+• Use your Two Degrees cities, or give each widget a city of its own
 
 MADE TO BE READ
 • Follows your iPhone's text size, with its own size and font options too

@@ -1,0 +1,136 @@
+"""Fills in the App Store version page through the App Store Connect API: text (from
+appstore/metadata.json), screenshots (from appstore/screenshots), copyright, review notes, and the build.
+
+Env: ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8 (the API key), BUILD (a build number, or empty for the newest
+processed one). Run by .github/workflows/appstore-metadata.yml. Needs PyJWT and cryptography.
+Screenshots replace whatever is in each set, so running it twice is safe.
+"""
+import hashlib
+import json
+import os
+import sys
+import time
+import urllib.error
+import urllib.request
+
+import jwt
+
+API = "https://api.appstoreconnect.apple.com/v1"
+BUNDLE_ID = "com.bradcowdrey.twodegrees"
+EDITABLE = "PREPARE_FOR_SUBMISSION,DEVELOPER_REJECTED,REJECTED,METADATA_REJECTED,INVALID_BINARY"
+ROOT = os.path.join(os.path.dirname(__file__), "..", "appstore")
+
+
+def token():
+    now = int(time.time())
+    return jwt.encode({"iss": os.environ["ASC_ISSUER_ID"], "iat": now, "exp": now + 1100, "aud": "appstoreconnect-v1"},
+                      os.environ["ASC_KEY_P8"], algorithm="ES256", headers={"kid": os.environ["ASC_KEY_ID"], "typ": "JWT"})
+
+
+def call(method, path, body=None):
+    url = path if path.startswith("http") else API + path
+    data = json.dumps(body).encode() if body is not None else None
+    req = urllib.request.Request(url, data=data, method=method,
+                                 headers={"Authorization": "Bearer " + token(), "Content-Type": "application/json"})
+    try:
+        with urllib.request.urlopen(req) as r:
+            text = r.read()
+            return json.loads(text) if text else {}
+    except urllib.error.HTTPError as e:
+        detail = e.read().decode()
+        print(f"::error::{method} {path} → {e.code}: {detail[:800]}")
+        raise SystemExit(1)
+
+
+def step(text):
+    print(f"== {text}", flush=True)
+
+
+def main():
+    meta = json.load(open(os.path.join(ROOT, "metadata.json")))
+
+    step("App and version")
+    app = call("GET", f"/apps?filter[bundleId]={BUNDLE_ID}")["data"][0]
+    versions = call("GET", f"/apps/{app['id']}/appStoreVersions?filter[platform]=IOS&filter[appStoreState]={EDITABLE}")["data"]
+    if not versions:
+        print("::error::No iOS version waiting to be submitted. Create one in App Store Connect (＋ next to iOS App).")
+        raise SystemExit(1)
+    version = versions[0]
+    print(f"app {app['attributes']['name']}, version {version['attributes']['versionString']} ({version['attributes']['appStoreState']})")
+
+    step("Copyright")
+    call("PATCH", f"/appStoreVersions/{version['id']}",
+         {"data": {"type": "appStoreVersions", "id": version["id"], "attributes": {"copyright": meta["copyright"]}}})
+
+    step("Text")
+    locs = call("GET", f"/appStoreVersions/{version['id']}/appStoreVersionLocalizations")["data"]
+    loc = next((l for l in locs if l["attributes"]["locale"] == meta["locale"]), locs[0])
+    call("PATCH", f"/appStoreVersionLocalizations/{loc['id']}", {"data": {
+        "type": "appStoreVersionLocalizations", "id": loc["id"],
+        "attributes": {k: meta[k] for k in ("description", "keywords", "promotionalText", "supportUrl", "marketingUrl")}}})
+    print(f"{loc['attributes']['locale']}: description, keywords, promotional text, support and marketing URLs")
+
+    step("Build")
+    number = os.environ.get("BUILD", "").strip()
+    query = f"/builds?filter[app]={app['id']}&filter[preReleaseVersion.platform]=IOS&filter[processingState]=VALID&sort=-uploadedDate&limit=20"
+    if number:
+        query += f"&filter[version]={number}"
+    builds = call("GET", query)["data"]
+    if not builds:
+        print(f"::error::No processed build {number or ''} yet; Apple may still be processing it. Try again in a few minutes.")
+        raise SystemExit(1)
+    build = builds[0]
+    call("PATCH", f"/appStoreVersions/{version['id']}/relationships/build", {"data": {"type": "builds", "id": build["id"]}})
+    print(f"build {build['attributes']['version']}")
+
+    step("App Review notes")
+    detail = call("GET", f"/appStoreVersions/{version['id']}/appStoreReviewDetail").get("data")
+    attrs = {"notes": meta["reviewNotes"], "demoAccountRequired": False}
+    if detail:
+        call("PATCH", f"/appStoreReviewDetails/{detail['id']}", {"data": {"type": "appStoreReviewDetails", "id": detail["id"], "attributes": attrs}})
+    else:
+        call("POST", "/appStoreReviewDetails", {"data": {"type": "appStoreReviewDetails", "attributes": attrs,
+             "relationships": {"appStoreVersion": {"data": {"type": "appStoreVersions", "id": version["id"]}}}}})
+    print("notes set; sign-in not required (your contact details stay yours to enter)")
+
+    step("Screenshots")
+    sets = call("GET", f"/appStoreVersionLocalizations/{loc['id']}/appScreenshotSets")["data"]
+    for display, files in meta["screenshots"].items():
+        shot_set = next((s for s in sets if s["attributes"]["screenshotDisplayType"] == display), None)
+        if not shot_set:
+            shot_set = call("POST", "/appScreenshotSets", {"data": {"type": "appScreenshotSets",
+                            "attributes": {"screenshotDisplayType": display},
+                            "relationships": {"appStoreVersionLocalization": {"data": {"type": "appStoreVersionLocalizations", "id": loc["id"]}}}}})["data"]
+        for old in call("GET", f"/appScreenshotSets/{shot_set['id']}/appScreenshots")["data"]:
+            call("DELETE", f"/appScreenshots/{old['id']}")
+        for name in files:
+            data = open(os.path.join(ROOT, "screenshots", name), "rb").read()
+            shot = call("POST", "/appScreenshots", {"data": {"type": "appScreenshots",
+                        "attributes": {"fileName": name, "fileSize": len(data)},
+                        "relationships": {"appScreenshotSet": {"data": {"type": "appScreenshotSets", "id": shot_set["id"]}}}}})["data"]
+            for op in shot["attributes"]["uploadOperations"]:
+                part = data[op["offset"]:op["offset"] + op["length"]]
+                req = urllib.request.Request(op["url"], data=part, method=op["method"],
+                                             headers={h["name"]: h["value"] for h in op["requestHeaders"]})
+                urllib.request.urlopen(req).read()
+            call("PATCH", f"/appScreenshots/{shot['id']}", {"data": {"type": "appScreenshots", "id": shot["id"],
+                 "attributes": {"uploaded": True, "sourceFileChecksum": hashlib.md5(data).hexdigest()}}})
+            print(f"{display}: {name}")
+
+    # Apple processes uploads for a moment; report any it rejects.
+    time.sleep(20)
+    problems = []
+    for s in call("GET", f"/appStoreVersionLocalizations/{loc['id']}/appScreenshotSets")["data"]:
+        for shot in call("GET", f"/appScreenshotSets/{s['id']}/appScreenshots")["data"]:
+            state = (shot["attributes"].get("assetDeliveryState") or {}).get("state")
+            if state == "FAILED":
+                problems.append(f"{shot['attributes']['fileName']}: {shot['attributes']['assetDeliveryState'].get('errors')}")
+    for p in problems:
+        print(f"::error::Screenshot rejected: {p}")
+    if problems:
+        raise SystemExit(1)
+    print(f"::notice::Version {version['attributes']['versionString']} is filled in with build {build['attributes']['version']}: text, screenshots, copyright and review notes. Add your contact details under App Review Information, then Add for Review.")
+
+
+if __name__ == "__main__":
+    main()

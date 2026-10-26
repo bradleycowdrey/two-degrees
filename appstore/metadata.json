@@ -1,0 +1,25 @@
+{
+  "locale": "en-US",
+  "promotionalText": "Every temperature in °F and °C at once. Swipe between your cities, see the next 24 hours and 10 days, and keep the weather on your Home Screen and Lock Screen.",
+  "description": "Two Degrees shows the weather in Fahrenheit and Celsius at the same time, so you never have to convert again. Pick which unit is large; the other is always right beside it.\n\nYOUR CITIES\n• Swipe between up to five cities, each on its own sky\n• Search any place in the world, reorder, and swipe a city away\n• Tap the temperature to swap which unit is large\n\nTHE FORECAST\n• Right now: temperature in °F and °C, condition, and today's high and low in both units\n• The next 24 hours, with rain chances and a one-line summary (\"Rain likely around 5 PM\")\n• A 10-day forecast with each day's range on one shared scale\n• Feels like, humidity and dew point, wind and its direction, rain, UV index, and sunrise or sunset\n\nWIDGETS\n• Small, medium and large Home Screen widgets\n• Lock Screen widgets: a line above the clock, a circle, and a rectangle\n• Use your Two Degrees cities, or give each widget a city of its own\n\nMADE TO BE READ\n• Follows your iPhone's text size, with its own size and font options too\n• Full VoiceOver support: every reading is spoken in both units\n\nPRIVATE BY DESIGN\nNo account, no ads, no tracking. Your cities stay on your iPhone; only their locations are sent to Open-Meteo to get the forecast.\n\nFree. Forever. Made by Bradley Cowdrey. Weather data by Open-Meteo.com.\n\nAlso on the Mac, with the weather in your menu bar and Dock: bradcowdrey.com/two-degrees",
+  "keywords": "fahrenheit,celsius,temperature,forecast,widget,lock screen,hourly,10 day,rain,uv,both units,convert",
+  "supportUrl": "https://github.com/bradleycowdrey/two-degrees/issues",
+  "marketingUrl": "https://bradcowdrey.com/two-degrees",
+  "copyright": "2026 Bradley Cowdrey",
+  "reviewNotes": "Two Degrees shows every temperature in Fahrenheit and Celsius at once. No account or permissions are needed. Weather comes from the free Open-Meteo API. To try the widgets: long-press the Home Screen > Edit > Add Widget > Two Degrees; long-press the Lock Screen > Customize. To add a city, tap the list button (bottom right), then search.",
+  "screenshots": {
+    "APP_IPHONE_67": [
+      "iphone-1.png",
+      "iphone-2.png",
+      "iphone-3.png",
+      "iphone-4.png",
+      "iphone-5.png"
+    ],
+    "APP_IPAD_PRO_3GEN_129": [
+      "ipad-1.png",
+      "ipad-2.png",
+      "ipad-3.png",
+      "ipad-4.png"
+    ]
+  }
+}
