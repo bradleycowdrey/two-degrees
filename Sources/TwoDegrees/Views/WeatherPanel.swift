@@ -367,7 +367,8 @@ private struct MoreMenu: View {
             Button("Copy Current Reading") { store.copyReading() }
             Button("Remove \(store.active.name)", role: .destructive) { store.remove(store.active) }
                 .disabled(store.cities.count < 2)
-            Button("Refresh  ⌘R") { Task { await store.refresh() } }
+            Button("Refresh") { Task { await store.refresh() } }
+                .keyboardShortcut("r")
             Divider()
             Picker("Size", selection: $store.uiSize) {
                 ForEach(UISize.allCases) { Text($0.label).tag($0) }
@@ -375,9 +376,11 @@ private struct MoreMenu: View {
             Picker("Font", selection: $store.appFont) {
                 ForEach(AppFont.allCases) { Text($0.label).tag($0) }
             }
-            Button("Larger  ⌘+") { store.stepSize(1) }
+            Button("Larger") { store.stepSize(1) }
+                .keyboardShortcut("+")
                 .disabled(store.uiSize.larger == nil)
-            Button("Smaller  ⌘−") { store.stepSize(-1) }
+            Button("Smaller") { store.stepSize(-1) }
+                .keyboardShortcut("-")
                 .disabled(store.uiSize.smaller == nil)
             Divider()
             Toggle("Show Weather in the Dock", isOn: $store.dockShowsWeather)

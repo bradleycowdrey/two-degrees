@@ -49,7 +49,7 @@ struct WidgetSettings: WidgetConfigurationIntent {
     @Parameter(title: "City")
     var city: CityEntity?
 
-    @Parameter(title: "Larger unit", default: .fahrenheit)
+    @Parameter(title: "Larger Unit", default: .fahrenheit)
     var unit: UnitChoice
 
     static var parameterSummary: some ParameterSummary {

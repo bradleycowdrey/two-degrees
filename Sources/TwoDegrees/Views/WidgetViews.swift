@@ -122,7 +122,7 @@ private struct NowBlock: View {
             .lineLimit(1)
             .minimumScaleFactor(0.7)
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel("\(TempUnit.fahrenheit.value(now.temperature)) degrees Fahrenheit, \(TempUnit.celsius.value(now.temperature)) Celsius")
+            .accessibilityLabel("\(Speech.temperature(now.temperature))")
             Text(Condition.name(now.code))
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(Palette.textSecondary)
@@ -282,7 +282,7 @@ private struct HoursRow: View {
                 .lineLimit(1)
                 .frame(maxWidth: .infinity)
                 .accessibilityElement(children: .ignore)
-                .accessibilityLabel("\(index == 0 ? "Now" : Forecast.format(hour.time, "j")): \(Condition.name(hour.code)), \(TempUnit.fahrenheit.value(hour.temperature)) degrees Fahrenheit, \(TempUnit.celsius.value(hour.temperature)) Celsius")
+                .accessibilityLabel("\(index == 0 ? "Now" : Forecast.format(hour.time, "j")): \(Condition.name(hour.code)), \(Speech.temperature(hour.temperature))")
             }
         }
     }
@@ -294,8 +294,8 @@ private struct DaysList: View {
 
     static func speech(_ day: Forecast.Day, isToday: Bool) -> String {
         let name = isToday ? "Today" : Forecast.format(day.date, "EEEE")
-        let low = "\(TempUnit.fahrenheit.value(day.low)) degrees Fahrenheit, \(TempUnit.celsius.value(day.low)) Celsius"
-        let high = "\(TempUnit.fahrenheit.value(day.high)) degrees Fahrenheit, \(TempUnit.celsius.value(day.high)) Celsius"
+        let low = "\(Speech.temperature(day.low))"
+        let high = "\(Speech.temperature(day.high))"
         return "\(name): \(Condition.name(day.code)). Low \(low). High \(high)."
     }
 

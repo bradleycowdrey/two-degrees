@@ -111,31 +111,32 @@ struct Forecast: Codable {
 
 /// WMO weather codes as names and SF Symbols.
 enum Condition {
+    /// In title case, as Apple's Weather shows conditions ("Partly Cloudy").
     static func name(_ code: Int) -> String {
         switch code {
         case 0: return "Clear"
-        case 1: return "Mostly clear"
-        case 2: return "Partly cloudy"
+        case 1: return "Mostly Clear"
+        case 2: return "Partly Cloudy"
         case 3: return "Overcast"
         case 45: return "Fog"
-        case 48: return "Freezing fog"
-        case 51: return "Light drizzle"
+        case 48: return "Freezing Fog"
+        case 51: return "Light Drizzle"
         case 53: return "Drizzle"
-        case 55: return "Heavy drizzle"
-        case 56, 57: return "Freezing drizzle"
-        case 61: return "Light rain"
+        case 55: return "Heavy Drizzle"
+        case 56, 57: return "Freezing Drizzle"
+        case 61: return "Light Rain"
         case 63: return "Rain"
-        case 65: return "Heavy rain"
-        case 66, 67: return "Freezing rain"
-        case 71: return "Light snow"
+        case 65: return "Heavy Rain"
+        case 66, 67: return "Freezing Rain"
+        case 71: return "Light Snow"
         case 73: return "Snow"
-        case 75: return "Heavy snow"
-        case 77: return "Snow grains"
+        case 75: return "Heavy Snow"
+        case 77: return "Snow Grains"
         case 80, 81: return "Showers"
-        case 82: return "Heavy showers"
-        case 85, 86: return "Snow showers"
+        case 82: return "Heavy Showers"
+        case 85, 86: return "Snow Showers"
         case 95: return "Thunderstorms"
-        case 96, 99: return "Thunderstorms, hail"
+        case 96, 99: return "Thunderstorms with Hail"
         default: return "Cloudy"
         }
     }
@@ -287,7 +288,7 @@ enum OpenMeteo {
 /// Both units, as VoiceOver says them.
 enum Speech {
     static func temperature(_ celsius: Double) -> String {
-        "\(TempUnit.fahrenheit.value(celsius)) degrees Fahrenheit, \(TempUnit.celsius.value(celsius)) Celsius"
+        "\(TempUnit.fahrenheit.value(celsius)) degrees Fahrenheit, \(TempUnit.celsius.value(celsius)) degrees Celsius"
     }
 }
 
