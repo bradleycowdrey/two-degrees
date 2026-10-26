@@ -7,7 +7,7 @@ Everything App Store Connect asks for, ready to paste. Character limits are Appl
 | Field | Value |
 |---|---|
 | Name (30) | Two Degrees Weather |
-| Subtitle (30) | The weather in °F and °C |
+| Subtitle (30) | °F and °C, always side by side |
 | Category | Primary: **Weather**. Secondary: Utilities |
 | Content rights | Does not contain, show or access third-party content |
 | Age rating | Answer **None / No** to every question → **4+** |
