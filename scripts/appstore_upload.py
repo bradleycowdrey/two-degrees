@@ -40,7 +40,14 @@ def call(method, path, body=None):
             return json.loads(text) if text else {}
     except urllib.error.HTTPError as e:
         detail = e.read().decode()
-        print(f"::error::{method} {path} → {e.code}: {detail[:800]}")
+        try:   # Apple's reasons, on one line so they show in the annotation
+            errors = json.loads(detail).get("errors", [])
+            detail = " | ".join(f"{x.get('title', '')}: {x.get('detail', '')}" + "".join(
+                f" [{a.get('code', '')}] {a.get('detail', a.get('title', ''))}" for a in (x.get("meta") or {}).get("associatedErrors", {}).get(next(iter((x.get("meta") or {}).get("associatedErrors", {}) or [""]), ""), []) if isinstance(a, dict))
+                for x in errors) or detail
+        except ValueError:
+            pass
+        print(f"::error::{method} {path} → {e.code}: {' '.join(detail.split())[:1500]}")
         raise SystemExit(1)
 
 
