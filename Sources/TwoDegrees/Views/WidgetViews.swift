@@ -59,7 +59,8 @@ extension Forecast {
 enum Reading {
     static func text(_ value: Int, _ unit: TempUnit, size: CGFloat, weight: Font.Weight, unitWeight: Font.Weight = .medium) -> Text {
         Text("\(value)").font(.system(size: size, weight: weight))
-            + Text(unit.symbol).font(.system(size: size * 0.42, weight: unitWeight)).baselineOffset(size * 0.36)
+            + Text("\u{200A}" + unit.symbol).font(.system(size: size * 0.42, weight: unitWeight))
+                .baselineOffset(size * 0.36).tracking(size * 0.012)
     }
 }
 
@@ -113,7 +114,7 @@ private struct NowBlock: View {
                     .tracking(-big * 0.03)
                     .foregroundStyle(Palette.textPrimary)
                     .widgetAccentable()
-                Text("\(other.value(now.temperature))\(other.symbol)")
+                Text(other.spaced(other.value(now.temperature)))
                     .font(.system(size: big * 0.45, weight: .medium))
                     .foregroundStyle(Palette.textMuted)
             }
@@ -224,7 +225,7 @@ private struct LargeNow: View {
                         .tracking(-big * 0.03)
                         .foregroundStyle(Palette.textPrimary)
                         .widgetAccentable()
-                    Text("\(other.value(now.temperature))\(other.symbol)")
+                    Text(other.spaced(other.value(now.temperature)))
                         .font(.system(size: big * 0.45, weight: .medium))
                         .foregroundStyle(Palette.textMuted)
                 }
@@ -392,7 +393,7 @@ private struct CircularAccessory: View {
             VStack(spacing: -1) {
                 Reading.text(unit.value(now.temperature), unit, size: 22, weight: .semibold)
                     .widgetAccentable()
-                Text("\(other.value(now.temperature))\(other.symbol)")
+                Text(other.spaced(other.value(now.temperature)))
                     .font(.system(size: 11, weight: .medium))
                     .opacity(0.75)
             }
@@ -419,7 +420,7 @@ private struct RectangularAccessory: View {
             HStack(alignment: .firstTextBaseline, spacing: 5) {
                 Reading.text(unit.value(now.temperature), unit, size: 22, weight: .semibold)
                     .widgetAccentable()
-                Text("\(other.value(now.temperature))\(other.symbol)")
+                Text(other.spaced(other.value(now.temperature)))
                     .font(.system(size: 14, weight: .medium))
                     .opacity(0.75)
             }

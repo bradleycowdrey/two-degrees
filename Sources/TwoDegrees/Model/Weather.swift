@@ -17,6 +17,10 @@ enum TempUnit: String, Codable, CaseIterable, Identifiable {
     /// "° F": a narrow no-break space between the degree sign and the letter, so it reads clearly and
     /// never splits across lines.
     var symbol: String { "°\u{202F}" + rawValue }
+
+    /// A reading set large ("18 °C"): a hair space between the number and the degree sign, so they
+    /// don't crowd at big sizes.
+    func spaced(_ value: Int) -> String { "\(value)\u{200A}\(symbol)" }
     var other: TempUnit { self == .fahrenheit ? .celsius : .fahrenheit }
 
     /// Whole degrees in this unit, from Celsius.

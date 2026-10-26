@@ -91,7 +91,7 @@ struct CityPage: View {
                     HStack(alignment: .firstTextBaseline, spacing: ui.pt(8)) {
                         Reading.text(unit.value(now.temperature), unit, size: ui.pt(96), weight: .thin, unitWeight: .light)
                             .tracking(-2)
-                        Text("\(other.value(now.temperature))\(other.symbol)")
+                        Text(other.spaced(other.value(now.temperature)))
                             .font(.system(size: ui.pt(96 * 0.45), weight: .light))
                             .opacity(0.7)
                     }
