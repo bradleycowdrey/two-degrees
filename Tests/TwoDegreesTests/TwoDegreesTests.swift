@@ -297,6 +297,23 @@ final class MoreLogicTests: XCTestCase {
         XCTAssertEqual(WindowPlacement.topLeft(for: .edge(.right), size: size, visible: screen), NSPoint(x: 932, y: 884))
     }
 
+    func testWidgetsFollowTheAppsCities() {
+        let ny = City(name: "New York", region: "", latitude: 40.71, longitude: -74.01)
+        let sf = City(name: "San Francisco", region: "", latitude: 37.77, longitude: -122.42)
+        let snapshot = SharedCities.Snapshot(cities: [ny, sf], activeID: sf.id)
+        // "The city showing in Two Degrees" follows the app; a saved city stays put.
+        XCTAssertEqual(SharedCities.resolve(SharedCities.currentID, in: snapshot), sf)
+        XCTAssertEqual(SharedCities.resolve(nil, in: snapshot), sf)
+        XCTAssertEqual(SharedCities.resolve(ny.id, in: snapshot), ny)
+        // A city since removed from the app falls back to the one showing.
+        XCTAssertEqual(SharedCities.resolve("1.00,1.00", in: snapshot), sf)
+        // Round trip through the shared defaults.
+        let defaults = UserDefaults(suiteName: "TwoDegrees.tests.shared")!
+        defaults.removePersistentDomain(forName: "TwoDegrees.tests.shared")
+        SharedCities.save(snapshot, to: defaults)
+        XCTAssertEqual(SharedCities.load(from: defaults), snapshot)
+    }
+
     func testWeatherTerms() {
         // Magnus formula: 20 °C at 50 % → about 9.3 °C; saturated air → the temperature itself.
         XCTAssertEqual(Meteo.dewPoint(celsius: 20, humidity: 50), 9.3, accuracy: 0.1)

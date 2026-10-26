@@ -57,3 +57,41 @@ enum WidgetData {
         }
     }
 }
+
+/// The Mac app's saved cities, shared with its widgets through an App Group, so a widget can follow
+/// the app ("Your Two Degrees cities") instead of keeping a city of its own.
+enum SharedCities {
+    /// App Group: on the Mac, the team ID prefix lets a Developer ID app and its widget share it
+    /// without a provisioning profile.
+    static let suiteName = "2XV97FZ86G.com.bradcowdrey.twodegrees"
+    static let key = "shared.cities"
+    /// "Follow whichever city is showing in Two Degrees."
+    static let currentID = "current"
+    /// Off for the CI self-test, whose ad-hoc signed build isn't in the team's group.
+    nonisolated(unsafe) static var enabled = true
+
+    static var defaults: UserDefaults? { enabled ? UserDefaults(suiteName: suiteName) : nil }
+
+    struct Snapshot: Codable, Equatable {
+        var cities: [City]
+        var activeID: String
+    }
+
+    static func save(_ snapshot: Snapshot, to defaults: UserDefaults? = SharedCities.defaults) {
+        guard let defaults, let data = try? JSONEncoder().encode(snapshot) else { return }
+        defaults.set(data, forKey: key)
+    }
+
+    static func load(from defaults: UserDefaults? = SharedCities.defaults) -> Snapshot? {
+        guard let data = defaults?.data(forKey: key) else { return nil }
+        return try? JSONDecoder().decode(Snapshot.self, from: data)
+    }
+
+    /// The city a widget following the app shows: the one showing in Two Degrees, or a saved city by
+    /// ID. A saved city that has since been removed falls back to the one showing.
+    static func resolve(_ choice: String?, in snapshot: Snapshot) -> City? {
+        let active = snapshot.cities.first { $0.id == snapshot.activeID } ?? snapshot.cities.first
+        guard let choice, choice != currentID else { return active }
+        return snapshot.cities.first { $0.id == choice } ?? active
+    }
+}

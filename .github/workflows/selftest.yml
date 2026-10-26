@@ -42,6 +42,8 @@ jobs:
           grep -q 'com.apple.security.app-sandbox' "$OUT/widget-package.txt" || { echo "::error::The widget lost its sandbox entitlement; macOS won't run it"; exit 1; }
           grep -q 'com.apple.security.network.client' "$OUT/widget-package.txt" || { echo "::error::The widget lost its network entitlement; it can't fetch the weather"; exit 1; }
           grep -q 'Metadata.appintents' "$OUT/widget-package.txt" || { echo "::error::The widget has no App Intents metadata; macOS can't read its city setting"; exit 1; }
+          grep -q '2XV97FZ86G.com.bradcowdrey.twodegrees' "$OUT/widget-package.txt" || { echo "::error::The widget lost its App Group; it can't follow the app's cities"; exit 1; }
+          codesign -d --entitlements - --xml dist/TwoDegrees.app 2>/dev/null | plutil -convert xml1 -o - - | grep -q '2XV97FZ86G.com.bradcowdrey.twodegrees' || { echo "::error::The app lost its App Group; widgets can't follow its cities"; exit 1; }
           grep -q 'com.apple.widgetkit-extension' "$OUT/widget-package.txt" || { echo "::error::The widget isn't declared as a WidgetKit extension"; exit 1; }
           LSREG=/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
           "$LSREG" -f -R "$PWD/dist/TwoDegrees.app" || true

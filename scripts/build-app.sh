@@ -41,12 +41,12 @@ for size in 16 32 128 256 512; do
 done
 iconutil -c icns "$ICONSET" -o "$APP/Contents/Resources/AppIcon.icns"
 
-# Sign inside out: the widget keeps its sandbox entitlements, then the app.
+# Sign inside out: the widget keeps its sandbox entitlements, then the app. Both share an App Group.
 # Uses a Developer ID if one is configured, otherwise ad-hoc (fine for sideloading).
 IDENTITY="${CODESIGN_IDENTITY:--}"
 if [[ "$IDENTITY" == "-" ]]; then TIMESTAMP="--timestamp=none"; else TIMESTAMP="--timestamp"; fi
 codesign --force --options runtime "$TIMESTAMP" --entitlements Resources/Widget.entitlements --sign "$IDENTITY" "$WIDGET"
-codesign --force --options runtime "$TIMESTAMP" --sign "$IDENTITY" "$APP"
+codesign --force --options runtime "$TIMESTAMP" --entitlements Resources/App.entitlements --sign "$IDENTITY" "$APP"
 codesign --verify --deep --strict --verbose "$APP"
 
 echo "Built $APP ($VERSION build $BUILD) with widget"

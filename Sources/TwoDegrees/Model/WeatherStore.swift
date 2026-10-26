@@ -1,4 +1,5 @@
 import SwiftUI
+import WidgetKit
 #if os(macOS)
 import AppKit
 import ServiceManagement
@@ -26,8 +27,8 @@ final class WeatherStore: ObservableObject {
     static let maxCities = 5
     static let refreshInterval: TimeInterval = 15 * 60
 
-    @Published var cities: [City] { didSet { save(cities, "cities") } }
-    @Published var activeID: String { didSet { defaults.set(activeID, forKey: "activeID"); refreshDock() } }
+    @Published var cities: [City] { didSet { save(cities, "cities"); shareWithWidgets() } }
+    @Published var activeID: String { didSet { defaults.set(activeID, forKey: "activeID"); refreshDock(); shareWithWidgets() } }
     @Published var unit: TempUnit { didSet { defaults.set(unit.rawValue, forKey: "unit"); refreshDock() } }
     @Published var menuBarStyle: MenuBarStyle { didSet { defaults.set(menuBarStyle.rawValue, forKey: "menuBarStyle") } }
     @Published var dockShowsWeather: Bool { didSet { defaults.set(dockShowsWeather, forKey: "dockShowsWeather"); refreshDock() } }
@@ -57,6 +58,7 @@ final class WeatherStore: ObservableObject {
         floatOnTop = defaults.bool(forKey: "floatOnTop")
         if let cached: [String: Forecast] = Self.load("forecasts", from: defaults) { forecasts = cached }
         guard autoRefresh else { return }
+        shareWithWidgets()
 
         timer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
             Task { @MainActor in await self?.refreshIfDue() }
@@ -157,6 +159,20 @@ final class WeatherStore: ObservableObject {
 
     /// True when the active city's numbers are older than one refresh and the last try failed.
     var isOffline: Bool { failed.contains(active.id) }
+
+    // MARK: Widgets
+
+    /// Widgets set to "Your Two Degrees cities" show these: publish them, and redraw the widgets when they
+    /// change. (Mac only: the iPhone's widgets each keep a city of their own.)
+    func shareWithWidgets() {
+        #if os(macOS)
+        guard !SelfTest.isActive else { return }   // the self-test's ad-hoc build isn't in the App Group
+        let snapshot = SharedCities.Snapshot(cities: cities, activeID: activeID)
+        guard snapshot != SharedCities.load() else { return }
+        SharedCities.save(snapshot)
+        WidgetCenter.shared.reloadAllTimelines()
+        #endif
+    }
 
     // MARK: Dock
 
