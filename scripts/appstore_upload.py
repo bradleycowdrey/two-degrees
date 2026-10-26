@@ -77,6 +77,11 @@ def main():
          "secondaryCategory": {"data": {"type": "appCategories", "id": meta["secondaryCategory"]}}}}})
     print(f"{meta['primaryCategory']}, {meta['secondaryCategory']}")
 
+    step("Content rights")
+    call("PATCH", f"/apps/{app['id']}", {"data": {"type": "apps", "id": app["id"],
+         "attributes": {"contentRightsDeclaration": "DOES_NOT_USE_THIRD_PARTY_CONTENT"}}})
+    print("does not use third-party content")
+
     step("Copyright")
     call("PATCH", f"/appStoreVersions/{version['id']}",
          {"data": {"type": "appStoreVersions", "id": version["id"], "attributes": {"copyright": meta["copyright"]}}})
@@ -159,6 +164,15 @@ def main():
         if problems:
             raise SystemExit(1)
     if os.environ.get("SUBMIT") == "1":
+        step("Waiting for Apple to finish processing the screenshots")
+        for _ in range(60):
+            states = [((shot["attributes"].get("assetDeliveryState") or {}).get("state"))
+                      for st in call("GET", f"/appStoreVersionLocalizations/{loc['id']}/appScreenshotSets")["data"]
+                      for shot in call("GET", f"/appScreenshotSets/{st['id']}/appScreenshots")["data"]]
+            if all(x == "COMPLETE" for x in states):
+                break
+            print(f"{states.count('COMPLETE')} of {len(states)} ready")
+            time.sleep(20)
         step("Submit for App Review")
         open_subs = call("GET", f"/reviewSubmissions?filter[app]={app['id']}&filter[platform]=IOS&filter[state]=READY_FOR_REVIEW")["data"]
         sub = open_subs[0] if open_subs else call("POST", "/reviewSubmissions", {"data": {"type": "reviewSubmissions",
