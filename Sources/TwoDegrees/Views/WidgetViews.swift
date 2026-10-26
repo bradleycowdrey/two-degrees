@@ -190,18 +190,67 @@ private struct MediumView: View {
     }
 }
 
-/// Now, the next six hours, and five days on one shared scale.
+/// Now, the next six hours, and six days on one shared scale.
 private struct LargeView: View {
     let entry: WeatherEntry
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            NowBlock(entry: entry, big: 44)
-                .frame(height: 104)
+            LargeNow(entry: entry)
             Rectangle().fill(Palette.borderStrong).frame(height: 0.5)
             HoursRow(entry: entry, count: 6)
             Rectangle().fill(Palette.borderStrong).frame(height: 0.5)
-            DaysList(entry: entry)
+            DaysList(entry: entry, count: 6)
+        }
+    }
+}
+
+/// The large widget's top, laid out as in Apple's Weather: the city and the reading on the left, the sky
+/// and its name on the right. Today's range is in the first day row below, so it isn't repeated here.
+private struct LargeNow: View {
+    let entry: WeatherEntry
+    let big: CGFloat = 46
+
+    var body: some View {
+        let now = entry.forecast.now, unit = entry.unit, other = entry.unit.other
+        HStack(alignment: .top, spacing: 8) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(entry.city.name)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(Palette.textPrimary)
+                    .lineLimit(1)
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Reading.text(unit.value(now.temperature), unit, size: big, weight: .semibold)
+                        .tracking(-big * 0.03)
+                        .foregroundStyle(Palette.textPrimary)
+                        .widgetAccentable()
+                    Text("\(other.value(now.temperature))\(other.symbol)")
+                        .font(.system(size: big * 0.45, weight: .medium))
+                        .foregroundStyle(Palette.textMuted)
+                }
+                .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(Speech.temperature(now.temperature))
+                if entry.failed && !entry.isPlaceholder {
+                    Text("Offline · from \(entry.forecast.fetchedAt.formatted(date: .omitted, time: .shortened))")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(Palette.textMuted)
+                        .lineLimit(1)
+                }
+            }
+            Spacer(minLength: 8)
+            VStack(alignment: .trailing, spacing: 6) {
+                WeatherSymbol(code: now.code, isDay: now.isDay, size: 40)
+                    .frame(height: 44)
+                Text(Condition.name(now.code))
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(Palette.textSecondary)
+                    .multilineTextAlignment(.trailing)
+                    .lineLimit(2)
+            }
+            .padding(.top, 4)
         }
     }
 }
@@ -240,6 +289,7 @@ private struct HoursRow: View {
 
 private struct DaysList: View {
     let entry: WeatherEntry
+    var count = 5
 
     static func speech(_ day: Forecast.Day, isToday: Bool) -> String {
         let name = isToday ? "Today" : Forecast.format(day.date, "EEEE")
@@ -250,7 +300,7 @@ private struct DaysList: View {
 
     var body: some View {
         let unit = entry.unit, other = entry.unit.other
-        let days = Array(entry.forecast.days.prefix(5))
+        let days = Array(entry.forecast.days.prefix(count))
         let now = entry.forecast.now.temperature
         let low = min(now, days.map(\.low).min() ?? now), high = max(now, days.map(\.high).max() ?? now)
         VStack(spacing: 6) {
@@ -263,7 +313,7 @@ private struct DaysList: View {
                         .frame(width: 42, alignment: .leading)
                     WeatherSymbol(code: day.code, isDay: true, size: 13)
                         .frame(width: 20)
-                    // The low and high ride the ends of the bar, on one scale shared by all five days.
+                    // The low and high ride the ends of the bar, on one scale shared by all the days shown.
                     GeometryReader { proxy in
                         let room: CGFloat = 32, gap: CGFloat = 4   // fits "100°"
                         let width = max(proxy.size.width - 2 * room, 1), span = max(high - low, 1)

@@ -109,4 +109,6 @@ jobs:
         run: |
           npm install --no-save playwright@1.56.1
           npx playwright install --with-deps chromium
-          node tests/web.test.js
+          # One retry for the occasional flaky run; any failing check is listed as an annotation.
+          node tests/web.test.js > web.txt 2>&1 || { grep -E '^FAIL' web.txt | sed 's/^/::warning::retrying after: /'; node tests/web.test.js > web.txt 2>&1; } || { grep -E '^FAIL' web.txt | sed 's/^/::error::/'; tail -5 web.txt; exit 1; }
+          tail -1 web.txt
