@@ -53,7 +53,7 @@ private struct CitiesSettings: View {
                         Spacer()
                         if let forecast = store.forecasts[city.id] {
                             let t = forecast.now.temperature
-                            Text("\(TempUnit.fahrenheit.value(t))°F · \(TempUnit.celsius.value(t))°C")
+                            Text("\(TempUnit.fahrenheit.value(t))\(TempUnit.fahrenheit.symbol) · \(TempUnit.celsius.value(t))\(TempUnit.celsius.symbol)")
                                 .monospacedDigit()
                                 .foregroundStyle(.secondary)
                         }

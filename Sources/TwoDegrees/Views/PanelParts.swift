@@ -329,11 +329,19 @@ struct NowTile: View {
                 WeatherSymbol(code: now.code, isDay: now.isDay, size: ui.pt(50))
                     .frame(width: ui.pt(64), height: ui.pt(64))
                     .accessibilityHidden(true)
-                HStack(alignment: .firstTextBaseline, spacing: ui.pt(12)) {
-                    DegreeText(value: unit.value(now.temperature), unit: unit, size: ui.pt(64), weight: .semibold, color: Palette.textPrimary)
-                    Rectangle().fill(Palette.borderStrong).frame(width: 1, height: ui.pt(44))
-                    DegreeText(value: other.value(now.temperature), unit: other, size: ui.pt(38), weight: .medium, color: Palette.textMuted, unitColor: Palette.textMuted)
+                // As in the widgets: the big number with its unit smaller and raised, then the other unit
+                // whole, on the same baseline.
+                HStack(alignment: .firstTextBaseline, spacing: ui.pt(8)) {
+                    (Text("\(unit.value(now.temperature))").font(ui.font(64, .semibold))
+                        + Text(unit.symbol).font(ui.font(64 * 0.42, .medium)).baselineOffset(ui.pt(64) * 0.36))
+                        .tracking(-ui.pt(64) * 0.03)
+                        .foregroundStyle(Palette.textPrimary)
+                    Text("\(other.value(now.temperature))\(other.symbol)")
+                        .font(ui.font(64 * 0.45, .medium))
+                        .foregroundStyle(Palette.textMuted)
                 }
+                .monospacedDigit()
+                .lineLimit(1)
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel(Speech.temperature(now.temperature))
             }

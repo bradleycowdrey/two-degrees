@@ -46,7 +46,7 @@ final class WeatherTests: XCTestCase {
         XCTAssertEqual(TempUnit.fahrenheit.value(37), 99)   // 98.6 rounds to 99
         XCTAssertEqual(TempUnit.celsius.value(17.6), 18)
         XCTAssertEqual(TempUnit.celsius.other, .fahrenheit)
-        XCTAssertEqual(TempUnit.fahrenheit.symbol, "°F")
+        XCTAssertEqual(TempUnit.fahrenheit.symbol, "°\u{202F}F")
     }
 
     func testDateParsingIsCityLocal() throws {
@@ -109,7 +109,7 @@ final class PanelLogicTests: XCTestCase {
         let dry = Fixtures.forecast.replacingOccurrences(of: "60,", with: "0,")
         let forecast = try OpenMeteo.decodeForecast(Data(dry.utf8))
         let line = Summary.line(forecast, unit: .celsius)
-        XCTAssertTrue(line.contains("°C") && line.contains("°F"), line)
+        XCTAssertTrue(line.contains(TempUnit.celsius.symbol) && line.contains(TempUnit.fahrenheit.symbol), line)
     }
 }
 

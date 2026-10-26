@@ -86,13 +86,14 @@ struct CityPage: View {
                 let now = forecast.now
                 // Tap the reading to swap which unit is large.
                 Button { withAnimation(.snappy) { store.toggleUnit() } } label: {
-                    HStack(alignment: .top, spacing: ui.pt(6)) {
+                    // As in the widgets: the big number with its unit smaller and raised, then the other
+                    // unit whole, on the same baseline.
+                    HStack(alignment: .firstTextBaseline, spacing: ui.pt(8)) {
                         Reading.text(unit.value(now.temperature), unit, size: ui.pt(96), weight: .thin, unitWeight: .light)
                             .tracking(-2)
                         Text("\(other.value(now.temperature))\(other.symbol)")
-                            .font(.system(size: ui.pt(30), weight: .light))
+                            .font(.system(size: ui.pt(96 * 0.45), weight: .light))
                             .opacity(0.7)
-                            .padding(.top, ui.pt(18))
                     }
                     .monospacedDigit()
                     .lineLimit(1)

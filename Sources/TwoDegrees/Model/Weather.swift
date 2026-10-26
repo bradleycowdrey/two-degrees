@@ -14,7 +14,9 @@ enum TempUnit: String, Codable, CaseIterable, Identifiable {
     case fahrenheit = "F", celsius = "C"
 
     var id: String { rawValue }
-    var symbol: String { "°" + rawValue }
+    /// "° F": a narrow no-break space between the degree sign and the letter, so it reads clearly and
+    /// never splits across lines.
+    var symbol: String { "°\u{202F}" + rawValue }
     var other: TempUnit { self == .fahrenheit ? .celsius : .fahrenheit }
 
     /// Whole degrees in this unit, from Celsius.

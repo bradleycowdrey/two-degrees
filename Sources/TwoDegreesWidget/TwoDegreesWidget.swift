@@ -38,12 +38,13 @@ struct WidgetSettings: WidgetConfigurationIntent {
     static var description = IntentDescription("Choose a city and which unit is shown large.")
 
     #if os(macOS)
-    /// Follow the app's cities (menu bar and Dock), or keep a city of its own. Unset on widgets made
-    /// before this setting existed: those keep the city they were given.
-    @Parameter(title: "Cities")
-    var source: CitySource?
+    /// On: show the app's cities (the menu bar and Dock), like Meridian's "Use Meridian's Cities".
+    /// Off: a city of its own.
+    @Parameter(title: "Use Two Degrees' Cities", default: true)
+    var useAppCities: Bool
 
-    @Parameter(title: "Two Degrees city")
+    /// With the app's cities: which one (normally the one showing in Two Degrees).
+    @Parameter(title: "Showing")
     var appCity: AppCityEntity?
     #endif
 
@@ -55,12 +56,16 @@ struct WidgetSettings: WidgetConfigurationIntent {
 
     #if os(macOS)
     static var parameterSummary: some ParameterSummary {
-        When(\.$source, .equalTo, .own) {
-            Summary("\(\.$source): \(\.$city)") {
+        When(\.$useAppCities, .equalTo, true) {
+            Summary {
+                \.$useAppCities
+                \.$appCity
                 \.$unit
             }
         } otherwise: {
-            Summary("\(\.$source): \(\.$appCity)") {
+            Summary {
+                \.$useAppCities
+                \.$city
                 \.$unit
             }
         }
@@ -69,7 +74,7 @@ struct WidgetSettings: WidgetConfigurationIntent {
     /// The city this widget shows.
     var chosenCity: City {
         let own = city?.city
-        if source == .own || (source == nil && own != nil) { return own ?? WidgetDefaults.cities[0] }
+        guard useAppCities else { return own ?? WidgetDefaults.cities[0] }
         if let snapshot = SharedCities.load(), let city = SharedCities.resolve(appCity?.id, in: snapshot) { return city }
         return own ?? WidgetDefaults.cities[0]   // the app hasn't shared its cities yet
     }
@@ -79,45 +84,41 @@ struct WidgetSettings: WidgetConfigurationIntent {
 }
 
 #if os(macOS)
-enum CitySource: String, AppEnum {
-    case app, own
-
-    static var typeDisplayRepresentation: TypeDisplayRepresentation = "Cities"
-    static var caseDisplayRepresentations: [CitySource: DisplayRepresentation] = [
-        .app: "Your Two Degrees cities",
-        .own: "A city of its own",
-    ]
-}
-
-/// One of the app's saved cities, or "whichever is showing in Two Degrees".
+/// What a widget using the app's cities shows: the city showing in Two Degrees (it follows the menu bar
+/// and Dock), or one of the app's saved cities.
 struct AppCityEntity: AppEntity {
     let id: String
     let name: String
-    let region: String
+    let note: String
 
     static var typeDisplayRepresentation: TypeDisplayRepresentation = "Two Degrees city"
     static var defaultQuery = AppCityQuery()
-    static let current = AppCityEntity(id: SharedCities.currentID, name: "The city showing in Two Degrees", region: "Follows the menu bar and Dock")
+
+    /// "San Francisco — Change it in Two Degrees": whichever city the app is showing.
+    static func current(_ snapshot: SharedCities.Snapshot?) -> AppCityEntity {
+        let name = snapshot.flatMap { SharedCities.resolve(nil, in: $0)?.name } ?? "The city showing in Two Degrees"
+        return AppCityEntity(id: SharedCities.currentID, name: name, note: "Change it in Two Degrees")
+    }
 
     var displayRepresentation: DisplayRepresentation {
-        DisplayRepresentation(title: "\(name)", subtitle: "\(region)")
+        DisplayRepresentation(title: "\(name)", subtitle: "\(note)")
     }
 }
 
 struct AppCityQuery: EntityQuery {
     func entities(for identifiers: [String]) async throws -> [AppCityEntity] {
         let all = try await suggestedEntities()
-        return identifiers.map { id in
-            all.first { $0.id == id } ?? AppCityEntity(id: id, name: "A removed city", region: "Shows the city showing in Two Degrees")
-        }
+        return identifiers.map { id in all.first { $0.id == id } ?? AppCityEntity.current(SharedCities.load()) }
     }
 
+    /// The city showing in Two Degrees first, then each saved city.
     func suggestedEntities() async throws -> [AppCityEntity] {
-        let saved = SharedCities.load()?.cities ?? []
-        return [.current] + saved.map { AppCityEntity(id: $0.id, name: $0.name, region: $0.region) }
+        let snapshot = SharedCities.load()
+        let saved = (snapshot?.cities ?? []).map { AppCityEntity(id: $0.id, name: $0.name, note: "Always \($0.name)") }
+        return [AppCityEntity.current(snapshot)] + saved
     }
 
-    func defaultResult() async -> AppCityEntity? { .current }
+    func defaultResult() async -> AppCityEntity? { AppCityEntity.current(SharedCities.load()) }
 }
 #endif
 

@@ -137,7 +137,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             var title = city.name
             if let forecast = store.forecasts[city.id] {
                 let t = forecast.now.temperature
-                title += "   \(TempUnit.fahrenheit.value(t))°F / \(TempUnit.celsius.value(t))°C"
+                title += "   \(TempUnit.fahrenheit.value(t))\(TempUnit.fahrenheit.symbol) / \(TempUnit.celsius.value(t))\(TempUnit.celsius.symbol)"
             }
             let item = NSMenuItem(title: title, action: #selector(selectCity(_:)), keyEquivalent: "")
             item.target = self

@@ -200,7 +200,7 @@ final class WeatherStore: ObservableObject {
     var readingText: String? {
         guard let forecast = activeForecast else { return nil }
         let f = TempUnit.fahrenheit.value(forecast.now.temperature), c = TempUnit.celsius.value(forecast.now.temperature)
-        return "\(active.name): \(f)°F / \(c)°C, \(Condition.name(forecast.now.code).lowercased()). Via Two Degrees."
+        return "\(active.name): \(f)\(TempUnit.fahrenheit.symbol) / \(c)\(TempUnit.celsius.symbol), \(Condition.name(forecast.now.code).lowercased()). Via Two Degrees."
     }
 
     /// Copies the reading to the clipboard.
