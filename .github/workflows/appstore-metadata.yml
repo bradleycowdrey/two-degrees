@@ -10,6 +10,22 @@ on:
         description: "Build number to submit (empty: the newest processed build)"
         required: false
         default: ""
+      contact_name:
+        description: "App Review contact name"
+        required: false
+        default: "Bradley Cowdrey"
+      contact_phone:
+        description: "App Review contact phone"
+        required: false
+        default: ""
+      contact_email:
+        description: "App Review contact email"
+        required: false
+        default: ""
+      submit:
+        description: "Submit for App Review once filled in"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -25,6 +41,10 @@ jobs:
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
           ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
           BUILD: ${{ inputs.build }}
+          CONTACT_NAME: ${{ inputs.contact_name }}
+          CONTACT_PHONE: ${{ inputs.contact_phone }}
+          CONTACT_EMAIL: ${{ inputs.contact_email }}
+          SUBMIT: ${{ inputs.submit && '1' || '' }}
         run: |
           python3 -m venv "$RUNNER_TEMP/venv"
           "$RUNNER_TEMP/venv/bin/pip" install --quiet "pyjwt[crypto]==2.9.0"

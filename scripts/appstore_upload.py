@@ -2,7 +2,8 @@
 appstore/metadata.json), screenshots (from appstore/screenshots), copyright, review notes, and the build.
 
 Env: ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8 (the API key), BUILD (a build number, or empty for the newest
-processed one). Run by .github/workflows/appstore-metadata.yml. Needs PyJWT and cryptography.
+processed one), CONTACT_NAME / CONTACT_PHONE / CONTACT_EMAIL (App Review's contact; empty leaves it as is),
+SUBMIT=1 to submit the version for App Review once it's filled in. Run by .github/workflows/appstore-metadata.yml. Needs PyJWT and cryptography.
 Screenshots replace whatever is in each set, so running it twice is safe.
 """
 import hashlib
@@ -83,9 +84,16 @@ def main():
     call("PATCH", f"/appStoreVersions/{version['id']}/relationships/build", {"data": {"type": "builds", "id": build["id"]}})
     print(f"build {build['attributes']['version']}")
 
-    step("App Review notes")
+    step("App Review notes and contact")
     detail = call("GET", f"/appStoreVersions/{version['id']}/appStoreReviewDetail").get("data")
     attrs = {"notes": meta["reviewNotes"], "demoAccountRequired": False}
+    name = os.environ.get("CONTACT_NAME", "").strip().split(" ", 1)
+    for key, value in [("contactFirstName", name[0] if name[0] else ""), ("contactLastName", name[1] if len(name) > 1 else ""),
+                       ("contactPhone", os.environ.get("CONTACT_PHONE", "").strip()), ("contactEmail", os.environ.get("CONTACT_EMAIL", "").strip())]:
+        if value:
+            attrs[key] = value
+    if "contactPhone" in attrs:
+        print("contact details set")
     if detail:
         call("PATCH", f"/appStoreReviewDetails/{detail['id']}", {"data": {"type": "appStoreReviewDetails", "id": detail["id"], "attributes": attrs}})
     else:
@@ -129,6 +137,19 @@ def main():
         print(f"::error::Screenshot rejected: {p}")
     if problems:
         raise SystemExit(1)
+    if os.environ.get("SUBMIT") == "1":
+        step("Submit for App Review")
+        open_subs = call("GET", f"/reviewSubmissions?filter[app]={app['id']}&filter[platform]=IOS&filter[state]=READY_FOR_REVIEW")["data"]
+        sub = open_subs[0] if open_subs else call("POST", "/reviewSubmissions", {"data": {"type": "reviewSubmissions",
+              "attributes": {"platform": "IOS"}, "relationships": {"app": {"data": {"type": "apps", "id": app["id"]}}}}})["data"]
+        if not call("GET", f"/reviewSubmissions/{sub['id']}/items")["data"]:
+            call("POST", "/reviewSubmissionItems", {"data": {"type": "reviewSubmissionItems", "relationships": {
+                 "reviewSubmission": {"data": {"type": "reviewSubmissions", "id": sub["id"]}},
+                 "appStoreVersion": {"data": {"type": "appStoreVersions", "id": version["id"]}}}}})
+        call("PATCH", f"/reviewSubmissions/{sub['id']}", {"data": {"type": "reviewSubmissions", "id": sub["id"], "attributes": {"submitted": True}}})
+        state = call("GET", f"/reviewSubmissions/{sub['id']}")["data"]["attributes"]["state"]
+        print(f"::notice::Submitted version {version['attributes']['versionString']} (build {build['attributes']['version']}) for App Review: {state}.")
+        return
     print(f"::notice::Version {version['attributes']['versionString']} is filled in with build {build['attributes']['version']}: text, screenshots, copyright and review notes. Add your contact details under App Review Information, then Add for Review.")
 
 
