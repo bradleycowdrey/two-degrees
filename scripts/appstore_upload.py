@@ -3,7 +3,8 @@ appstore/metadata.json), screenshots (from appstore/screenshots), copyright, rev
 
 Env: ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8 (the API key), BUILD (a build number, or empty for the newest
 processed one), CONTACT_NAME / CONTACT_PHONE / CONTACT_EMAIL (App Review's contact; empty leaves it as is),
-SUBMIT=1 to submit the version for App Review once it's filled in. Run by .github/workflows/appstore-metadata.yml. Needs PyJWT and cryptography.
+SUBMIT=1 to submit the version for App Review once it's filled in, SKIP_SCREENSHOTS=1 to keep the
+screenshots already uploaded. Run by .github/workflows/appstore-metadata.yml. Needs PyJWT and cryptography.
 Screenshots replace whatever is in each set, so running it twice is safe.
 """
 import hashlib
@@ -101,42 +102,45 @@ def main():
              "relationships": {"appStoreVersion": {"data": {"type": "appStoreVersions", "id": version["id"]}}}}})
     print("notes set; sign-in not required (your contact details stay yours to enter)")
 
-    step("Screenshots")
-    sets = call("GET", f"/appStoreVersionLocalizations/{loc['id']}/appScreenshotSets")["data"]
-    for display, files in meta["screenshots"].items():
-        shot_set = next((s for s in sets if s["attributes"]["screenshotDisplayType"] == display), None)
-        if not shot_set:
-            shot_set = call("POST", "/appScreenshotSets", {"data": {"type": "appScreenshotSets",
-                            "attributes": {"screenshotDisplayType": display},
-                            "relationships": {"appStoreVersionLocalization": {"data": {"type": "appStoreVersionLocalizations", "id": loc["id"]}}}}})["data"]
-        for old in call("GET", f"/appScreenshotSets/{shot_set['id']}/appScreenshots")["data"]:
-            call("DELETE", f"/appScreenshots/{old['id']}")
-        for name in files:
-            data = open(os.path.join(ROOT, "screenshots", name), "rb").read()
-            shot = call("POST", "/appScreenshots", {"data": {"type": "appScreenshots",
-                        "attributes": {"fileName": name, "fileSize": len(data)},
-                        "relationships": {"appScreenshotSet": {"data": {"type": "appScreenshotSets", "id": shot_set["id"]}}}}})["data"]
-            for op in shot["attributes"]["uploadOperations"]:
-                part = data[op["offset"]:op["offset"] + op["length"]]
-                req = urllib.request.Request(op["url"], data=part, method=op["method"],
-                                             headers={h["name"]: h["value"] for h in op["requestHeaders"]})
-                urllib.request.urlopen(req).read()
-            call("PATCH", f"/appScreenshots/{shot['id']}", {"data": {"type": "appScreenshots", "id": shot["id"],
-                 "attributes": {"uploaded": True, "sourceFileChecksum": hashlib.md5(data).hexdigest()}}})
-            print(f"{display}: {name}")
+    if os.environ.get("SKIP_SCREENSHOTS") == "1":
+        print("== Screenshots: kept as uploaded")
+    else:
+        step("Screenshots")
+        sets = call("GET", f"/appStoreVersionLocalizations/{loc['id']}/appScreenshotSets")["data"]
+        for display, files in meta["screenshots"].items():
+            shot_set = next((s for s in sets if s["attributes"]["screenshotDisplayType"] == display), None)
+            if not shot_set:
+                shot_set = call("POST", "/appScreenshotSets", {"data": {"type": "appScreenshotSets",
+                                "attributes": {"screenshotDisplayType": display},
+                                "relationships": {"appStoreVersionLocalization": {"data": {"type": "appStoreVersionLocalizations", "id": loc["id"]}}}}})["data"]
+            for old in call("GET", f"/appScreenshotSets/{shot_set['id']}/appScreenshots")["data"]:
+                call("DELETE", f"/appScreenshots/{old['id']}")
+            for name in files:
+                data = open(os.path.join(ROOT, "screenshots", name), "rb").read()
+                shot = call("POST", "/appScreenshots", {"data": {"type": "appScreenshots",
+                            "attributes": {"fileName": name, "fileSize": len(data)},
+                            "relationships": {"appScreenshotSet": {"data": {"type": "appScreenshotSets", "id": shot_set["id"]}}}}})["data"]
+                for op in shot["attributes"]["uploadOperations"]:
+                    part = data[op["offset"]:op["offset"] + op["length"]]
+                    req = urllib.request.Request(op["url"], data=part, method=op["method"],
+                                                 headers={h["name"]: h["value"] for h in op["requestHeaders"]})
+                    urllib.request.urlopen(req).read()
+                call("PATCH", f"/appScreenshots/{shot['id']}", {"data": {"type": "appScreenshots", "id": shot["id"],
+                     "attributes": {"uploaded": True, "sourceFileChecksum": hashlib.md5(data).hexdigest()}}})
+                print(f"{display}: {name}")
 
-    # Apple processes uploads for a moment; report any it rejects.
-    time.sleep(20)
-    problems = []
-    for s in call("GET", f"/appStoreVersionLocalizations/{loc['id']}/appScreenshotSets")["data"]:
-        for shot in call("GET", f"/appScreenshotSets/{s['id']}/appScreenshots")["data"]:
-            state = (shot["attributes"].get("assetDeliveryState") or {}).get("state")
-            if state == "FAILED":
-                problems.append(f"{shot['attributes']['fileName']}: {shot['attributes']['assetDeliveryState'].get('errors')}")
-    for p in problems:
-        print(f"::error::Screenshot rejected: {p}")
-    if problems:
-        raise SystemExit(1)
+        # Apple processes uploads for a moment; report any it rejects.
+        time.sleep(20)
+        problems = []
+        for s in call("GET", f"/appStoreVersionLocalizations/{loc['id']}/appScreenshotSets")["data"]:
+            for shot in call("GET", f"/appScreenshotSets/{s['id']}/appScreenshots")["data"]:
+                state = (shot["attributes"].get("assetDeliveryState") or {}).get("state")
+                if state == "FAILED":
+                    problems.append(f"{shot['attributes']['fileName']}: {shot['attributes']['assetDeliveryState'].get('errors')}")
+        for p in problems:
+            print(f"::error::Screenshot rejected: {p}")
+        if problems:
+            raise SystemExit(1)
     if os.environ.get("SUBMIT") == "1":
         step("Submit for App Review")
         open_subs = call("GET", f"/reviewSubmissions?filter[app]={app['id']}&filter[platform]=IOS&filter[state]=READY_FOR_REVIEW")["data"]

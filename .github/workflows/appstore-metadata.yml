@@ -23,6 +23,10 @@ on:
         description: "App Review contact email (empty: the APP_REVIEW_EMAIL secret)"
         required: false
         default: ""
+      skip_screenshots:
+        description: "Keep the screenshots already uploaded"
+        type: boolean
+        default: false
       submit:
         description: "Submit for App Review once filled in"
         type: boolean
@@ -46,6 +50,7 @@ jobs:
           CONTACT_PHONE: ${{ inputs.contact_phone || secrets.APP_REVIEW_PHONE }}
           CONTACT_EMAIL: ${{ inputs.contact_email || secrets.APP_REVIEW_EMAIL }}
           SUBMIT: ${{ inputs.submit && '1' || '' }}
+          SKIP_SCREENSHOTS: ${{ inputs.skip_screenshots && '1' || '' }}
         run: |
           python3 -m venv "$RUNNER_TEMP/venv"
           "$RUNNER_TEMP/venv/bin/pip" install --quiet "pyjwt[crypto]==2.9.0"
