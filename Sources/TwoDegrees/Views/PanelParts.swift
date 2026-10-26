@@ -333,7 +333,7 @@ struct NowTile: View {
                 // whole, on the same baseline.
                 HStack(alignment: .firstTextBaseline, spacing: ui.pt(8)) {
                     (Text("\(unit.value(now.temperature))").font(ui.font(64, .semibold))
-                        + Text("\u{200A}" + unit.symbol).font(ui.font(64 * 0.42, .medium)).baselineOffset(ui.pt(64) * 0.36).tracking(ui.pt(64) * 0.012))
+                        + Text(unit.symbol).font(ui.font(64 * 0.42, .medium)).baselineOffset(ui.pt(64) * 0.36).tracking(ui.pt(64) * 0.012))
                         .tracking(-ui.pt(64) * 0.03)
                         .foregroundStyle(Palette.textPrimary)
                     Text(other.spaced(other.value(now.temperature)))

@@ -59,7 +59,7 @@ extension Forecast {
 enum Reading {
     static func text(_ value: Int, _ unit: TempUnit, size: CGFloat, weight: Font.Weight, unitWeight: Font.Weight = .medium) -> Text {
         Text("\(value)").font(.system(size: size, weight: weight))
-            + Text("\u{200A}" + unit.symbol).font(.system(size: size * 0.42, weight: unitWeight))
+            + Text(unit.symbol).font(.system(size: size * 0.42, weight: unitWeight))
                 .baselineOffset(size * 0.36).tracking(size * 0.012)
     }
 }

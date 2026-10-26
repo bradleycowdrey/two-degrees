@@ -46,7 +46,7 @@ final class WeatherTests: XCTestCase {
         XCTAssertEqual(TempUnit.fahrenheit.value(37), 99)   // 98.6 rounds to 99
         XCTAssertEqual(TempUnit.celsius.value(17.6), 18)
         XCTAssertEqual(TempUnit.celsius.other, .fahrenheit)
-        XCTAssertEqual(TempUnit.fahrenheit.symbol, "°\u{202F}F")
+        XCTAssertEqual(TempUnit.fahrenheit.symbol, "\u{200A}°\u{202F}F")
     }
 
     func testDateParsingIsCityLocal() throws {
