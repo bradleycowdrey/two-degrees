@@ -3,6 +3,17 @@
 Two Degrees updates itself: when a new version is out, the app shows a banner with an **Update** button
 (or use **Check for Updates** in the ⋯ menu). Every version is on [Releases](https://github.com/bradleycowdrey/two-degrees/releases).
 
+## [0.4.5] - 2026-10-26
+
+- **Widgets can follow your Two Degrees cities**, like Meridian's: edit a widget and turn on **Use Two
+  Degrees' Cities** to show the city showing in Two Degrees (or pick one of your cities), or turn it off
+  to choose a city of its own.
+- **Large widget**: laid out like Apple's Weather, with the sky and its name beside the big reading, and
+  a sixth day.
+- **The big reading in the app matches the widgets**: a smaller raised °F, then 18 °C whole beside it.
+- Readings are spaced a little more (18 ° C), and conditions read like Apple's (Partly Cloudy).
+- Mac ⋯ menu: real keyboard shortcuts for Refresh, Larger and Smaller.
+
 ## [0.4.4] - 2026-10-25
 
 - **Cleaner numbers**: the big reading shows its unit smaller and raised (55°F), as in the Mac app; the
@@ -138,6 +149,7 @@ Also new on [bradcowdrey.com/two-degrees](https://bradcowdrey.com/two-degrees) s
 - First release: the weather in °F and °C at once, in the Dock (a live temperature on the icon) and the menu bar,
   with the next 24 hours, a 5-day forecast, up to five cities and a Share button. Data from Open-Meteo.
 
+[0.4.5]: https://github.com/bradleycowdrey/two-degrees/releases/tag/v0.4.5
 [0.4.4]: https://github.com/bradleycowdrey/two-degrees/releases/tag/v0.4.4
 [0.4.3]: https://github.com/bradleycowdrey/two-degrees/releases/tag/v0.4.3
 [0.4.2]: https://github.com/bradleycowdrey/two-degrees/releases/tag/v0.4.2
