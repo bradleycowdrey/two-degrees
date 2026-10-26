@@ -14,9 +14,12 @@ enum TempUnit: String, Codable, CaseIterable, Identifiable {
     case fahrenheit = "F", celsius = "C"
 
     var id: String { rawValue }
-    /// " ° F": a hair space before the degree sign and a narrow no-break space after it, so the number,
-    /// the degree sign and the letter don't crowd, and never split across lines.
-    var symbol: String { "\u{200A}°\u{202F}" + rawValue }
+    /// A reading's unit: hair spaces either side of the degree sign, the thinnest there are, so the
+    /// number, the degree sign and the letter don't crowd.
+    var symbol: String { "\u{200A}°\u{200A}" + rawValue }
+
+    /// "°F" with no spacing: for controls and labels (the °F | °C switch, menus, hints) and copied text.
+    var label: String { "°" + rawValue }
 
     /// A reading with its unit ("18 °C"). The spacing is in `symbol`, so every reading gets it.
     func spaced(_ value: Int) -> String { "\(value)\(symbol)" }

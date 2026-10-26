@@ -104,6 +104,8 @@ async function setSize(page, size) {
 
     // Switch city. Selecting a chip must not move any chip or the Add | Edit controls.
     const chipBoxes = () => page.$$eval('.chip[data-i], #addBtn', (els) => els.map((e) => { const r = e.getBoundingClientRect(); return [r.x, r.y, r.width].map((v) => v.toFixed(1)).join(','); }).join(' '));
+    // Wait until every city's temperature has arrived, so a chip growing as it loads isn't counted as a move.
+    await page.waitForFunction(() => [...document.querySelectorAll('.chip[data-i]')].every((c) => c.querySelector('.t')), null, { timeout: 15000 }).catch(() => {});
     const boxesBefore = await chipBoxes();
     await page.click('.chip[data-i="1"]');
     check((await page.textContent('.place h2')).trim() === 'London' && await page.getAttribute('.chip[data-i="1"]', 'aria-current') === 'true', t('switching to London'));
@@ -167,7 +169,12 @@ async function setSize(page, size) {
     // More menu: copy reading, font, every size with layout checks and screenshots.
     await page.click('#moreBtn');
     await page.click('[data-act="copy"]');
-    const reading = await page.evaluate(() => navigator.clipboard.readText()).catch(() => '');
+    // The copy is asynchronous: wait for the clipboard to hold the reading.
+    let reading = '';
+    for (let i = 0; i < 20 && !/°F \/ -?\d+°C/.test(reading); i++) {
+      reading = await page.evaluate(() => navigator.clipboard.readText()).catch(() => '');
+      if (!/°F \/ -?\d+°C/.test(reading)) await page.waitForTimeout(100);
+    }
     check(/°F \/ -?\d+°C/.test(reading), t('Copy Current Reading copies both units'));
     await page.click('#moreBtn');
     await page.click('[data-font="system"]');

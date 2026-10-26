@@ -102,7 +102,7 @@ struct CityPage: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(Speech.temperature(now.temperature))
-                .accessibilityHint("Shows \(other.symbol) large")
+                .accessibilityHint("Shows \(other.label) large")
                 Text(Condition.name(now.code))
                     .font(ui.font(20, .medium))
                     .opacity(0.9)
