@@ -2,7 +2,8 @@ name: App Store listing
 
 # Fills in the iOS version waiting to be submitted in App Store Connect: description, keywords,
 # promotional text, URLs, copyright, App Review notes, the screenshots in appstore/screenshots, and the
-# build. Uses the same App Store Connect API key as the TestFlight upload. Run it from the Actions tab.
+# build, and App Review's contact (from the APP_REVIEW_PHONE and APP_REVIEW_EMAIL secrets unless given).
+# Uses the same App Store Connect API key as the TestFlight upload. Run it from the Actions tab.
 on:
   workflow_dispatch:
     inputs:
@@ -15,11 +16,11 @@ on:
         required: false
         default: "Bradley Cowdrey"
       contact_phone:
-        description: "App Review contact phone"
+        description: "App Review contact phone (empty: the APP_REVIEW_PHONE secret)"
         required: false
         default: ""
       contact_email:
-        description: "App Review contact email"
+        description: "App Review contact email (empty: the APP_REVIEW_EMAIL secret)"
         required: false
         default: ""
       submit:
@@ -42,8 +43,8 @@ jobs:
           ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
           BUILD: ${{ inputs.build }}
           CONTACT_NAME: ${{ inputs.contact_name }}
-          CONTACT_PHONE: ${{ inputs.contact_phone }}
-          CONTACT_EMAIL: ${{ inputs.contact_email }}
+          CONTACT_PHONE: ${{ inputs.contact_phone || secrets.APP_REVIEW_PHONE }}
+          CONTACT_EMAIL: ${{ inputs.contact_email || secrets.APP_REVIEW_EMAIL }}
           SUBMIT: ${{ inputs.submit && '1' || '' }}
         run: |
           python3 -m venv "$RUNNER_TEMP/venv"
