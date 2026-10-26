@@ -21,5 +21,7 @@
       "ipad-3.png",
       "ipad-4.png"
     ]
-  }
+  },
+  "primaryCategory": "WEATHER",
+  "secondaryCategory": "UTILITIES"
 }

@@ -40,11 +40,13 @@ def call(method, path, body=None):
             return json.loads(text) if text else {}
     except urllib.error.HTTPError as e:
         detail = e.read().decode()
-        try:   # Apple's reasons, on one line so they show in the annotation
-            errors = json.loads(detail).get("errors", [])
-            detail = " | ".join(f"{x.get('title', '')}: {x.get('detail', '')}" + "".join(
-                f" [{a.get('code', '')}] {a.get('detail', a.get('title', ''))}" for a in (x.get("meta") or {}).get("associatedErrors", {}).get(next(iter((x.get("meta") or {}).get("associatedErrors", {}) or [""]), ""), []) if isinstance(a, dict))
-                for x in errors) or detail
+        try:   # Apple's reasons, every associated one, on one line so they show in the annotation
+            parts = []
+            for x in json.loads(detail).get("errors", []):
+                parts.append(f"{x.get('title', '')}: {x.get('detail', '')}")
+                for group in ((x.get("meta") or {}).get("associatedErrors") or {}).values():
+                    parts += [f"[{a.get('code', '')}] {a.get('detail', a.get('title', ''))}" for a in group if isinstance(a, dict)]
+            detail = " | ".join(parts) or detail
         except ValueError:
             pass
         print(f"::error::{method} {path} → {e.code}: {' '.join(detail.split())[:1500]}")
@@ -66,6 +68,14 @@ def main():
         raise SystemExit(1)
     version = versions[0]
     print(f"app {app['attributes']['name']}, version {version['attributes']['versionString']} ({version['attributes']['appStoreState']})")
+
+    step("Categories")
+    info = next(i for i in call("GET", f"/apps/{app['id']}/appInfos")["data"]
+                if i["attributes"].get("appStoreState") not in ("READY_FOR_SALE", "REPLACED_WITH_NEW_INFO"))
+    call("PATCH", f"/appInfos/{info['id']}", {"data": {"type": "appInfos", "id": info["id"], "relationships": {
+         "primaryCategory": {"data": {"type": "appCategories", "id": meta["primaryCategory"]}},
+         "secondaryCategory": {"data": {"type": "appCategories", "id": meta["secondaryCategory"]}}}}})
+    print(f"{meta['primaryCategory']}, {meta['secondaryCategory']}")
 
     step("Copyright")
     call("PATCH", f"/appStoreVersions/{version['id']}",
