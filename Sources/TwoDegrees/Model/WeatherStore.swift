@@ -162,16 +162,15 @@ final class WeatherStore: ObservableObject {
 
     // MARK: Widgets
 
-    /// Widgets set to "Your Two Degrees cities" show these: publish them, and redraw the widgets when they
-    /// change. (Mac only: the iPhone's widgets each keep a city of their own.)
+    /// Widgets using Two Degrees' cities show these: publish them, and redraw the widgets when they change.
     func shareWithWidgets() {
         #if os(macOS)
         guard !SelfTest.isActive else { return }   // the self-test's ad-hoc build isn't in the App Group
+        #endif
         let snapshot = SharedCities.Snapshot(cities: cities, activeID: activeID)
         guard snapshot != SharedCities.load() else { return }
         SharedCities.save(snapshot)
         WidgetCenter.shared.reloadAllTimelines()
-        #endif
     }
 
     // MARK: Dock

@@ -3,8 +3,9 @@ name: iPhone TestFlight
 # Uploads the iPhone app to App Store Connect (TestFlight) whenever VERSION changes on main, or on
 # demand. Needs an App Store Connect API key in three secrets: ASC_KEY_ID, ASC_ISSUER_ID and ASC_KEY_P8
 # (the .p8 file's contents), plus the app created in App Store Connect with bundle ID
-# com.bradcowdrey.twodegrees. The archive is built unsigned; exporting it for App Store Connect signs it, with the Apple
-# Distribution certificate and App Store profiles Xcode makes through the API key (no devices needed). Without the secrets this does nothing.
+# com.bradcowdrey.twodegrees. Signing is automatic through the API key: the archive is signed for
+# development (that needs one registered device, and keeps the App Group the widget shares with the app),
+# then exported and re-signed for App Store Connect. Without the secrets this does nothing.
 on:
   push:
     branches: [main]
@@ -62,8 +63,8 @@ jobs:
           xcodebuild -project TwoDegrees.xcodeproj -scheme TwoDegreesPhone -configuration Release \
             -destination "generic/platform=iOS" -archivePath "$RUNNER_TEMP/TwoDegrees.xcarchive" \
             MARKETING_VERSION="$VERSION" CURRENT_PROJECT_VERSION="$BUILD" \
-            DEVELOPMENT_TEAM="$DERIVED_TEAM_ID" CODE_SIGN_STYLE=Automatic CODE_SIGNING_ALLOWED=NO \
-            archive > "$LOG" 2>&1 \
+            DEVELOPMENT_TEAM="$DERIVED_TEAM_ID" CODE_SIGN_STYLE=Automatic CODE_SIGN_IDENTITY="Apple Development" \
+            "${AUTH[@]}" archive > "$LOG" 2>&1 \
             || { grep -E "(error|fatal):" "$LOG" | sort -u | head -25 | sed 's/^/::error::/'; tail -40 "$LOG"; exit 1; }
           cat > "$RUNNER_TEMP/export.plist" <<PLIST
           <?xml version="1.0" encoding="UTF-8"?>

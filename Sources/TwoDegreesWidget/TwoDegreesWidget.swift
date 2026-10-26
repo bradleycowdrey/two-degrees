@@ -37,16 +37,14 @@ struct WidgetSettings: WidgetConfigurationIntent {
     static var title: LocalizedStringResource = "Two Degrees"
     static var description = IntentDescription("Choose a city and which unit is shown large.")
 
-    #if os(macOS)
-    /// On: show the app's cities (the menu bar and Dock), like Meridian's "Use Meridian's Cities".
-    /// Off: a city of its own.
+    /// On: show the app's cities (on the Mac, the menu bar and Dock), like Meridian's "Use Meridian's
+    /// Cities". Off: a city of its own.
     @Parameter(title: "Use Two Degrees' Cities", default: true)
     var useAppCities: Bool
 
     /// With the app's cities: which one (normally the one showing in Two Degrees).
     @Parameter(title: "Showing")
     var appCity: AppCityEntity?
-    #endif
 
     @Parameter(title: "City")
     var city: CityEntity?
@@ -54,7 +52,6 @@ struct WidgetSettings: WidgetConfigurationIntent {
     @Parameter(title: "Larger unit", default: .fahrenheit)
     var unit: UnitChoice
 
-    #if os(macOS)
     static var parameterSummary: some ParameterSummary {
         When(\.$useAppCities, .equalTo, true) {
             Summary {
@@ -78,14 +75,10 @@ struct WidgetSettings: WidgetConfigurationIntent {
         if let snapshot = SharedCities.load(), let city = SharedCities.resolve(appCity?.id, in: snapshot) { return city }
         return own ?? WidgetDefaults.cities[0]   // the app hasn't shared its cities yet
     }
-    #else
-    var chosenCity: City { city?.city ?? WidgetDefaults.cities[0] }
-    #endif
 }
 
-#if os(macOS)
-/// What a widget using the app's cities shows: the city showing in Two Degrees (it follows the menu bar
-/// and Dock), or one of the app's saved cities.
+/// What a widget using the app's cities shows: the city showing in Two Degrees (on the Mac it follows the
+/// menu bar and Dock), or one of the app's saved cities.
 struct AppCityEntity: AppEntity {
     let id: String
     let name: String
@@ -120,7 +113,6 @@ struct AppCityQuery: EntityQuery {
 
     func defaultResult() async -> AppCityEntity? { AppCityEntity.current(SharedCities.load()) }
 }
-#endif
 
 enum UnitChoice: String, AppEnum {
     case fahrenheit, celsius

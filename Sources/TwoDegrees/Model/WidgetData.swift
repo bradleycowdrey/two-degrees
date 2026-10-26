@@ -58,12 +58,16 @@ enum WidgetData {
     }
 }
 
-/// The Mac app's saved cities, shared with its widgets through an App Group, so a widget can follow
-/// the app ("Your Two Degrees cities") instead of keeping a city of its own.
+/// The app's saved cities, shared with its widgets through an App Group, so a widget can follow the app
+/// ("Use Two Degrees' Cities") instead of keeping a city of its own. Mac and iPhone alike.
 enum SharedCities {
-    /// App Group: on the Mac, the team ID prefix lets a Developer ID app and its widget share it
-    /// without a provisioning profile.
+    /// App Group. On the Mac, the team ID prefix lets a Developer ID app and its widget share it without
+    /// a provisioning profile; on iPhone it's a registered group, in both App IDs' profiles.
+    #if os(macOS)
     static let suiteName = "2XV97FZ86G.com.bradcowdrey.twodegrees"
+    #else
+    static let suiteName = "group.com.bradcowdrey.twodegrees"
+    #endif
     static let key = "shared.cities"
     /// "Follow whichever city is showing in Two Degrees."
     static let currentID = "current"
