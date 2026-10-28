@@ -1,0 +1,25 @@
+name: City list
+
+# Rebuilds Resources/Cities.tsv (the offline city search) from GeoNames and pushes it to the
+# cities-data branch, for review before it goes into main. Run it from the Actions tab.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  cities:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the city list
+        run: python3 scripts/make_cities.py "$RUNNER_TEMP/geonames" Resources/Cities.tsv
+      - name: Push to cities-data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B cities-data
+          git add Resources/Cities.tsv
+          git commit -m "City list from GeoNames"
+          git push -f origin cities-data
