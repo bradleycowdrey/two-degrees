@@ -51,7 +51,7 @@ version is on [Releases](https://github.com/bradleycowdrey/two-degrees/releases)
 - **Share**: the same Share button as Meridian and Cowdrey.MD.
 - **The details**: open at login, `F` / `C` keys to swap units, VoiceOver reads both units.
 - **Automatic updates** from GitHub Releases, SHA-256 verified, one click to install.
-- No account, no API key, no tracking. Weather data from [Open-Meteo](https://open-meteo.com) (CC BY 4.0), refreshed every 15 minutes.
+- No account, no API key, no tracking. Weather data from [Open-Meteo](https://open-meteo.com) (CC BY 4.0), refreshed every 15 minutes. City search works offline too, from a built-in list of every place with 15,000+ people ([GeoNames](https://www.geonames.org), CC BY 4.0).
 
 Native SwiftUI, universal binary (Apple silicon + Intel), macOS 14 Sonoma or later.
 

@@ -195,7 +195,18 @@ enum OpenMeteo {
         return raw.forecast()
     }
 
+    /// Open-Meteo's geocoder; with the internet out, the bundled city list (OfflineCities).
     static func search(_ query: String, session: URLSession = OpenMeteo.session) async throws -> [City] {
+        do {
+            return try await searchOnline(query, session: session)
+        } catch is URLError {
+            let offline = await Task.detached(priority: .userInitiated) { OfflineCities.search(query) }.value
+            if offline.isEmpty { throw URLError(.notConnectedToInternet) }
+            return offline
+        }
+    }
+
+    private static func searchOnline(_ query: String, session: URLSession) async throws -> [City] {
         var components = URLComponents(string: "https://geocoding-api.open-meteo.com/v1/search")!
         components.queryItems = [
             .init(name: "name", value: query),

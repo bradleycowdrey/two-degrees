@@ -102,6 +102,9 @@ enum SelfTest {
         let before = store.cities.count
         let found = (try? await OpenMeteo.search("Denver")) ?? []
         check(!found.isEmpty, "city search finds Denver (\(found.first?.region ?? "nothing"))")
+        let offline = OfflineCities.search("Denver")
+        check(OfflineCities.all.count > 20000 && offline.first?.name == "Denver",
+              "offline city search: \(OfflineCities.all.count) cities bundled, finds Denver (\(offline.first?.region ?? "nothing"))")
         if let denver = found.first {
             store.add(denver)
             check(store.cities.count == before + 1 && store.activeID == denver.id, "add Denver and select it")

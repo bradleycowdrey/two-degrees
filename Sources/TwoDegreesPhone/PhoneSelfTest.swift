@@ -51,6 +51,9 @@ enum PhoneSelfTest {
         let before = store.cities.count
         let found = (try? await OpenMeteo.search("Denver")) ?? []
         check(!found.isEmpty, "city search finds Denver (\(found.first?.region ?? "nothing"))")
+        let offline = OfflineCities.search("Denver")
+        check(OfflineCities.all.count > 20000 && offline.first?.name == "Denver",
+              "offline city search: \(OfflineCities.all.count) cities bundled, finds Denver (\(offline.first?.region ?? "nothing"))")
         if let denver = found.first {
             store.add(denver)
             for _ in 0..<20 where store.forecasts[denver.id] == nil { try? await Task.sleep(for: .milliseconds(500)) }

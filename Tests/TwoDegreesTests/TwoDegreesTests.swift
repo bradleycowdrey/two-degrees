@@ -538,3 +538,28 @@ final class TermsTests: XCTestCase {
         XCTAssertFalse(Terms.accepted(in: defaults))
     }
 }
+
+/// The city list search falls back on with the internet out.
+final class OfflineCitiesTests: XCTestCase {
+    private let list = OfflineCities.parse("""
+        Portland\t\tOregon\tUS\t45.5234\t-122.6762
+        Zürich\tZurich\tZurich\tCH\t47.3667\t8.5500
+        Portland\t\tMaine\tUS\t43.6615\t-70.2553
+        Portsmouth\t\tEngland\tGB\t50.7987\t-1.0911
+        Port Louis\t\tPort Louis\tMU\t-20.1619\t57.4989
+        """, locale: Locale(identifier: "en_US"))
+
+    func testExactNamesFirstThenMostPopulous() {
+        XCTAssertEqual(OfflineCities.search("port", in: list).map(\.name), ["Portland", "Portland", "Portsmouth", "Port Louis"])
+        XCTAssertEqual(OfflineCities.search("Portsmouth", in: list).first?.region, "England, United Kingdom")
+        XCTAssertEqual(OfflineCities.search("portland", in: list).count, 2)
+    }
+
+    func testIgnoresAccentsAndNarrowsAfterAComma() {
+        XCTAssertEqual(OfflineCities.search("zur", in: list).first?.name, "Zürich")
+        XCTAssertEqual(OfflineCities.search("Zurich", in: list).first?.region, "Zurich, Switzerland")
+        XCTAssertEqual(OfflineCities.search("Portland, maine", in: list).map(\.region), ["Maine, United States"])
+        XCTAssertEqual(OfflineCities.search("  ", in: list).count, 0)
+        XCTAssertEqual(OfflineCities.search("Atlantis", in: list).count, 0)
+    }
+}

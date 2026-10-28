@@ -123,7 +123,7 @@ private struct AboutView: View {
                 Link("Source on GitHub", destination: Brand.repository)
                 Link("Terms & Privacy", destination: Brand.legal)
             }
-            Text("Free and open source (MIT). Weather data by Open-Meteo.com (CC BY 4.0).").font(.caption).foregroundStyle(.secondary)
+            Text("Free and open source (MIT). Weather data by Open-Meteo.com, city list by GeoNames.org (both CC BY 4.0).").font(.caption).foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
