@@ -70,6 +70,7 @@ object SelfTest {
         check(own.city == paris && own.forecast != null && !own.offline, "widget with its own city shows Paris")
         WidgetData.forget(context, intArrayOf(9001, 9002))
 
+        store.termsAccepted = true   // so the later screenshots (the city list) open without the terms
         val header = if (failures == 0) "ALL PASSED (${lines.size} passed)" else "FAILED ($failures of ${lines.size} failed)"
         File(context.filesDir, "report.txt").writeText((listOf(header) + lines).joinToString("\n") + "\n")
     }

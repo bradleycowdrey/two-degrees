@@ -44,6 +44,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -98,7 +100,10 @@ fun CityPage(city: City, state: WeatherStore.State, store: WeatherStore, scrollT
         }
     }
 
-    PullToRefreshBox(isRefreshing = state.loading, onRefresh = { store.refresh() }, modifier = Modifier.fillMaxSize()) {
+    // The spinner shows only for a pull, not for the app's own refreshes.
+    var pulled by remember { mutableStateOf(false) }
+    LaunchedEffect(state.loading) { if (!state.loading) pulled = false }
+    PullToRefreshBox(isRefreshing = pulled && state.loading, onRefresh = { pulled = true; store.refresh() }, modifier = Modifier.fillMaxSize()) {
         BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
             LazyColumn(
                 state = list,
@@ -138,7 +143,7 @@ fun CityPage(city: City, state: WeatherStore.State, store: WeatherStore, scrollT
 /** The big number with its unit smaller and raised, as in the widgets. */
 fun reading(value: Int, unit: TempUnit) = buildAnnotatedString {
     append("$value")
-    withStyle(SpanStyle(fontSize = 0.42f.em(), baselineShift = BaselineShift(0.85f), fontWeight = FontWeight.Light)) { append(unit.symbol) }
+    withStyle(SpanStyle(fontSize = 0.42f.em(), baselineShift = BaselineShift(0.5f), fontWeight = FontWeight.Light)) { append(unit.symbol) }
 }
 
 private fun Float.em() = androidx.compose.ui.unit.TextUnit(this, androidx.compose.ui.unit.TextUnitType.Em)
@@ -178,11 +183,10 @@ private fun Header(city: City, forecast: Forecast?, unit: TempUnit, store: Weath
 private fun CompactHeader(city: City, forecast: Forecast, unit: TempUnit) {
     val ui = LocalMetrics.current
     val (top, _) = Sky.colors(forecast.now.code, forecast.now.isDay)
+    // Solid sky behind the pinned line, fading out just below it, so the page scrolls away underneath.
+    Column(Modifier.fillMaxWidth().clearAndSetSemantics {}) {
     Column(
-        Modifier.fillMaxWidth()
-            .background(Brush.verticalGradient(listOf(top, top.copy(alpha = 0.92f), top.copy(alpha = 0f))))
-            .statusBarsPadding().padding(top = 6.dp, bottom = 18.dp)
-            .clearAndSetSemantics {},
+        Modifier.fillMaxWidth().background(top).statusBarsPadding().padding(top = 6.dp, bottom = 10.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         val now = forecast.now
@@ -191,6 +195,8 @@ private fun CompactHeader(city: City, forecast: Forecast, unit: TempUnit) {
             "${unit.spaced(now.temperature)} · ${unit.other.spaced(now.temperature)}  |  ${Condition.name(now.code)}",
             style = ui.text(16f, FontWeight.Medium), modifier = Modifier.alpha(0.85f), maxLines = 1,
         )
+    }
+    Box(Modifier.fillMaxWidth().height(14.dp).background(Brush.verticalGradient(listOf(top, top.copy(alpha = 0f)))))
     }
 }
 
