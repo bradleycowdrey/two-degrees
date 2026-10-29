@@ -6,6 +6,7 @@ from appstore_upload import BUNDLE_ID, call
 
 def main():
     app = call("GET", f"/apps?filter[bundleId]={BUNDLE_ID}")["data"][0]
+    print(f"::notice::App Store page: https://apps.apple.com/app/id{app['id']}")
     for v in call("GET", f"/apps/{app['id']}/appStoreVersions?filter[platform]=IOS&limit=5")["data"]:
         a = v["attributes"]
         build = call("GET", f"/appStoreVersions/{v['id']}/build").get("data")

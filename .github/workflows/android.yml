@@ -55,6 +55,21 @@ jobs:
             android/app/build/outputs/apk/release/*.apk
             android/app/build/outputs/apk/debug/*.apk
             android/app/build/outputs/bundle/release/*.aab
+      - name: Attach the APK to the release
+        # The Android download (releases/latest/download/TwoDegrees.apk) follows main: each build on main
+        # replaces the APK on the current version's release.
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="v$(cat VERSION)"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            cp android/app/build/outputs/apk/release/app-release.apk "$RUNNER_TEMP/TwoDegrees.apk"
+            gh release upload "$TAG" "$RUNNER_TEMP/TwoDegrees.apk" --clobber
+            echo "::notice::TwoDegrees.apk attached to $TAG"
+          else
+            echo "::warning::No release $TAG yet; the APK wasn't attached"
+          fi
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
