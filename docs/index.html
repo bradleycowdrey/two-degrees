@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Two Degrees for Mac · Bradley Cowdrey</title>
-<meta name="description" content="Two Degrees: the weather in °F and °C at once. A free, open-source weather app for the Mac Dock, menu bar and desktop widgets, by Bradley Cowdrey. Try it in your browser.">
-<meta property="og:title" content="Two Degrees for Mac · Bradley Cowdrey">
-<meta property="og:description" content="The weather in °F and °C at once. Free for Mac, and right here in your browser.">
+<title>Two Degrees · Bradley Cowdrey</title>
+<meta name="description" content="Two Degrees: the weather in °F and °C at once. A free, open-source weather app for Mac, iPhone, iPad and Android, with widgets, by Bradley Cowdrey. Try it in your browser.">
+<meta property="og:title" content="Two Degrees · Bradley Cowdrey">
+<meta property="og:description" content="The weather in °F and °C at once. Free for Mac, iPhone, iPad and Android, and right here in your browser.">
 <meta property="og:url" content="https://bradcowdrey.com/two-degrees">
 <meta property="og:image" content="https://raw.githubusercontent.com/bradleycowdrey/two-degrees/main/docs/icon.png">
 <link rel="canonical" href="https://bradcowdrey.com/two-degrees">
@@ -122,6 +122,12 @@
   .ftile .sample b { color: var(--text); font-weight: 600; }
   .ftile .sample span { color: var(--faint); margin: 0 6px; }
 
+  .platforms .ftile { min-height: 0; }
+  .platforms .get { margin-top: auto; padding-top: 24px; }
+  .platforms .get .fine { margin-top: 12px; font-size: 13px; }
+  .platforms .get .fine a { color: var(--cream); text-decoration: underline; text-underline-offset: 2px; }
+  .pill.soon { background: var(--border-strong); color: var(--secondary); cursor: default; }
+
   .steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; }
   @media (max-width: 1000px) { .steps { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   @media (max-width: 560px) { .steps { grid-template-columns: 1fr; } }
@@ -164,24 +170,23 @@
   <a class="hide-s" href="#demo">Overview</a>
   <a class="hide-s" href="#widgets">Widgets</a>
   <a class="hide-s" href="#features">Features</a>
-  <a class="hide-s" href="#install">Install</a>
   <a href="https://github.com/bradleycowdrey/two-degrees">Source</a>
   <span class="share-wrap"><button type="button" class="share" aria-haspopup="menu" aria-expanded="false" title="Share Two Degrees"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7.5 7.5 12 3l4.5 4.5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>Share</button></span>
-  <a class="cta" href="https://github.com/bradleycowdrey/two-degrees/releases/latest/download/TwoDegrees.dmg">Download</a>
+  <a class="cta" href="#download">Download</a>
 </div></nav>
 
 <main class="wrap">
   <section class="hero">
     <img src="https://raw.githubusercontent.com/bradleycowdrey/two-degrees/main/docs/icon.png" alt="Two Degrees app icon">
-    <div class="eyebrow-l">Free for Mac</div>
+    <div class="eyebrow-l">Free for Mac, iPhone, iPad and Android</div>
     <h1>Two Degrees.</h1>
-    <p class="sub">Two scales. One forecast. Right in your Dock.</p>
+    <p class="sub">Two scales. One forecast. Everywhere you check the weather.</p>
     <div class="actions">
-      <a class="pill" href="https://github.com/bradleycowdrey/two-degrees/releases/latest/download/TwoDegrees.dmg">Download</a>
+      <a class="pill" href="#download">Download</a>
       <span class="share-wrap"><button type="button" class="ghost" aria-haspopup="menu" aria-expanded="false" title="Share Two Degrees"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7.5 7.5 12 3l4.5 4.5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>Share</button></span>
       <a class="textlink" href="#demo">Try it below ›</a>
     </div>
-    <p class="fine">macOS 14 or later · Apple silicon and Intel · Open source</p>
+    <p class="fine">Mac · iPhone and iPad · Android · Open source</p>
 
     <div class="pair" aria-label="64 degrees Fahrenheit is 18 degrees Celsius"><span class="f">64°F</span><span class="rule"></span><span class="c">18°C</span></div>
     <p class="pair-cap">Every temperature, twice. No switching. No mental math.</p>
@@ -197,6 +202,39 @@
   <div class="desk"><iframe id="widgetsFrame" title="Two Degrees widgets, live" loading="lazy"></iframe></div>
   <p class="desk-cap">On your Mac: right-click the desktop, choose <b>Edit Widgets</b>, and search for Two Degrees.</p>
 
+  <h2 class="section-h" id="download">Get Two Degrees.</h2>
+  <p class="section-p">Free on every device, with widgets on each. Your cities and settings stay on your device.</p>
+  <div class="tiles platforms">
+    <div class="ftile">
+      <div class="k">Mac</div>
+      <h3>In your Dock and menu bar.</h3>
+      <p>The live reading in the Dock and menu bar, plus desktop widgets. Updates itself.</p>
+      <div class="get">
+        <a class="pill" href="https://github.com/bradleycowdrey/two-degrees/releases/latest/download/TwoDegrees.dmg">Download for Mac</a>
+        <p class="fine">macOS 14 or later · Apple silicon and Intel · <a href="#install">How to install</a></p>
+      </div>
+    </div>
+    <div class="ftile">
+      <div class="k">iPhone and iPad</div>
+      <h3>On your Home Screen and Lock Screen.</h3>
+      <p>Swipe between your cities, with Home Screen and Lock Screen widgets.</p>
+      <div class="get">
+        <!-- Becomes a link to https://apps.apple.com/app/id6826694344 once Apple approves version 1.0. -->
+        <span class="pill soon" aria-disabled="true">Coming soon</span>
+        <p class="fine">On the App Store once Apple’s review is done · iOS and iPadOS 17 or later</p>
+      </div>
+    </div>
+    <div class="ftile">
+      <div class="k">Android</div>
+      <h3>On your phone and Home Screen.</h3>
+      <p>The same pages and widgets, and city search that works offline.</p>
+      <div class="get">
+        <a class="pill" href="https://github.com/bradleycowdrey/two-degrees/releases/latest/download/TwoDegrees.apk">Download the APK</a>
+        <p class="fine">Android 8 or later · Open the file to install, and allow your browser to install apps if asked</p>
+      </div>
+    </div>
+  </div>
+
   <h2 class="section-h" id="scale">Get a feel for the other scale.</h2>
   <p class="section-p">Read the weather in the scale you know, and the other one is always right beside it. After a week, 18°C just feels like a nice day.</p>
   <div class="scale"><div class="ruler" id="ruler" role="img" aria-label="A ruler from 14°F to 104°F with Celsius below: freezing is 32°F and 0°C, a cool morning is 50°F and 10°C, room temperature is 68°F and 20°C, a beach day is 86°F and 30°C, a heatwave is 104°F and 40°C"><div class="bar"></div></div></div>
@@ -204,9 +242,9 @@
   <h2 class="section-h" id="features">Simple on purpose.</h2>
   <div class="tiles">
     <div class="ftile"><div class="k">Both units</div><h3>Every number, twice.</h3><p>Now, feels like, today’s range, every hour and every day, in °F and °C. Pick which one is large.</p><div class="sample"><b>57°</b> 14°C<span>·</span>feels <b>54°</b> 12°C</div></div>
-    <div class="ftile"><div class="k">Dock</div><h3>The weather lives in your Dock.</h3><p>The icon shows the live reading and the sky. Right-click it for every city you’ve saved.</p></div>
-    <div class="ftile"><div class="k">Menu bar</div><h3>And one click away.</h3><p>The reading sits in your menu bar. Tear the panel off into a window, keep it on top, pick from five sizes.</p><div class="sample">☁︎ <b>57°</b> · 14°</div></div>
-    <div class="ftile"><div class="k">Widgets</div><h3>On your desktop, too.</h3><p>Small, medium and large widgets for the desktop and Notification Center, each with its own city. <a class="inline" href="#widgets">See them live ›</a></p></div>
+    <div class="ftile"><div class="k">Mac · Dock</div><h3>The weather lives in your Dock.</h3><p>The icon shows the live reading and the sky. Right-click it for every city you’ve saved.</p></div>
+    <div class="ftile"><div class="k">Mac · Menu bar</div><h3>And one click away.</h3><p>The reading sits in your menu bar. Tear the panel off into a window, keep it on top, pick from five sizes.</p><div class="sample">☁︎ <b>57°</b> · 14°</div></div>
+    <div class="ftile"><div class="k">Widgets</div><h3>On every screen, too.</h3><p>Small, medium and large widgets on the Mac desktop and on iPhone, iPad and Android Home Screens, plus the iPhone Lock Screen. Each can follow your city or keep its own. <a class="inline" href="#widgets">See them live ›</a></p></div>
     <div class="ftile"><div class="k">Next 24 hours</div><h3>The day, hour by hour.</h3><p>A scrolling strip with a temperature line, the sky for each hour, and the chance of rain when it matters.</p></div>
     <div class="ftile"><div class="k">5-day forecast</div><h3>Five days on one scale.</h3><p>Lows and highs on range bars that share one labelled scale, with a dot for right now. Tap to open.</p></div>
     <div class="ftile"><div class="k">Plain words</div><h3>One sentence tells you everything.</h3><p>“Rain likely around 3 PM (60%).” “Warming to 68°F / 20°C by 2 PM.”</p></div>
@@ -214,7 +252,7 @@
     <div class="ftile"><div class="k">Privacy</div><h3>No account. No tracking.</h3><p>Open weather data from Open-Meteo, refreshed every 15 minutes. Free and open source, forever.</p></div>
   </div>
 
-  <h2 class="section-h" id="install">Get started.</h2>
+  <h2 class="section-h" id="install">Install on a Mac.</h2>
   <div class="steps">
     <div class="step"><div class="num">1</div><p>Download <a href="https://github.com/bradleycowdrey/two-degrees/releases/latest/download/TwoDegrees.dmg"><b>TwoDegrees.dmg</b></a> and drag Two Degrees into Applications.</p></div>
     <div class="step"><div class="num">2</div><p>Double-click to open. It’s signed and notarized by Apple, so it opens like any other app. Agree to the terms once, and you’re in.</p></div>
@@ -225,7 +263,7 @@
   <section class="closing">
     <h2>The weather, in both.</h2>
     <div class="actions">
-      <a class="pill" href="https://github.com/bradleycowdrey/two-degrees/releases/latest/download/TwoDegrees.dmg">Download for Mac</a>
+      <a class="pill" href="#download">Download</a>
       <span class="share-wrap"><button type="button" class="ghost" aria-haspopup="menu" aria-expanded="false" title="Share Two Degrees"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7.5 7.5 12 3l4.5 4.5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>Share</button></span>
       <a class="textlink" href="https://github.com/bradleycowdrey/two-degrees">View the source ›</a>
     </div>
@@ -257,11 +295,13 @@
   // Share: the same menu as the app, Meridian and Cowdrey.MD.
   const PAGE_URL = 'https://bradcowdrey.com/two-degrees';
   const MAC_URL = 'https://github.com/bradleycowdrey/two-degrees/releases/latest/download/TwoDegrees.dmg';
-  const SHARE_TEXT = 'Two Degrees: the weather in °F and °C at once, with the next 24 hours and five days ahead. Free and open source, by Bradley Cowdrey.';
+  const ANDROID_URL = 'https://github.com/bradleycowdrey/two-degrees/releases/latest/download/TwoDegrees.apk';
+  const SHARE_TEXT = 'Two Degrees: the weather in °F and °C at once, for Mac, iPhone, iPad and Android. Free and open source, by Bradley Cowdrey.';
   const svg = (d) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
   const ICON = {
     share: svg('<path d="M12 3v12M7.5 7.5 12 3l4.5 4.5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/>'),
     link: svg('<path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/>'),
+    phone: svg('<rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/>'),
     mac: svg('<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M2 20h20"/>'),
     msg: svg('<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 9h8M8 13h5"/>'),
   };
@@ -294,6 +334,7 @@
       (typeof navigator.share === 'function' ? `<button type="button" role="menuitem" data-share="native">${ICON.share}<span>Share…</span></button>` : '') +
       `<button type="button" role="menuitem" data-share="web">${ICON.link}<span>Copy link to this page</span></button>` +
       `<button type="button" role="menuitem" data-share="mac">${ICON.mac}<span>Copy Mac download link</span></button>` +
+      `<button type="button" role="menuitem" data-share="android">${ICON.phone}<span>Copy Android download link</span></button>` +
       `<button type="button" role="menuitem" data-share="message">${ICON.msg}<span>Copy a message to send</span></button>`;
     menu.hidden = false;
     const r = btn.getBoundingClientRect(), w = menu.offsetWidth, vw = document.documentElement.clientWidth;
@@ -315,7 +356,8 @@
     if (kind === 'native') navigator.share({ title: 'Two Degrees', text: SHARE_TEXT, url: PAGE_URL }).catch(() => {});
     if (kind === 'web') copyText(PAGE_URL, 'Link copied');
     if (kind === 'mac') copyText(MAC_URL, 'Mac download link copied');
-    if (kind === 'message') copyText(`${SHARE_TEXT}\n\nIn your browser: ${PAGE_URL}\nFor Mac: ${MAC_URL}`, 'Message copied, ready to paste');
+    if (kind === 'android') copyText(ANDROID_URL, 'Android download link copied');
+    if (kind === 'message') copyText(`${SHARE_TEXT}\n\nAll downloads, or try it in your browser: ${PAGE_URL}\nFor Mac: ${MAC_URL}\nFor Android: ${ANDROID_URL}`, 'Message copied, ready to paste');
   });
   document.addEventListener('click', (e) => { if (!e.target.closest('.share-wrap, #shareMenu')) closeMenu(); });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeMenu(true); });

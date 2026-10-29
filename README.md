@@ -7,6 +7,7 @@ Made by <a href="https://bradcowdrey.com">Bradley Cowdrey · bradcowdrey.com</a>
 
 <p align="center">
   <a href="https://github.com/bradleycowdrey/two-degrees/releases/latest/download/TwoDegrees.dmg"><b>Download for Mac</b></a> ·
+  <a href="https://github.com/bradleycowdrey/two-degrees/releases/latest/download/TwoDegrees.apk"><b>Android APK</b></a> ·
   <a href="https://bradcowdrey.com/two-degrees">Try it in your browser</a> ·
   <a href="#widgets">Widgets</a> ·
   <a href="CHANGELOG.md">What's new</a> ·
@@ -106,11 +107,27 @@ scripts/build-app.sh 0.2.0        # dist/TwoDegrees.app (universal, with widget)
 scripts/make-dmg.sh 0.2.0         # dist/TwoDegrees-0.2.0.dmg
 ```
 
+### Android
+
+The Android app (`android/`, Kotlin and Jetpack Compose, with Home Screen widgets) needs JDK 17 and the Android SDK:
+
+```sh
+cd android
+./gradlew assembleDebug testDebugUnitTest   # app/build/outputs/apk/debug/app-debug.apk
+```
+
+It shares the offline city list (`Resources/Cities.tsv`) with the Mac and iPhone apps. Each build on `main` attaches
+`TwoDegrees.apk` to the current release. With the `ANDROID_KEYSTORE_B64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`
+and `ANDROID_KEY_PASSWORD` secrets set, release builds are signed with that key (the same key is needed for updates to
+install over each other, and for Google Play); without them, they're signed with a throwaway debug key.
+
 ## Testing
 
 - `swift test`: unit tests, including the updater against a stubbed network (API refused → fallback, update offered, up to date, missing or tampered checksum).
 - `node tests/web.test.js [screenshots-dir]`: drives every control of the web app (`docs/app.html`) at phone, tablet and desktop widths and all five sizes (Playwright).
 - `TwoDegrees --selftest <dir>`: the Mac app tests itself with live data (every size and state, cities, window positions, a real update download and checksum, Dock tile and widget renders) and writes `report.txt` and screenshots.
+
+- `scripts/android-selftest.sh`: the Android app in the emulator with live data (forecasts, units, city search online and offline, adding and removing a city, the widgets' data path), with screenshots; results on the `ci-shots-android` branch.
 
 CI runs the unit and web tests on every pull request, and all three on every push to `main`; the self-test's report and screenshots are published to the `ci-shots` branch.
 
