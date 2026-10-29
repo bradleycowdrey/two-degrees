@@ -48,6 +48,9 @@ jobs:
           grep -hoE 'tests="[0-9]+" skipped="[0-9]+" failures="[0-9]+"' app/build/test-results/testDebugUnitTest/*.xml \
             | awk -F'"' '{t+=$2; f+=$6} END {print "::notice::Android unit tests: " t " run, " f " failed"}'
           ls -la app/build/outputs/apk/*/ app/build/outputs/bundle/release/
+          # Which key signed the release APK: the permanent one (from the secrets) or a throwaway debug key.
+          SIGNER=$("$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)/apksigner" verify --print-certs app/build/outputs/apk/release/app-release.apk | grep -m1 "certificate DN" | sed 's/.*certificate DN: //')
+          if [ -n "${ANDROID_KEYSTORE_FILE:-}" ]; then echo "::notice::Release APK signed with the permanent key ($SIGNER)"; else echo "::warning::Release APK signed with a debug key ($SIGNER): add the ANDROID_KEYSTORE secrets"; fi
       - uses: actions/upload-artifact@v4
         with:
           name: two-degrees-android
