@@ -993,7 +993,7 @@
   let cityList = null;
   async function nearestListed(lat, lon) {
     try {
-      cityList = cityList || (await (await fetch(CITIES_URL)).text()).split('\n').map((l) => l.split('\t')).filter((c) => c.length >= 6);
+      cityList = cityList || (await (await fetch(CITIES_URL, { signal: AbortSignal.timeout(8000) })).text()).split('\n').map((l) => l.split('\t')).filter((c) => c.length >= 6);
       const k = Math.cos(lat * Math.PI / 180);
       let best = null, bestD = Infinity;
       for (const c of cityList) {
@@ -1009,7 +1009,7 @@
   }
   async function nameHere(lat, lon) {
     try {
-      const r = await fetch(`https://geocoding-api.open-meteo.com/v1/reverse?latitude=${lat}&longitude=${lon}&count=1`);
+      const r = await fetch(`https://geocoding-api.open-meteo.com/v1/reverse?latitude=${lat}&longitude=${lon}&count=1`, { signal: AbortSignal.timeout(4000) });
       const g = r.ok && ((await r.json()).results || [])[0];
       if (g) return { name: g.name, region: [g.admin1, g.country].filter(Boolean).join(', '), tz: g.timezone };
     } catch {}

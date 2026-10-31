@@ -237,7 +237,7 @@ async function setSize(page, size) {
     const context = await browser.newContext({ viewport: { width: 390, height: 844 }, permissions: ['geolocation', 'clipboard-read', 'clipboard-write'], geolocation: { latitude: 39.7392, longitude: -104.9847 } });
     const page = await context.newPage();
     await page.goto(PAGE);
-    await page.waitForSelector('.chip svg.here', { timeout: 20000 }).catch(() => {});
+    await page.waitForSelector('.chip svg.here', { timeout: 30000 }).catch(() => {});
     const chips = await page.$$eval('.chip[data-i]', (els) => els.map((e) => ({ here: !!e.querySelector('svg.here'), on: e.getAttribute('aria-current') === 'true', name: e.querySelector('.n').dataset.n })));
     check(chips.length === 4 && chips[0].here && chips[0].on, `Use My Location adds where you are first and shows it (${chips.map((c) => (c.here ? '➤' : '') + c.name).join(', ')})`);
     const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('twodegrees.cities') || '[]')[0] || {});
