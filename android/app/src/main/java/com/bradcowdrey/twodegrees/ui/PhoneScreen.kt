@@ -91,7 +91,9 @@ fun PhoneScreen(
                     store.current.cities.getOrNull(page)?.let { if (it.id != store.current.activeID) store.select(it) }
                 }
             }
-            HorizontalPager(pager, Modifier.fillMaxSize(), key = { state.cities.getOrNull(it)?.id ?: it }) { page ->
+            // Pages go by position, not by city: with keys, adding My Location in front would keep the pager
+            // on the city it was showing (now one page later) and select that instead of where you are.
+            HorizontalPager(pager, Modifier.fillMaxSize()) { page ->
                 state.cities.getOrNull(page)?.let { CityPage(it, state, store, show.scrollTo, bottomInset = 64.dp) }
             }
             BottomBar(state, onList = { showingList = true }, modifier = Modifier.align(Alignment.BottomCenter))
