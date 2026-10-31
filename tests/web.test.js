@@ -232,6 +232,28 @@ async function setSize(page, size) {
     await context.close();
   }
 
+  // Use My Location: on at load (the browser allows it here), first and shown; off from the ⋯ menu.
+  {
+    const context = await browser.newContext({ viewport: { width: 390, height: 844 }, permissions: ['geolocation', 'clipboard-read', 'clipboard-write'], geolocation: { latitude: 39.7392, longitude: -104.9847 } });
+    const page = await context.newPage();
+    await page.goto(PAGE);
+    await page.waitForSelector('.chip svg.here', { timeout: 20000 }).catch(() => {});
+    const chips = await page.$$eval('.chip[data-i]', (els) => els.map((e) => ({ here: !!e.querySelector('svg.here'), on: e.getAttribute('aria-current') === 'true', name: e.querySelector('.n').dataset.n })));
+    check(chips.length === 4 && chips[0].here && chips[0].on, `Use My Location adds where you are first and shows it (${chips.map((c) => (c.here ? '➤' : '') + c.name).join(', ')})`);
+    const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('twodegrees.cities') || '[]')[0] || {});
+    check(saved.here === true && Math.abs(saved.lat - 39.74) < 0.001 && Math.abs(saved.lon + 104.98) < 0.001, `its coordinates are rounded to about a kilometre (${saved.lat}, ${saved.lon})`);
+    await page.click('#shareBtn');
+    await page.click('#shareMenu [data-share="web"]');
+    const link = await page.evaluate(() => navigator.clipboard.readText()).catch(() => '');
+    check(/two-degrees\?c=New/.test(link) && !/39\.7/.test(link), 'a shared link leaves out where you are');
+    await page.click('#moreBtn');
+    check(await page.getAttribute('#moreMenu [data-act="locate"]', 'aria-checked') === 'true', 'the ⋯ menu shows Use My Location on');
+    await page.click('#moreMenu [data-act="locate"]');
+    const after = await page.$$eval('.chip[data-i]', (els) => els.filter((e) => e.querySelector('svg.here')).length);
+    check(after === 0 && (await page.evaluate(() => localStorage.getItem('twodegrees.useLocation'))) === 'false', 'turning it off removes it, and stays off');
+    await context.close();
+  }
+
   // Widget mode (app?widgets, shown on the product page): the Mac widgets, live, at every width.
   for (const [vp, w, h] of VIEWPORTS) {
     const context = await browser.newContext({ viewport: { width: w, height: h } });

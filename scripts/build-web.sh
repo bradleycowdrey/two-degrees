@@ -6,9 +6,10 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 cp web/site.html docs/index.html
+cp Resources/Cities.tsv docs/cities.tsv   # names "Use My Location" when Open-Meteo can't
 {
   printf '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><link rel="icon" href="https://raw.githubusercontent.com/bradleycowdrey/two-degrees/main/docs/icon.png"></head><body>\n'
   cat web/app.html
   printf '\n</body></html>\n'
 } > docs/app.html
-echo "Built docs/index.html and docs/app.html"
+echo "Built docs/index.html, docs/app.html and docs/cities.tsv"
