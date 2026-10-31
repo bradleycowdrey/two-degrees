@@ -1,0 +1,30 @@
+ALL PASSED (29 passed)
+PASS forecast loads for New York: 11 days, 24 hours
+PASS forecast loads for London: 11 days, 24 hours
+PASS forecast loads for Tokyo: 11 days, 24 hours
+PASS UV index and wind direction arrive (UV 3.9, wind from NW)
+PASS switch the larger unit to  ° C
+PASS switch it back to  ° F
+PASS a first launch asks whether to use your location
+PASS Use My Location finds Denver, CO, United States and shows it first
+PASS where you are: its forecast loads
+PASS turning Use My Location off removes it
+PASS turning it back on brings it back
+PASS city search finds Denver (Colorado, United States)
+PASS offline city search: 34191 cities bundled, finds Denver (Colorado, United States)
+PASS add Denver: selected and its forecast loads
+PASS remove Denver
+PASS widget loads Denver (1.1 s)
+PASS small widget draws Denver
+PASS medium widget draws Denver
+PASS large widget draws Denver
+PASS lock-circular widget draws Denver
+PASS lock-rectangular widget draws Denver
+PASS lock-inline widget draws Denver
+PASS widget loads Zurich (0.3 s)
+PASS small widget draws Zurich
+PASS medium widget draws Zurich
+PASS large widget draws Zurich
+PASS lock-circular widget draws Zurich
+PASS lock-rectangular widget draws Zurich
+PASS lock-inline widget draws Zurich
