@@ -1,0 +1,20 @@
+ALL PASSED (19 passed)
+PASS forecast loads for New York: Clear, 61 ° F / 16 ° C
+PASS every saved city has a forecast (3 of 3)
+PASS 24 hours ahead (24)
+PASS 10 days ahead (11)
+PASS a forecast saves and reads back unchanged
+PASS switch to °C
+PASS switch back to °F
+PASS a first launch asks whether to use your location
+PASS Use My Location finds Denver, Colorado, United States and shows it first
+PASS where you are: its forecast loads
+PASS turning Use My Location off removes it
+PASS turning it back on brings it back
+PASS city search finds Denver (Colorado, United States)
+PASS offline city search: 34191 cities bundled, finds Denver (Colorado, United States)
+PASS add Denver and select it
+PASS Denver's forecast loads
+PASS remove Denver
+PASS widget following the app shows Denver
+PASS widget with its own city shows Paris
