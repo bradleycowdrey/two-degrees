@@ -13,6 +13,8 @@ enum PhoneSelfTest {
     nonisolated static let showTiles = ProcessInfo.processInfo.arguments.contains("--show-tiles")
     /// Opens the city list at launch, for a screenshot.
     nonisolated static let showList = ProcessInfo.processInfo.arguments.contains("--show-list")
+    /// Checks Use My Location (CI grants the permission and sets the Simulator's location first).
+    nonisolated static let locate = ProcessInfo.processInfo.arguments.contains("--locate")
 
     private static var lines: [String] = []
     private static var failures = 0
@@ -46,6 +48,26 @@ enum PhoneSelfTest {
         check(store.unit == unit.other, "switch the larger unit to \(unit.other.symbol)")
         store.unit = unit
         check(store.unit == unit, "switch it back to \(unit.symbol)")
+
+        // Use My Location: where the Simulator says you are, first in the list and shown, and gone again
+        // when the setting is turned off.
+        if locate {
+            store.locate = { await LocationService.shared.currentCity() }
+            await store.updateLocation()
+            let here = store.cities.first
+            check(store.locationStatus == .found && here?.isCurrent == true && store.activeID == here?.id,
+                  "Use My Location finds \(here?.isCurrent == true ? here!.name + ", " + here!.region : "nothing (\(store.locationStatus))") and shows it first")
+            for _ in 0..<20 where store.forecasts[City.currentID] == nil { try? await Task.sleep(for: .milliseconds(500)) }
+            check(store.forecasts[City.currentID] != nil, "where you are: its forecast loads")
+            try? await Task.sleep(for: .seconds(2))   // a moment on screen for the screenshot
+            store.useLocation = false
+            for _ in 0..<10 where store.cities.contains(where: \.isCurrent) { try? await Task.sleep(for: .milliseconds(200)) }
+            check(!store.cities.contains(where: \.isCurrent), "turning Use My Location off removes it")
+            store.useLocation = true   // and back on, so the screenshots show it
+            await store.updateLocation()
+            check(store.cities.first?.isCurrent == true, "turning it back on brings it back")
+            store.select(store.cities[0])
+        }
 
         // 3. Search, add and remove a city.
         let before = store.cities.count

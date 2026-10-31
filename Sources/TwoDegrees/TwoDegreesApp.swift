@@ -118,6 +118,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // at their next scheduled refresh.
         WidgetCenter.shared.reloadAllTimelines()
         Terms.askIfNeeded()   // first run only, and after a material change to the terms
+        // Use My Location, once the terms are agreed (never in the unattended self-test).
+        if !SelfTest.isActive {
+            let store = WeatherStore.shared
+            store.locate = { await LocationService.shared.currentCity() }
+            Task { await store.updateLocation() }
+        }
     }
 
     static func endWidgetProcesses() {

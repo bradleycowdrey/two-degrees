@@ -1,7 +1,7 @@
 # Terms of Use and Privacy
 
 **bradcowdrey.com and everything Bradley Cowdrey publishes: apps, AI skills, books, lessons and more**
-Last updated: October 21, 2026 · Applies to: bradcowdrey.com, Cowdrey.MD, Meridian, Two Degrees, AI skills, books, lessons, articles, and anything I publish in the future
+Last updated: October 31, 2026 · Applies to: bradcowdrey.com, Cowdrey.MD, Meridian, Two Degrees, AI skills, books, lessons, articles, and anything I publish in the future
 
 ---
 
@@ -192,7 +192,7 @@ What each Service does:
 - **Two Degrees:**
   - Your cities stay on your device.
   - To get the weather, the app and its widgets send the coordinates of your cities to Open-Meteo, along with any place names you search for.
-  - The web version can use your location only if you choose "Use My Location" and your browser asks your permission.
+  - **Use My Location.** The apps can show the weather where you are. On your Mac, iPhone, iPad or Android device this is on unless you turn it off in the app's settings, and your device asks your permission first; the web version asks your browser's permission. Your location is rounded to about a kilometre and sent only to Open-Meteo, to get its weather, and to your device's own service for naming places (Apple's on a Mac, iPhone or iPad; your phone's on Android). It stays on your device and is never sent to me.
 - **Updates:**
   - The Mac apps contact GitHub to check for and download updates.
 - **Book and product purchases:**
@@ -231,7 +231,7 @@ I will answer within the time your law sets (usually 30 to 45 days) and won't tr
 
 **European Economic Area, United Kingdom and Switzerland (GDPR, UK GDPR, Swiss FADP).**
 - I am the controller of the personal information I hold.
-- My legal basis is my legitimate interest in running, securing and improving free Services, or your consent where you give it (for example, by choosing "Use My Location" or sending me a message).
+- My legal basis is my legitimate interest in running, securing and improving free Services, or your consent where you give it (for example, by allowing Use My Location or sending me a message).
 - You also have the rights to restrict processing, to object, and to data portability.
 - Where I rely on consent, you may withdraw it at any time.
 - You may complain to your data protection authority.

@@ -6,8 +6,30 @@ struct City: Codable, Hashable, Identifiable {
     var region: String
     var latitude: Double
     var longitude: Double
+    /// Where you are now (Use My Location), kept up to date by the app, rather than a city you added.
+    var isCurrent = false
 
-    var id: String { String(format: "%.2f,%.2f", latitude, longitude) }
+    init(name: String, region: String, latitude: Double, longitude: Double, isCurrent: Bool = false) {
+        self.name = name
+        self.region = region
+        self.latitude = latitude
+        self.longitude = longitude
+        self.isCurrent = isCurrent
+    }
+
+    // Cities saved before Use My Location have no isCurrent.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        name = try c.decode(String.self, forKey: .name)
+        region = try c.decode(String.self, forKey: .region)
+        latitude = try c.decode(Double.self, forKey: .latitude)
+        longitude = try c.decode(Double.self, forKey: .longitude)
+        isCurrent = try c.decodeIfPresent(Bool.self, forKey: .isCurrent) ?? false
+    }
+
+    /// Where you are has one ID wherever you go, so the page, its forecast and widgets following it stay put.
+    var id: String { isCurrent ? City.currentID : String(format: "%.2f,%.2f", latitude, longitude) }
+    static let currentID = "here"
 }
 
 enum TempUnit: String, Codable, CaseIterable, Identifiable {

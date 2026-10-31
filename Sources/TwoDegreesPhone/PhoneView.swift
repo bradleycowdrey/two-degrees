@@ -39,6 +39,12 @@ struct PhoneView: View {
         .task {
             if PhoneSelfTest.isActive { await PhoneSelfTest.run(store: store) }
         }
+        // Use My Location, once the terms are agreed (the self-test checks it itself).
+        .task(id: agreedVersion) {
+            guard agreedVersion == Brand.termsVersion, !PhoneSelfTest.isActive else { return }
+            store.locate = { await LocationService.shared.currentCity() }
+            await store.updateLocation()
+        }
     }
 
     /// Share · page dots · city list, on a thin frosted bar.
@@ -52,9 +58,18 @@ struct PhoneView: View {
             Spacer()
             HStack(spacing: 8) {
                 ForEach(store.cities) { city in
-                    Circle()
-                        .fill(Color.white.opacity(city.id == store.activeID ? 1 : 0.35))
-                        .frame(width: 7, height: 7)
+                    let opacity = city.id == store.activeID ? 1 : 0.35
+                    if city.isCurrent {
+                        // Where you are gets an arrow, as in Apple's Weather.
+                        Image(systemName: "location.fill")
+                            .font(.system(size: 8, weight: .bold))
+                            .foregroundStyle(Color.white.opacity(opacity))
+                            .frame(width: 9, height: 9)
+                    } else {
+                        Circle()
+                            .fill(Color.white.opacity(opacity))
+                            .frame(width: 7, height: 7)
+                    }
                 }
             }
             .accessibilityElement(children: .ignore)

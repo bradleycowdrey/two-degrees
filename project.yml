@@ -67,6 +67,7 @@ targets:
     sources:
       - path: Sources/TwoDegreesPhone
       - path: Sources/TwoDegrees/Brand.swift
+      - path: Sources/TwoDegrees/Model/LocationService.swift
       - path: Sources/TwoDegrees/Model/Weather.swift
       - path: Sources/TwoDegrees/Model/WeatherStore.swift
       - path: Sources/TwoDegrees/Model/WidgetData.swift

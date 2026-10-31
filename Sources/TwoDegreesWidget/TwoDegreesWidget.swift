@@ -107,7 +107,9 @@ struct AppCityQuery: EntityQuery {
     /// The city showing in Two Degrees first, then each saved city.
     func suggestedEntities() async throws -> [AppCityEntity] {
         let snapshot = SharedCities.load()
-        let saved = (snapshot?.cities ?? []).map { AppCityEntity(id: $0.id, name: $0.name, note: "Always \($0.name)") }
+        let saved = (snapshot?.cities ?? []).map {
+            AppCityEntity(id: $0.id, name: $0.isCurrent ? "My Location" : $0.name, note: $0.isCurrent ? "Wherever you are" : "Always \($0.name)")
+        }
         return [AppCityEntity.current(snapshot)] + saved
     }
 

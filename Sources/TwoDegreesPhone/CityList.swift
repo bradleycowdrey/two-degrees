@@ -116,6 +116,14 @@ struct CityList: View {
             Button { withAnimation { editMode = .active } } label: { Label("Edit List", systemImage: "pencil") }
                 .disabled(store.cities.count < 2)
             Divider()
+            Toggle(isOn: $store.useLocation) { Label("Use My Location", systemImage: "location") }
+            if store.useLocation && store.locationStatus == .denied {
+                // iOS won't ask twice: point to where it's turned back on.
+                Button { UIApplication.shared.open(URL(string: UIApplication.openSettingsURLString)!) } label: {
+                    Label("Allow Location in Settings…", systemImage: "location.slash")
+                }
+            }
+            Divider()
             Picker(selection: $store.unit) {
                 Text("°F large, °C beside").tag(TempUnit.fahrenheit)
                 Text("°C large, °F beside").tag(TempUnit.celsius)
@@ -167,8 +175,9 @@ struct CityCard: View {
         let unit = store.unit, other = unit.other
         HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: ui.pt(2)) {
-                Text(city.name).font(ui.font(22, .semibold)).lineLimit(1).minimumScaleFactor(0.7)
-                Text(forecast.map { Forecast.format($0.now.time, "jmm") } ?? city.region)
+                // As in Apple's Weather: where you are reads "My Location", with the place beneath.
+                Text(city.isCurrent ? "My Location" : city.name).font(ui.font(22, .semibold)).lineLimit(1).minimumScaleFactor(0.7)
+                Text(city.isCurrent ? city.name : forecast.map { Forecast.format($0.now.time, "jmm") } ?? city.region)
                     .font(ui.font(14, .medium)).opacity(0.85).lineLimit(1)
                 Spacer(minLength: ui.pt(8))
                 Text(forecast.map { Condition.name($0.now.code) } ?? (store.failed.contains(city.id) ? "Offline" : "Loading…"))

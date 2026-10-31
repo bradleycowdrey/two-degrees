@@ -400,6 +400,51 @@ final class StoreTests: XCTestCase {
         XCTAssertNil(store.activeForecast)
     }
 
+    func testUseMyLocationPutsWhereYouAreFirstAndKeepsItCurrent() async throws {
+        let store = WeatherStore(defaults: defaults, autoRefresh: false)
+        XCTAssertTrue(store.useLocation, "on unless turned off")
+        var place = City(name: "Denver", region: "Colorado, United States", latitude: 39.74, longitude: -104.98)
+        store.locate = { .found(place) }
+        await store.updateLocation()
+        XCTAssertEqual(store.cities.first?.name, "Denver")
+        XCTAssertEqual(store.cities.first?.isCurrent, true)
+        XCTAssertEqual(store.activeID, City.currentID, "the first time, it's shown")
+        XCTAssertEqual(store.locationStatus, .found)
+
+        // Moving updates the same page in place; the old place's weather goes.
+        store.select(store.cities[2])
+        place = City(name: "Boulder", region: "Colorado, United States", latitude: 40.01, longitude: -105.27)
+        await store.updateLocation()
+        XCTAssertEqual(store.cities.filter(\.isCurrent).map(\.name), ["Boulder"])
+        XCTAssertEqual(store.cities.count, 4)
+        XCTAssertNotEqual(store.activeID, City.currentID, "an update doesn't take you away from the city you're on")
+
+        // It doesn't count toward the five; it persists; turning the setting off removes it.
+        for (i, name) in ["Paris", "Rome"].enumerated() { store.add(City(name: name, region: "", latitude: Double(i), longitude: 1)) }
+        XCTAssertFalse(store.canAdd)
+        XCTAssertEqual(store.cities.count, 6)
+        XCTAssertEqual(WeatherStore(defaults: defaults, autoRefresh: false).cities.first?.isCurrent, true)
+        store.useLocation = false
+        try await Task.sleep(for: .milliseconds(100))
+        XCTAssertFalse(store.cities.contains(where: \.isCurrent))
+        XCTAssertEqual(store.locationStatus, .off)
+        XCTAssertFalse(WeatherStore(defaults: defaults, autoRefresh: false).useLocation, "the setting persists")
+    }
+
+    func testLocationDeniedOrRemovedByHand() async throws {
+        let store = WeatherStore(defaults: defaults, autoRefresh: false)
+        store.locate = { .denied }
+        await store.updateLocation()
+        XCTAssertEqual(store.locationStatus, .denied)
+        XCTAssertFalse(store.cities.contains(where: \.isCurrent))
+        store.locate = { .found(City(name: "Denver", region: "", latitude: 39.74, longitude: -104.98)) }
+        await store.updateLocation()
+        store.remove(store.cities[0])
+        try await Task.sleep(for: .milliseconds(100))
+        XCTAssertFalse(store.useLocation, "removing where you are turns Use My Location off")
+        XCTAssertFalse(store.cities.contains(where: \.isCurrent))
+    }
+
     func testMenuBarText() {
         XCTAssertEqual(MenuBarLabel.reading(17.6, unit: .fahrenheit, style: .both), "64° · 18°")
         XCTAssertEqual(MenuBarLabel.reading(17.6, unit: .celsius, style: .both), "18° · 64°")
@@ -524,6 +569,26 @@ final class WidgetDataTests: XCTestCase {
         StubProtocol.routes = [(searchURL, 200, Data(body.utf8), nil)]
         let found = await WidgetData.search("Denver", suggestions: suggestions, session: StubProtocol.session())
         XCTAssertEqual(found.first?.region, "Colorado, United States")
+    }
+}
+
+/// Use My Location's pieces that need no device: older saved cities, and naming a spot offline.
+final class LocationTests: XCTestCase {
+    func testCitiesSavedBeforeUseMyLocationStillLoad() throws {
+        let old = #"[{"name":"Paris","region":"France","latitude":48.85,"longitude":2.35}]"#
+        let cities = try JSONDecoder().decode([City].self, from: Data(old.utf8))
+        XCTAssertEqual(cities.first?.isCurrent, false)
+        XCTAssertEqual(cities.first?.id, "48.85,2.35")
+        let here = City(name: "Denver", region: "", latitude: 39.74, longitude: -104.98, isCurrent: true)
+        XCTAssertEqual(here.id, City.currentID)
+        XCTAssertEqual(try JSONDecoder().decode(City.self, from: JSONEncoder().encode(here)), here)
+    }
+
+    func testNearestListedCityNamesASpot() {
+        let list = OfflineCities.parse("Denver\t\tColorado\tUS\t39.7392\t-104.9847\nAurora\t\tColorado\tUS\t39.7294\t-104.8319", locale: Locale(identifier: "en_US"))
+        XCTAssertEqual(OfflineCities.nearest(latitude: 39.75, longitude: -104.99, in: list)?.name, "Denver")
+        XCTAssertEqual(OfflineCities.nearest(latitude: 39.75, longitude: -104.99, in: list)?.latitude, 39.75, "keeps your own coordinates")
+        XCTAssertNil(OfflineCities.nearest(latitude: 0, longitude: 0, in: list), "nothing within 50 km")
     }
 }
 

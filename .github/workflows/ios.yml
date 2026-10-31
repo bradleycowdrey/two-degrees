@@ -50,7 +50,10 @@ jobs:
           xcrun simctl terminate "$DEVICE" $ID || true
           # 2. The self-test, then the main screen.
           DOCS="$(xcrun simctl get_app_container "$DEVICE" $ID data)/Documents"; mkdir -p "$DOCS"; rm -f "$DOCS/report.txt"
-          xcrun simctl launch "$DEVICE" $ID --selftest
+          # Use My Location: allow it, and put the Simulator in Denver.
+          xcrun simctl privacy "$DEVICE" grant location $ID || true
+          xcrun simctl location "$DEVICE" set 39.7392,-104.9847 || true
+          xcrun simctl launch "$DEVICE" $ID --selftest --locate
           for i in $(seq 1 120); do [ -f "$DOCS/report.txt" ] && break; sleep 1; done
           sleep 2; xcrun simctl io "$DEVICE" screenshot "$OUT/phone-2-main.png"
           xcrun simctl terminate "$DEVICE" $ID || true

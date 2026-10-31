@@ -87,6 +87,11 @@ struct CityChips: View {
                 let on = city.id == store.activeID
                 Button { store.select(city) } label: {
                     HStack(spacing: ui.pt(6)) {
+                        if city.isCurrent {
+                            Image(systemName: "location.fill")
+                                .font(ui.font(10, .semibold))
+                                .accessibilityLabel("My Location:")
+                        }
                         // Always as wide as the semibold (selected) name, so selecting a city never
                         // changes the row's width and the Add | Edit capsule stays put.
                         ZStack {
@@ -120,8 +125,12 @@ struct CityChips: View {
                     }
                 }
                 .contextMenu {
-                    Button("Remove \(city.name)", role: .destructive) { store.remove(city) }
-                        .disabled(store.cities.count < 2)
+                    if city.isCurrent {
+                        Button("Stop Using My Location") { store.useLocation = false }
+                    } else {
+                        Button("Remove \(city.name)", role: .destructive) { store.remove(city) }
+                            .disabled(store.cities.count < 2)
+                    }
                 }
                 .accessibilityAddTraits(on ? .isSelected : [])
             }

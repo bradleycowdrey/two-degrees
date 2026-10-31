@@ -35,6 +35,16 @@ final class WeatherStore: ObservableObject {
     @Published var uiSize: UISize { didSet { defaults.set(uiSize.rawValue, forKey: "uiSize") } }
     @Published var appFont: AppFont { didSet { defaults.set(appFont.rawValue, forKey: "appFont") } }
     @Published var floatOnTop: Bool { didSet { defaults.set(floatOnTop, forKey: "floatOnTop") } }
+    /// Use My Location: keep a page for where you are, first in the list. On unless turned off.
+    @Published var useLocation: Bool {
+        didSet {
+            defaults.set(useLocation, forKey: "useLocation")
+            if useLocation != oldValue { Task { await updateLocation() } }
+        }
+    }
+    @Published private(set) var locationStatus: LocationStatus = .idle
+    /// Finds where you are. Set by the app once the terms are agreed; never in unit tests or the self-test.
+    var locate: (@MainActor () async -> LocationResult)?
 
     @Published private(set) var forecasts: [String: Forecast] = [:]
     @Published private(set) var failed: Set<String> = []
@@ -56,6 +66,7 @@ final class WeatherStore: ObservableObject {
         uiSize = defaults.string(forKey: "uiSize").flatMap(UISize.init(rawValue:)) ?? .medium
         appFont = defaults.string(forKey: "appFont").flatMap(AppFont.init(rawValue:)) ?? .inter
         floatOnTop = defaults.bool(forKey: "floatOnTop")
+        useLocation = defaults.object(forKey: "useLocation") as? Bool ?? true
         if let cached: [String: Forecast] = Self.load("forecasts", from: defaults) { forecasts = cached }
         guard autoRefresh else { return }
         shareWithWidgets()
@@ -65,12 +76,18 @@ final class WeatherStore: ObservableObject {
         }
         #if os(macOS)
         NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { [weak self] _ in
-            Task { @MainActor in await self?.refresh() }
+            Task { @MainActor in
+                await self?.updateLocation()   // a Mac may have moved while it slept
+                await self?.refresh()
+            }
         }
         #else
         // Coming back to the app refreshes anything older than one refresh interval.
         NotificationCenter.default.addObserver(forName: UIApplication.willEnterForegroundNotification, object: nil, queue: .main) { [weak self] _ in
-            Task { @MainActor in await self?.refreshIfDue() }
+            Task { @MainActor in
+                await self?.updateLocation()
+                await self?.refreshIfDue()
+            }
         }
         #endif
         Task { await refresh() }
@@ -84,7 +101,8 @@ final class WeatherStore: ObservableObject {
 
     var active: City { cities.first { $0.id == activeID } ?? cities[0] }
     var activeForecast: Forecast? { forecasts[active.id] }
-    var canAdd: Bool { cities.count < Self.maxCities }
+    /// Up to five cities of your own; where you are doesn't count.
+    var canAdd: Bool { cities.filter { !$0.isCurrent }.count < Self.maxCities }
 
     // MARK: Cities
 
@@ -100,6 +118,8 @@ final class WeatherStore: ObservableObject {
     }
 
     func remove(_ city: City) {
+        // Removing where you are turns Use My Location off; otherwise it would come straight back.
+        if city.isCurrent && useLocation { useLocation = false; return }
         guard cities.count > 1 else { return }
         cities.removeAll { $0.id == city.id }
         forecasts[city.id] = nil
@@ -122,6 +142,64 @@ final class WeatherStore: ObservableObject {
     func stepSize(_ delta: Int) {
         if delta > 0, let next = uiSize.larger { uiSize = next }
         if delta < 0, let next = uiSize.smaller { uiSize = next }
+    }
+
+    // MARK: Use My Location
+
+    /// Finds where you are and keeps its page up to date (first in the list), or removes it when
+    /// Use My Location is off. The first time, it also shows that page.
+    func updateLocation() async {
+        guard useLocation else {
+            removeCurrent()
+            locationStatus = .off
+            return
+        }
+        guard let locate, locationStatus != .locating else { return }
+        locationStatus = .locating
+        let result = await locate()
+        guard useLocation else { locationStatus = .off; return }
+        switch result {
+        case .found(let here):
+            placeCurrent(here)
+            locationStatus = .found
+        case .denied:
+            locationStatus = .denied
+        case .unavailable:
+            locationStatus = .unavailable
+        }
+    }
+
+    /// Puts where you are first in the list (or updates it in place), and loads its weather.
+    func placeCurrent(_ place: City) {
+        var here = place
+        here.isCurrent = true
+        if let i = cities.firstIndex(where: \.isCurrent) {
+            let old = cities[i]
+            guard old != here else { return }
+            if old.latitude != here.latitude || old.longitude != here.longitude {
+                forecasts[here.id] = nil   // the old place's weather isn't this one's
+                failed.remove(here.id)
+            }
+            cities[i] = here
+        } else {
+            cities.insert(here, at: 0)
+            activeID = here.id
+        }
+        if forecasts[here.id] == nil { Task { await load(here) } }
+    }
+
+    private func removeCurrent() {
+        guard let i = cities.firstIndex(where: \.isCurrent) else { return }
+        if cities.count == 1 {
+            cities[0].isCurrent = false   // never leave the list empty: keep it as an ordinary city
+            activeID = cities[0].id
+            return
+        }
+        let here = cities.remove(at: i)
+        forecasts[here.id] = nil
+        failed.remove(here.id)
+        save(forecasts, "forecasts")
+        if activeID == here.id { activeID = cities[0].id }
     }
 
     // MARK: Forecasts

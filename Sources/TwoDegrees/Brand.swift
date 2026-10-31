@@ -9,7 +9,7 @@ enum Brand {
     static let website = URL(string: "https://bradcowdrey.com")!
     static let legal = URL(string: "https://bradcowdrey.com/legal")!
     /// Bump when the terms change materially, so everyone is asked to agree again.
-    static let termsVersion = "2026-10-21"
+    static let termsVersion = "2026-10-31"
     static let repository = URL(string: "https://github.com/bradleycowdrey/two-degrees")!
     static let shareMessage = "Two Degrees: the weather in °F and °C at once, right in your Mac's Dock and menu bar. Free and open source, by Bradley Cowdrey."
     static let phoneShareMessage = "Two Degrees: the weather in °F and °C at once, on your iPhone and its Home Screen and Lock Screen. Free and open source, by Bradley Cowdrey."

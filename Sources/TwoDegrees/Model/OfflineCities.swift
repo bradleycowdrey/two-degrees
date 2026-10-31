@@ -57,6 +57,22 @@ enum OfflineCities {
         }
     }
 
+    /// The listed city nearest a point: names where you are when the system can't (offline, or no
+    /// geocoder), within 50 km.
+    static func nearest(latitude: Double, longitude: Double, in list: [Entry] = all) -> City? {
+        let k = cos(latitude * .pi / 180)
+        var best: (entry: Entry, d: Double)?
+        for entry in list {
+            let dy = entry.latitude - latitude
+            var dx = abs(entry.longitude - longitude)
+            if dx > 180 { dx = 360 - dx }
+            let d = dy * dy + (dx * k) * (dx * k)
+            if best == nil || d < best!.d { best = (entry, d) }
+        }
+        guard let best, best.d.squareRoot() * 111 <= 50 else { return nil }
+        return City(name: best.entry.name, region: best.entry.region, latitude: latitude, longitude: longitude)
+    }
+
     static func fold(_ text: String) -> String {
         text.folding(options: [.caseInsensitive, .diacriticInsensitive, .widthInsensitive], locale: nil)
             .trimmingCharacters(in: .whitespaces)

@@ -30,6 +30,7 @@ private struct GeneralSettings: View {
             Picker("Font", selection: $store.appFont) {
                 ForEach(AppFont.allCases) { Text($0.label).tag($0) }
             }
+            LocationSetting()
             Toggle("Keep window on top", isOn: $store.floatOnTop)
             Toggle("Open at login", isOn: Binding(get: { store.opensAtLogin }, set: { store.opensAtLogin = $0 }))
             UpdateSettings()
@@ -126,5 +127,34 @@ private struct AboutView: View {
             Text("Free and open source (MIT). Weather data by Open-Meteo.com, city list by GeoNames.org (both CC BY 4.0).").font(.caption).foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+/// Use My Location, with a note when macOS isn't letting Two Degrees use it.
+private struct LocationSetting: View {
+    @EnvironmentObject private var store: WeatherStore
+
+    var body: some View {
+        Toggle(isOn: $store.useLocation) {
+            Text("Use My Location")
+            Text(note)
+        }
+        if store.useLocation && store.locationStatus == .denied {
+            Button("Open Location Services Settings…") {
+                NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_LocationServices")!)
+            }
+        }
+    }
+
+    private var note: String {
+        guard store.useLocation else { return "Show the weather where you are, first in your cities." }
+        switch store.locationStatus {
+        case .denied: return "Location Services are off for Two Degrees. Turn them on in System Settings."
+        case .unavailable: return "Couldn’t find where you are just now. It tries again when your Mac wakes."
+        case .locating: return "Finding where you are…"
+        default:
+            let here = store.cities.first(where: \.isCurrent)
+            return here.map { "Showing \($0.name), first in your cities." } ?? "Show the weather where you are, first in your cities."
+        }
     }
 }

@@ -5,7 +5,7 @@ import SwiftUI
 /// the screen stays until the person agrees.
 enum Terms {
     static let key = "terms.accepted"
-    static let summary = "Two Degrees is free and provided as is, without warranty. It is not a safety tool: for severe weather, follow official warnings. Your cities stay on your iPhone; their locations go to Open-Meteo to get the weather."
+    static let summary = "Two Degrees is free and provided as is, without warranty. It is not a safety tool: for severe weather, follow official warnings. Your cities, and where you are if Use My Location is on, stay on your iPhone; only their locations go to Open-Meteo to get the weather."
 }
 
 struct TermsView: View {

@@ -28,6 +28,10 @@
     <false/>
     <key>NSPrincipalClass</key>
     <string>NSApplication</string>
+    <key>NSLocationUsageDescription</key>
+    <string>Two Degrees shows the weather where you are (Use My Location). Your location goes only to Open-Meteo, rounded to about a kilometre, to get the forecast. You can turn this off in Two Degrees.</string>
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>Two Degrees shows the weather where you are (Use My Location). Your location goes only to Open-Meteo, rounded to about a kilometre, to get the forecast. You can turn this off in Two Degrees.</string>
     <key>NSHumanReadableCopyright</key>
     <string>© 2026 Bradley Cowdrey · bradcowdrey.com</string>
 </dict>

@@ -23,7 +23,7 @@ enum Terms {
         NSApp.activate(ignoringOtherApps: true)
         let alert = NSAlert()
         alert.messageText = "Terms of Use and Privacy"
-        alert.informativeText = "Two Degrees is free and provided as is, without warranty. It is not a safety tool: for severe weather, follow official warnings. Your cities stay on your Mac; their locations go to Open-Meteo to get the weather.\n\nBy choosing I Agree and using \(Brand.appName), you agree to the Terms of Use and Privacy at bradcowdrey.com/legal."
+        alert.informativeText = "Two Degrees is free and provided as is, without warranty. It is not a safety tool: for severe weather, follow official warnings. Your cities, and where you are if Use My Location is on, stay on your Mac; only their locations go to Open-Meteo to get the weather.\n\nBy choosing I Agree and using \(Brand.appName), you agree to the Terms of Use and Privacy at bradcowdrey.com/legal."
         alert.addButton(withTitle: "I Agree")
         alert.addButton(withTitle: "Read the Terms")
         alert.addButton(withTitle: "Quit")
