@@ -18,7 +18,7 @@ This summary is for convenience only. The full terms below are what count.
 - **Any data that reaches me is mine,** free and royalty-free. Your privacy rights still apply.
 - **Two Degrees is not a safety tool.** Follow official weather warnings.
 - **Meridian's times can be wrong.** Confirm meetings and travel.
-- **Cowdrey.MD documents saved in a browser can be erased.** Keep your own copies.
+- **Cowdrey.MD documents saved in a browser or in a phone or tablet app can be erased.** Keep your own copies.
 - **Your local law may give you rights these terms can't remove.** Where it does, these terms apply as far as that law allows.
 
 ---
@@ -29,7 +29,7 @@ This summary is for convenience only. The full terms below are what count.
 
 These terms cover the "Services":
 - the website **bradcowdrey.com** and every page on it;
-- the apps **Cowdrey.MD**, **Meridian** and **Two Degrees**, in every form: Mac apps, widgets, menu-bar items, and web versions;
+- the apps **Cowdrey.MD**, **Meridian** and **Two Degrees**, in every form: Mac, iPhone and Android apps, widgets, menu-bar items, and web versions;
 - **all content and products on or linked from bradcowdrey.com**, including:
   - AI skills, prompts, templates, workflows and checklists;
   - lessons, articles, guides and videos;
@@ -78,7 +78,7 @@ You accept every risk of using the Services. That includes losing data or work, 
 
 ## 6. Notices for each app and for AI content
 
-**Cowdrey.MD** is a text editor. In a web browser, your documents are stored only in that browser's storage. Clearing the browser's data, using a private window, switching browsers or devices, or an update can erase them. What you see in the preview, PDF, HTML or copied text may not match what you expect. Check anything important before you rely on it, send it or print it.
+**Cowdrey.MD** is a text editor. In a web browser, your documents are stored only in that browser's storage. Clearing the browser's data, using a private window, switching browsers or devices, or an update can erase them. In the iPhone, iPad and Android apps, your documents are stored in the app's own storage on that device. Deleting the app, clearing its data or losing the device erases them. A file you open in those apps from another app (such as Files, Google Drive or Gmail) is copied into Cowdrey.MD. Your changes are not written back to the original file; export or share a copy to keep them. What you see in the preview, PDF, HTML or copied text may not match what you expect. Check anything important before you rely on it, send it or print it.
 
 **Meridian** shows times using your device's clock and time-zone data, which can be wrong or out of date, especially around daylight-saving changes. Always confirm meeting and travel times with the people involved and with official sources.
 
@@ -126,7 +126,8 @@ The Services rely on services and code I don't control. These include:
 - **Open-Meteo**, for weather and place search;
 - **jsDelivr**, for web code libraries;
 - **Google Fonts**, for web fonts;
-- **Apple**, for macOS, notarization and widgets;
+- **Apple**, for macOS, iOS and iPadOS, the App Store and TestFlight, notarization and widgets;
+- **Google**, for Android and its file picker;
 - **Amazon, Gumroad** and other stores that sell my books and products;
 - **AI tools** (such as Claude, ChatGPT and Gemini) that you use with my AI skills;
 - websites I link to, such as those of companies I work with.
@@ -135,7 +136,7 @@ These services have their own terms and privacy policies. I am not responsible f
 
 ## 10. Updates, changes and ending service
 
-The Mac apps may check for and install updates, and updates can add, change or remove features. I may change, suspend or stop offering any Service, version or page at any time, for any reason, without notice and without liability. I have no obligation to provide support, fixes or updates. I may block or end anyone's access to the website at any time, for any reason, including a breach of these terms. The website may contain errors or out-of-date information; I may correct or change it at any time, without notice.
+The Mac apps, and the Android version of Cowdrey.MD downloaded from bradcowdrey.com, may check for updates and install or offer them. Apps from the App Store are updated by Apple. Updates can add, change or remove features. I may change, suspend or stop offering any Service, version or page at any time, for any reason, without notice and without liability. I have no obligation to provide support, fixes or updates. I may block or end anyone's access to the website at any time, for any reason, including a breach of these terms. The website may contain errors or out-of-date information; I may correct or change it at any time, without notice.
 
 ## 11. Limitation of liability
 
@@ -185,16 +186,21 @@ What each Service does:
   - The product pages load fonts from Google Fonts.
   - The site sets no advertising cookies.
 - **Cowdrey.MD:**
-  - Your documents stay on your device, in files you choose or, on the web, in your browser's storage.
+  - Your documents stay on your device: in files you choose and the app's own storage (Mac), in the app's own storage (iPhone, iPad and Android), or, on the web, in your browser's storage.
   - The web version loads the app from GitHub Pages and code libraries from jsDelivr.
 - **Meridian:**
   - Your cities stay on your device. The app itself sends them nowhere.
+  - If you choose "Use My Location", Meridian uses your device's location to name the city you're in. Your device's own location service turns it into a city name (Apple's on Mac and iPhone, your phone's on Android); Meridian keeps only that name, on your device. Turn it off any time in Settings → Show My Location.
 - **Two Degrees:**
   - Your cities stay on your device.
   - To get the weather, the app and its widgets send the coordinates of your cities to Open-Meteo, along with any place names you search for.
-  - **Use My Location.** The apps can show the weather where you are. On your Mac, iPhone, iPad or Android device this is on unless you turn it off in the app's settings, and your device asks your permission first; the web version asks your browser's permission. Your location is rounded to about a kilometre and sent only to Open-Meteo, to get its weather, and to your device's own service for naming places (Apple's on a Mac, iPhone or iPad; your phone's on Android). It stays on your device and is never sent to me.
+  - If you choose "Use My Location" (Two Degrees asks once, after you agree to these terms), it shows the weather where you are, first in your cities. Your device asks your permission first; on the web, your browser does. Your location is rounded to about a kilometre and sent only to Open-Meteo, to get its weather, and to name the city you're in, to your device's own location service (Apple's on Mac, iPhone and iPad, your phone's on Android; on the web, Open-Meteo). It is never sent to me. Turn it off any time in Two Degrees' settings.
 - **Updates:**
   - The Mac apps contact GitHub to check for and download updates.
+  - Meridian's apps contact GitHub, at most once a day, to check whether these terms have changed. When they have, the app asks you to agree again, no more than once a month.
+  - When these terms change in a way that affects Two Degrees, its next version asks you to agree again, no more than once a month.
+  - Cowdrey.MD for Android, when downloaded from bradcowdrey.com, asks GitHub once a day whether a newer version exists. If you choose to update, it downloads the new version from GitHub.
+  - App Store apps are updated by Apple and don't contact GitHub.
 - **Book and product purchases:**
   - The store you buy from handles your payment and personal details under its own privacy policy.
   - Some stores, such as Gumroad, share your name and email address with me as the seller. That information is covered by Sections 7, 15 and 16.
@@ -231,7 +237,7 @@ I will answer within the time your law sets (usually 30 to 45 days) and won't tr
 
 **European Economic Area, United Kingdom and Switzerland (GDPR, UK GDPR, Swiss FADP).**
 - I am the controller of the personal information I hold.
-- My legal basis is my legitimate interest in running, securing and improving free Services, or your consent where you give it (for example, by allowing Use My Location or sending me a message).
+- My legal basis is my legitimate interest in running, securing and improving free Services, or your consent where you give it (for example, by choosing "Use My Location" or sending me a message).
 - You also have the rights to restrict processing, to object, and to data portability.
 - Where I rely on consent, you may withdraw it at any time.
 - You may complain to your data protection authority.
