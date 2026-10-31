@@ -103,6 +103,13 @@
   .result .sp { flex: 1; }
   .result .plus { color: var(--muted); font-size: 18px; }
   .hint { font-size: 13px; color: var(--muted); padding: 4px 12px; }
+  /* Asked once, on the first visit: Use My Location (recommended) or Not Now. */
+  .ask-loc h2 { font-size: calc(17px * var(--z, 1)); font-weight: 600; margin: 0 0 6px; }
+  .ask-loc p { font-size: calc(13px * var(--z, 1)); color: var(--muted); margin: 0 0 14px; line-height: 1.45; }
+  .ask-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .ask-actions button { height: 34px; padding: 0 16px; border: 0; border-radius: 980px; cursor: pointer; font: inherit; font-size: calc(14px * var(--z, 1)); font-weight: 600; }
+  .ask-yes { background: var(--cream); color: var(--bg); }
+  .ask-no { background: transparent; color: var(--text); }
 
   /* Tiles */
   .tile { background: var(--tile); border-radius: var(--r-tile); padding: 18px; min-width: 0; }
@@ -353,6 +360,12 @@
     </div>
   </header>
 
+  <section class="tile ask-loc" id="askLoc" hidden aria-labelledby="askLocTitle">
+    <h2 id="askLocTitle">Show the weather where you are?</h2>
+    <p>Two Degrees can put the place you’re in first in your cities and keep it up to date. Recommended. Your location is rounded to about a kilometre and used only to get its weather. You can change this anytime in the ⋯ menu.</p>
+    <div class="ask-actions"><button type="button" class="ask-yes" id="askLocYes">Use My Location</button><button type="button" class="ask-no" id="askLocNo">Not Now</button></div>
+  </section>
+
   <nav class="cities" id="cities" aria-label="Saved cities"></nav>
 
   <section class="tile search" id="search" hidden aria-label="Add a city">
@@ -482,8 +495,10 @@
     // Extra large on the product page when there's room for it, unless the visitor picked a size.
     size: store.get('size', EMBEDDED && innerWidth >= 560 ? 'extraLarge' : 'medium'),
     font: store.get('font', 'inter'),
-    // Use My Location: where you are, first in the list. On unless turned off.
+    // Use My Location: where you are, first in the list. Asked once on the first visit (recommended);
+    // the answer sets it, and the ⋯ menu changes it.
     useLocation: store.get('useLocation', true),
+    locationAsked: store.get('locationAsked', false),
   };
   const SIZES = [['extraSmall', 'Extra Small', 0.82], ['small', 'Small', 0.91], ['medium', 'Medium', 1], ['large', 'Large', 1.12], ['extraLarge', 'Extra Large', 1.26]];
   function applyLook() {
@@ -1045,17 +1060,25 @@
   }
   function setUseLocation(on) {
     state.useLocation = on;
+    state.locationAsked = true;   // choosing it in the menu answers the question too
     store.set('useLocation', on);
+    store.set('locationAsked', true);
+    $('#askLoc').hidden = true;
     if (on) locate(true); else removeHere();
   }
-  // At load: on its own page, ask (the browser asks once); inside the product page, only if this site
-  // is already allowed, so a visitor isn't asked for their location just for looking.
+  // At load: the first visit asks the question (the card above the cities). After Use My Location,
+  // each visit finds where you are; inside the product page only if this site is already allowed, so
+  // the browser's own prompt never appears just for looking.
   async function autoLocate() {
-    if (!state.useLocation || !canLocate() || WIDGETS) return;
+    if (!canLocate() || WIDGETS) return;
+    if (!state.locationAsked) { $('#askLoc').hidden = false; return; }   // ask first, once
+    if (!state.useLocation) return;
     let permission = 'prompt';
     try { permission = (await navigator.permissions.query({ name: 'geolocation' })).state; } catch {}
     if (permission === 'granted' || (permission === 'prompt' && !EMBEDDED)) locate(false);
   }
+  $('#askLocYes').addEventListener('click', () => setUseLocation(true));
+  $('#askLocNo').addEventListener('click', () => setUseLocation(false));
   $('#moreBtn').addEventListener('click', () => toggleMore());
   $('#daysToggle').addEventListener('click', () => { state.daysOpen = !state.daysOpen; render(); });
   $('#moreMenu').addEventListener('click', (e) => {

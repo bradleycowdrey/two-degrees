@@ -237,7 +237,11 @@ async function setSize(page, size) {
     const context = await browser.newContext({ viewport: { width: 390, height: 844 }, permissions: ['geolocation', 'clipboard-read', 'clipboard-write'], geolocation: { latitude: 39.7392, longitude: -104.9847 } });
     const page = await context.newPage();
     await page.goto(PAGE);
+    await page.waitForSelector('#askLoc:not([hidden])', { timeout: 10000 }).catch(() => {});
+    check(await page.isVisible('#askLoc') && (await page.$$('.chip svg.here')).length === 0, 'first visit asks "Show the weather where you are?" before using it');
+    await page.click('#askLocYes');
     await page.waitForSelector('.chip svg.here', { timeout: 30000 }).catch(() => {});
+    check(!(await page.isVisible('#askLoc')), 'answering hides the question');
     const chips = await page.$$eval('.chip[data-i]', (els) => els.map((e) => ({ here: !!e.querySelector('svg.here'), on: e.getAttribute('aria-current') === 'true', name: e.querySelector('.n').dataset.n })));
     check(chips.length === 4 && chips[0].here && chips[0].on, `Use My Location adds where you are first and shows it (${chips.map((c) => (c.here ? '➤' : '') + c.name).join(', ')})`);
     const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('twodegrees.cities') || '[]')[0] || {});
@@ -251,6 +255,21 @@ async function setSize(page, size) {
     await page.click('#moreMenu [data-act="locate"]');
     const after = await page.$$eval('.chip[data-i]', (els) => els.filter((e) => e.querySelector('svg.here')).length);
     check(after === 0 && (await page.evaluate(() => localStorage.getItem('twodegrees.useLocation'))) === 'false', 'turning it off removes it, and stays off');
+    await context.close();
+  }
+
+  // Not Now: turned off, never asked again.
+  {
+    const context = await browser.newContext({ viewport: { width: 390, height: 844 }, permissions: ['geolocation'], geolocation: { latitude: 39.7392, longitude: -104.9847 } });
+    const page = await context.newPage();
+    await page.goto(PAGE);
+    await page.waitForSelector('#askLoc:not([hidden])', { timeout: 10000 }).catch(() => {});
+    await page.click('#askLocNo');
+    await page.reload();
+    await page.waitForSelector('.temps');
+    await page.waitForTimeout(1500);
+    check(!(await page.isVisible('#askLoc')) && (await page.$$('.chip svg.here')).length === 0 && (await page.evaluate(() => localStorage.getItem('twodegrees.useLocation'))) === 'false',
+      'Not Now turns it off, and the question isn’t asked again');
     await context.close();
   }
 
