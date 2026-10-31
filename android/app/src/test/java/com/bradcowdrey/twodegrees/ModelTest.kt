@@ -63,6 +63,14 @@ class ModelTest {
         assertNull(Codec.cities("not json"))
     }
 
+    @Test fun samePlace() {
+        val denver = City("Denver", "", 39.74, -104.98)
+        assertTrue(City.samePlace(denver, City("Denver", "CO", 39.68, -104.90)))
+        assertTrue(City.samePlace(denver, City("Downtown", "", 39.745, -104.985)))
+        assertEquals(false, City.samePlace(denver, City("Aurora", "", 39.73, -104.83)))
+        assertEquals(false, City.samePlace(denver, City("Denver", "", 40.5, -104.98)))
+    }
+
     @Test fun changedTermsAreAskedAtMostOnceAMonth() {
         val now = 1_800_000_000_000L
         val day = 24 * 60 * 60 * 1000L

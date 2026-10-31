@@ -258,6 +258,20 @@ async function setSize(page, size) {
     await context.close();
   }
 
+  // Where you are matches a saved city: one chip, labelled with the arrow, not two.
+  {
+    const context = await browser.newContext({ viewport: { width: 390, height: 844 }, permissions: ['geolocation'], geolocation: { latitude: 51.5074, longitude: -0.1278 } });
+    const page = await context.newPage();
+    await page.goto(PAGE);
+    await page.waitForSelector('#askLoc:not([hidden])', { timeout: 10000 }).catch(() => {});
+    await page.click('#askLocYes');
+    await page.waitForSelector('.chip svg.here', { timeout: 30000 }).catch(() => {});
+    const chips = await page.$$eval('.chip[data-i]', (els) => els.map((e) => (e.querySelector('svg.here') ? '➤' : '') + e.querySelector('.n').dataset.n));
+    check(chips.length === 3 && chips.filter((c) => c.startsWith('➤')).length === 1,
+      `in London with London saved: one London chip, marked as where you are (${chips.join(', ')})`);
+    await context.close();
+  }
+
   // Not Now: turned off, never asked again.
   {
     const context = await browser.newContext({ viewport: { width: 390, height: 844 }, permissions: ['geolocation'], geolocation: { latitude: 39.7392, longitude: -104.9847 } });

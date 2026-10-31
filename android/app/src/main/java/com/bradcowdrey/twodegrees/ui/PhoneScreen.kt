@@ -124,7 +124,7 @@ private fun BottomBar(state: WeatherStore.State, onList: () -> Unit, modifier: M
             ) {
                 state.cities.forEach { city ->
                     val alpha = if (city.id == state.activeID) 1f else 0.35f
-                    if (city.isCurrent) {
+                    if (state.isHere(city)) {
                         // Where you are gets an arrow, as on the iPhone.
                         Icon(Icons.Filled.NearMe, null, tint = Color.White.copy(alpha = alpha), modifier = Modifier.size(9.dp))
                     } else {

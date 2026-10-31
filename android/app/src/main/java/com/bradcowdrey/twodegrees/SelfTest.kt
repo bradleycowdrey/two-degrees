@@ -72,12 +72,17 @@ object SelfTest {
         found.firstOrNull()?.let { denver ->
             val before = store.current.cities.size
             store.add(denver)
-            check(store.current.cities.size == before + 1 && store.current.activeID == denver.id, "add Denver and select it")
+            // The emulator is in Denver: with Use My Location on, Denver becomes My Location instead of a second card.
+            val merged = store.current.hereID == denver.id
+            check((store.current.cities.size == before + 1 || merged) && store.current.activeID == denver.id, "add Denver and select it")
+            if (locate) check(merged && store.current.cities.none { it.isCurrent },
+                "adding the city you're in makes it My Location, with no second card")
             repeat(40) { if (denver.id !in store.current.forecasts) delay(500) }
             check(denver.id in store.current.forecasts, "Denver's forecast loads")
             delay(3000)   // a moment on screen for the screenshot
             store.remove(denver)
             check(store.current.cities.size == before && store.current.cities.none { it.id == denver.id }, "remove Denver")
+            if (locate) check(store.current.cities.firstOrNull()?.isCurrent == true, "removing it brings back My Location as its own card")
             store.select(store.current.cities[0])
         }
         // Back to where you are, if it's on, for the screenshots.

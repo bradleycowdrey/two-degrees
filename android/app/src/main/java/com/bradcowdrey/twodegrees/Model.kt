@@ -24,6 +24,19 @@ data class City(
 
     companion object {
         const val CURRENT_ID = "here"
+
+        /**
+         * Whether two cities are the same place: the same name within 25 km, or anything within 2 km.
+         * Where you are and a saved city that's the same place share one card.
+         */
+        fun samePlace(a: City, b: City): Boolean {
+            val k = Math.cos(Math.toRadians(a.latitude))
+            var dx = Math.abs(a.longitude - b.longitude)
+            if (dx > 180) dx = 360 - dx
+            val dy = a.latitude - b.latitude
+            val km = Math.sqrt(dy * dy + (dx * k) * (dx * k)) * 111
+            return km <= 2 || (km <= 25 && OfflineCities.fold(a.name) == OfflineCities.fold(b.name))
+        }
     }
 }
 

@@ -84,8 +84,14 @@ enum PhoneSelfTest {
             store.add(denver)
             for _ in 0..<20 where store.forecasts[denver.id] == nil { try? await Task.sleep(for: .milliseconds(500)) }
             check(store.forecasts[denver.id] != nil && store.activeID == denver.id, "add Denver: selected and its forecast loads")
+            if locate {
+                // The Simulator is in Denver: Denver becomes My Location instead of a second card.
+                check(store.hereID == denver.id && !store.cities.contains(where: \.isCurrent),
+                      "adding the city you're in makes it My Location, with no second card")
+            }
             store.remove(denver)
             check(store.cities.count == before, "remove Denver")
+            if locate { check(store.cities.first?.isCurrent == true, "removing it brings back My Location as its own card") }
         }
 
         // 4. The widget's data path, as the widget runs it, and every size drawn.

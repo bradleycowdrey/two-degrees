@@ -273,9 +273,9 @@ private fun CityCard(city: City, state: WeatherStore.State, modifier: Modifier) 
     ) {
         Column(Modifier.weight(1f)) {
             // As on the iPhone: where you are reads "My Location", with the place beneath.
-            Text(if (city.isCurrent) "My Location" else city.name, style = ui.text(22f, FontWeight.SemiBold), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(if (state.isHere(city)) "My Location" else city.name, style = ui.text(22f, FontWeight.SemiBold), maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(
-                if (city.isCurrent) city.name else forecast?.let { Forecast.clock(it.now.time) } ?: city.region,
+                if (state.isHere(city)) city.name else forecast?.let { Forecast.clock(it.now.time) } ?: city.region,
                 style = ui.text(14f, FontWeight.Medium), modifier = Modifier.alpha(0.85f), maxLines = 1,
             )
             Spacer(Modifier.weight(1f))

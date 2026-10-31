@@ -112,7 +112,7 @@ fun CityPage(city: City, state: WeatherStore.State, store: WeatherStore, scrollT
                 contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = bottomInset + 24.dp),
                 verticalArrangement = Arrangement.spacedBy(ui.dp(10f)),
             ) {
-                item { Header(city, forecast, state.unit, store, Modifier.statusBarsPadding().padding(top = ui.dp(36f), bottom = ui.dp(26f))) }
+                item { Header(city, state.isHere(city), forecast, state.unit, store, Modifier.statusBarsPadding().padding(top = ui.dp(36f), bottom = ui.dp(26f))) }
                 if (forecast != null) {
                     item { HourlyCard(forecast, state.unit) }
                     item { DailyCard(forecast, state.unit) }
@@ -150,11 +150,11 @@ fun reading(value: Int, unit: TempUnit) = buildAnnotatedString {
 private fun Float.em() = androidx.compose.ui.unit.TextUnit(this, androidx.compose.ui.unit.TextUnitType.Em)
 
 @Composable
-private fun Header(city: City, forecast: Forecast?, unit: TempUnit, store: WeatherStore, modifier: Modifier) {
+private fun Header(city: City, isHere: Boolean, forecast: Forecast?, unit: TempUnit, store: WeatherStore, modifier: Modifier) {
     val ui = LocalMetrics.current
     val other = unit.other
     Column(modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(ui.dp(2f))) {
-        if (city.isCurrent) {
+        if (isHere) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.alpha(0.8f)) {
                 Icon(Icons.Filled.NearMe, null, tint = Color.White, modifier = Modifier.size(ui.dp(13f)))
                 Text("MY LOCATION", style = ui.text(13f, FontWeight.SemiBold))

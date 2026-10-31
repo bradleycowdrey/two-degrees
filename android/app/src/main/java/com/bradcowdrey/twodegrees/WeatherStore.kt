@@ -40,7 +40,12 @@ class WeatherStore private constructor(context: Context) {
         val forecasts: Map<String, Forecast> = emptyMap(),
         val failed: Set<String> = emptySet(),
         val loading: Boolean = false,
+        /** The saved city that's where you are, standing in for a separate My Location card. */
+        val hereID: String? = null,
     ) {
+        /** Where you are: the separate My Location card, or the saved city standing in for it. */
+        fun isHere(city: City): Boolean = city.isCurrent || (hereID != null && city.id == hereID)
+
         val active: City get() = cities.firstOrNull { it.id == activeID } ?: cities[0]
         val activeForecast: Forecast? get() = forecasts[active.id]
         /** Up to five cities of your own; where you are doesn't count. */
@@ -70,6 +75,7 @@ class WeatherStore private constructor(context: Context) {
             textSize = prefs.getString("textSize", null)?.let { runCatching { TextSize.valueOf(it) }.getOrNull() } ?: TextSize.MEDIUM,
             font = prefs.getString("font", null)?.let { runCatching { AppFont.valueOf(it) }.getOrNull() } ?: AppFont.INTER,
             useLocation = prefs.getBoolean("useLocation", true),
+            hereID = prefs.getString("hereID", null)?.takeIf { id -> cities.any { it.id == id } },
             locationAsked = prefs.getBoolean("locationAsked", false),
             forecasts = Codec.forecasts(prefs.getString("forecasts", null)),
         ))
@@ -82,8 +88,25 @@ class WeatherStore private constructor(context: Context) {
         val existing = s.cities.firstOrNull { it.id == city.id }
         when {
             existing != null -> { setActive(existing.id); if (s.forecasts[existing.id] == null) launchLoad(existing) }
-            s.canAdd -> { saveCities(s.cities + city, city.id); launchLoad(city) }
+            s.canAdd -> {
+                saveCities(s.cities + city, city.id)
+                launchLoad(city)
+                // Added the place you're in: it becomes My Location, with no second card.
+                val place = lastPlace
+                if (current.useLocation && place != null && City.samePlace(city, place)) placeCurrent(place)
+            }
         }
+    }
+
+    /** The last place Use My Location found, kept so a card for it can come back without a new fix. */
+    private var lastPlace: City?
+        get() = prefs.getString("herePlace", null)?.let { runCatching { Codec.city(org.json.JSONObject(it)) }.getOrNull() }
+        set(value) { prefs.edit().putString("herePlace", value?.let { Codec.city(it).toString() }).apply() }
+
+    private fun setHereID(id: String?) {
+        _state.update { it.copy(hereID = id) }
+        prefs.edit().putString("hereID", id).apply()
+        onCitiesChanged()
     }
 
     fun remove(city: City) {
@@ -95,6 +118,12 @@ class WeatherStore private constructor(context: Context) {
         _state.update { it.copy(forecasts = it.forecasts - city.id, failed = it.failed - city.id) }
         saveForecasts()
         saveCities(cities, if (s.activeID == city.id) cities[0].id else s.activeID)
+        // It stood in for My Location: bring back the separate card for where you are.
+        if (city.id == s.hereID) {
+            setHereID(null)
+            val place = lastPlace
+            if (current.useLocation && place != null) placeCurrent(place)
+        }
     }
 
     fun move(from: Int, to: Int) {
@@ -182,7 +211,23 @@ class WeatherStore private constructor(context: Context) {
     /** Puts where you are first in the list (or updates it in place), and loads its weather. */
     fun placeCurrent(place: City) {
         val here = place.copy(isCurrent = true)
+        lastPlace = here
         val s = current
+        // A saved city is the same place: it becomes My Location, and there's no second card.
+        val match = s.cities.firstOrNull { !it.isCurrent && City.samePlace(it, here) }
+        if (match != null) {
+            val firstTime = s.hereID == null && s.cities.none { it.isCurrent }
+            val showing = s.activeID == City.CURRENT_ID
+            if (s.cities.any { it.isCurrent }) {
+                _state.update { it.copy(forecasts = it.forecasts - City.CURRENT_ID, failed = it.failed - City.CURRENT_ID) }
+                saveCities(s.cities.filter { !it.isCurrent }, if (firstTime || showing) match.id else s.activeID)
+            } else if (firstTime) {
+                setActive(match.id)
+            }
+            setHereID(match.id)
+            return
+        }
+        if (s.hereID != null) setHereID(null)
         val i = s.cities.indexOfFirst { it.isCurrent }
         if (i >= 0) {
             val old = s.cities[i]
@@ -198,6 +243,8 @@ class WeatherStore private constructor(context: Context) {
     }
 
     private fun removeCurrent() {
+        if (current.hereID != null) setHereID(null)
+        lastPlace = null
         val s = current
         val i = s.cities.indexOfFirst { it.isCurrent }
         if (i < 0) return
