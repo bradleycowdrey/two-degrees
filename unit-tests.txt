@@ -1,0 +1,190 @@
+Building for debugging...
+[0/11] /Users/runner/work/two-degrees/two-degrees/.build/arm64-apple-macosx/debug/TwoDegreesPackageTests.derived/runner.swift
+[0/11] Write sources
+[3/11] Write TwoDegrees-entitlement.plist
+[5/11] Write swift-version--79AA4F9932D1E87A.txt
+[7/25] Compiling TwoDegrees Weather.swift
+[8/25] Compiling TwoDegrees WeatherStore.swift
+[9/25] Compiling TwoDegrees WidgetData.swift
+[10/25] Compiling TwoDegrees TwoDegreesApp.swift
+[11/25] Compiling TwoDegrees DockTile.swift
+[12/25] Compiling TwoDegrees Palette.swift
+[13/31] Emitting module TwoDegrees
+[14/31] Compiling TwoDegrees Brand.swift
+[15/31] Compiling TwoDegrees LocationService.swift
+[16/31] Compiling TwoDegrees OfflineCities.swift
+[17/31] Compiling TwoDegrees SelfTest.swift
+[18/31] Compiling TwoDegrees Terms.swift
+[19/31] Compiling TwoDegrees TermsSchedule.swift
+[20/31] Compiling TwoDegrees Updater.swift
+[21/31] Compiling TwoDegrees PanelParts.swift
+[22/31] Compiling TwoDegrees SettingsView.swift
+[23/31] Compiling TwoDegrees WeatherPanel.swift
+[24/31] Compiling TwoDegrees WeatherSymbol.swift
+[25/31] Compiling TwoDegrees WidgetViews.swift
+[26/31] Compiling TwoDegrees WindowSupport.swift
+[26/31] Write Objects.LinkFileList
+[27/31] Linking TwoDegrees
+[28/31] Applying TwoDegrees
+[30/34] Compiling TwoDegreesTests TwoDegreesTests.swift
+[31/34] Emitting module TwoDegreesTests
+[32/34] Compiling TwoDegreesTests Fixtures.swift
+[33/36] Compiling TwoDegreesPackageTests runner.swift
+[34/36] Emitting module TwoDegreesPackageTests
+[34/36] Write Objects.LinkFileList
+[35/36] Linking TwoDegreesPackageTests
+Build complete! (40.16s)
+Test Suite 'All tests' started at 2026-10-31 18:49:20.339.
+Test Suite 'TwoDegreesPackageTests.xctest' started at 2026-10-31 18:49:20.340.
+Test Suite 'InstallScriptTests' started at 2026-10-31 18:49:20.340.
+Test Case '-[TwoDegreesTests.InstallScriptTests testRegistersTheNewVersionWithLaunchServices]' started.
+Test Case '-[TwoDegreesTests.InstallScriptTests testRegistersTheNewVersionWithLaunchServices]' passed (0.003 seconds).
+Test Case '-[TwoDegreesTests.InstallScriptTests testRollsBackWhenTheCopyFails]' started.
+Test Case '-[TwoDegreesTests.InstallScriptTests testRollsBackWhenTheCopyFails]' passed (0.492 seconds).
+Test Case '-[TwoDegreesTests.InstallScriptTests testSwapsInTheNewApp]' started.
+Test Case '-[TwoDegreesTests.InstallScriptTests testSwapsInTheNewApp]' passed (0.395 seconds).
+Test Case '-[TwoDegreesTests.InstallScriptTests testUpdateEndsTheOldWidgetProcess]' started.
+Test Case '-[TwoDegreesTests.InstallScriptTests testUpdateEndsTheOldWidgetProcess]' passed (0.001 seconds).
+Test Suite 'InstallScriptTests' passed at 2026-10-31 18:49:21.230.
+	 Executed 4 tests, with 0 failures (0 unexpected) in 0.890 (0.890) seconds
+Test Suite 'LocationTests' started at 2026-10-31 18:49:21.230.
+Test Case '-[TwoDegreesTests.LocationTests testCitiesSavedBeforeUseMyLocationStillLoad]' started.
+Test Case '-[TwoDegreesTests.LocationTests testCitiesSavedBeforeUseMyLocationStillLoad]' passed (0.001 seconds).
+Test Case '-[TwoDegreesTests.LocationTests testNearestListedCityNamesASpot]' started.
+Test Case '-[TwoDegreesTests.LocationTests testNearestListedCityNamesASpot]' passed (0.000 seconds).
+Test Suite 'LocationTests' passed at 2026-10-31 18:49:21.231.
+	 Executed 2 tests, with 0 failures (0 unexpected) in 0.001 (0.001) seconds
+Test Suite 'MoreLogicTests' started at 2026-10-31 18:49:21.231.
+Test Case '-[TwoDegreesTests.MoreLogicTests testHalvesRoundAwayFromZeroLikeTheWebApp]' started.
+Test Case '-[TwoDegreesTests.MoreLogicTests testHalvesRoundAwayFromZeroLikeTheWebApp]' passed (0.000 seconds).
+Test Case '-[TwoDegreesTests.MoreLogicTests testMenuBarPanelCentersUnderItsItem]' started.
+Test Case '-[TwoDegreesTests.MoreLogicTests testMenuBarPanelCentersUnderItsItem]' passed (0.000 seconds).
+Test Case '-[TwoDegreesTests.MoreLogicTests testUnreadableNowIsRefused]' started.
+Test Case '-[TwoDegreesTests.MoreLogicTests testUnreadableNowIsRefused]' passed (0.002 seconds).
+Test Case '-[TwoDegreesTests.MoreLogicTests testUpcomingHoursStartAtTheCurrentHourEvenOffTheHour]' started.
+Test Case '-[TwoDegreesTests.MoreLogicTests testUpcomingHoursStartAtTheCurrentHourEvenOffTheHour]' passed (0.007 seconds).
+Test Case '-[TwoDegreesTests.MoreLogicTests testWeatherTerms]' started.
+Test Case '-[TwoDegreesTests.MoreLogicTests testWeatherTerms]' passed (0.003 seconds).
+Test Case '-[TwoDegreesTests.MoreLogicTests testWidgetsFollowTheAppsCities]' started.
+Test Case '-[TwoDegreesTests.MoreLogicTests testWidgetsFollowTheAppsCities]' passed (0.004 seconds).
+Test Case '-[TwoDegreesTests.MoreLogicTests testWindowPlacement]' started.
+Test Case '-[TwoDegreesTests.MoreLogicTests testWindowPlacement]' passed (0.001 seconds).
+Test Suite 'MoreLogicTests' passed at 2026-10-31 18:49:21.249.
+	 Executed 7 tests, with 0 failures (0 unexpected) in 0.017 (0.018) seconds
+Test Suite 'OfflineCitiesTests' started at 2026-10-31 18:49:21.249.
+Test Case '-[TwoDegreesTests.OfflineCitiesTests testExactNamesFirstThenMostPopulous]' started.
+Test Case '-[TwoDegreesTests.OfflineCitiesTests testExactNamesFirstThenMostPopulous]' passed (0.000 seconds).
+Test Case '-[TwoDegreesTests.OfflineCitiesTests testIgnoresAccentsAndNarrowsAfterAComma]' started.
+Test Case '-[TwoDegreesTests.OfflineCitiesTests testIgnoresAccentsAndNarrowsAfterAComma]' passed (0.000 seconds).
+Test Suite 'OfflineCitiesTests' passed at 2026-10-31 18:49:21.249.
+	 Executed 2 tests, with 0 failures (0 unexpected) in 0.000 (0.001) seconds
+Test Suite 'PanelLogicTests' started at 2026-10-31 18:49:21.249.
+Test Case '-[TwoDegreesTests.PanelLogicTests testSummaryMentionsRainFirst]' started.
+Test Case '-[TwoDegreesTests.PanelLogicTests testSummaryMentionsRainFirst]' passed (0.006 seconds).
+Test Case '-[TwoDegreesTests.PanelLogicTests testSummaryShowsBothUnits]' started.
+Test Case '-[TwoDegreesTests.PanelLogicTests testSummaryShowsBothUnits]' passed (0.006 seconds).
+Test Case '-[TwoDegreesTests.PanelLogicTests testTicks]' started.
+Test Case '-[TwoDegreesTests.PanelLogicTests testTicks]' passed (0.000 seconds).
+Test Suite 'PanelLogicTests' passed at 2026-10-31 18:49:21.262.
+	 Executed 3 tests, with 0 failures (0 unexpected) in 0.013 (0.013) seconds
+Test Suite 'StoreTests' started at 2026-10-31 18:49:21.262.
+Test Case '-[TwoDegreesTests.StoreTests testAddLimitRemoveAndPersistence]' started.
+Test Case '-[TwoDegreesTests.StoreTests testAddLimitRemoveAndPersistence]' passed (0.014 seconds).
+Test Case '-[TwoDegreesTests.StoreTests testFailedFetchMarksOffline]' started.
+Test Case '-[TwoDegreesTests.StoreTests testFailedFetchMarksOffline]' passed (0.005 seconds).
+Test Case '-[TwoDegreesTests.StoreTests testLocationDeniedOrRemovedByHand]' started.
+Test Case '-[TwoDegreesTests.StoreTests testLocationDeniedOrRemovedByHand]' passed (0.158 seconds).
+Test Case '-[TwoDegreesTests.StoreTests testMenuBarText]' started.
+Test Case '-[TwoDegreesTests.StoreTests testMenuBarText]' passed (0.000 seconds).
+Test Case '-[TwoDegreesTests.StoreTests testNotNowTurnsItOffAndIsNeverAskedAgain]' started.
+Test Case '-[TwoDegreesTests.StoreTests testNotNowTurnsItOffAndIsNeverAskedAgain]' passed (0.110 seconds).
+Test Case '-[TwoDegreesTests.StoreTests testRefreshLoadsEveryCity]' started.
+Test Case '-[TwoDegreesTests.StoreTests testRefreshLoadsEveryCity]' passed (0.020 seconds).
+Test Case '-[TwoDegreesTests.StoreTests testRemovingACityWhileItLoadsLeavesNothingBehind]' started.
+Test Case '-[TwoDegreesTests.StoreTests testRemovingACityWhileItLoadsLeavesNothingBehind]' passed (0.828 seconds).
+Test Case '-[TwoDegreesTests.StoreTests testStartsWithThreeCitiesAndRestoresTheActiveOne]' started.
+Test Case '-[TwoDegreesTests.StoreTests testStartsWithThreeCitiesAndRestoresTheActiveOne]' passed (0.035 seconds).
+Test Case '-[TwoDegreesTests.StoreTests testUseMyLocationPutsWhereYouAreFirstAndKeepsItCurrent]' started.
+Test Case '-[TwoDegreesTests.StoreTests testUseMyLocationPutsWhereYouAreFirstAndKeepsItCurrent]' passed (0.224 seconds).
+Test Suite 'StoreTests' passed at 2026-10-31 18:49:22.656.
+	 Executed 9 tests, with 0 failures (0 unexpected) in 1.393 (1.394) seconds
+Test Suite 'TermsScheduleTests' started at 2026-10-31 18:49:22.656.
+Test Case '-[TwoDegreesTests.TermsScheduleTests testAsksFirstTimeThenOnChangeAtMostMonthly]' started.
+Test Case '-[TwoDegreesTests.TermsScheduleTests testAsksFirstTimeThenOnChangeAtMostMonthly]' passed (0.004 seconds).
+Test Suite 'TermsScheduleTests' passed at 2026-10-31 18:49:22.660.
+	 Executed 1 test, with 0 failures (0 unexpected) in 0.004 (0.004) seconds
+Test Suite 'TermsTests' started at 2026-10-31 18:49:22.660.
+Test Case '-[TwoDegreesTests.TermsTests testAskedOnFirstLaunchAndAfterAChangeOnly]' started.
+Test Case '-[TwoDegreesTests.TermsTests testAskedOnFirstLaunchAndAfterAChangeOnly]' passed (0.003 seconds).
+Test Suite 'TermsTests' passed at 2026-10-31 18:49:22.663.
+	 Executed 1 test, with 0 failures (0 unexpected) in 0.003 (0.003) seconds
+Test Suite 'UpdaterFlowTests' started at 2026-10-31 18:49:22.664.
+Test Case '-[TwoDegreesTests.UpdaterFlowTests testAutomaticCheckIsQuiet]' started.
+Test Case '-[TwoDegreesTests.UpdaterFlowTests testAutomaticCheckIsQuiet]' passed (0.004 seconds).
+Test Case '-[TwoDegreesTests.UpdaterFlowTests testBothFailingShowsAnErrorTheUserCanSee]' started.
+Test Case '-[TwoDegreesTests.UpdaterFlowTests testBothFailingShowsAnErrorTheUserCanSee]' passed (0.002 seconds).
+Test Case '-[TwoDegreesTests.UpdaterFlowTests testChecksumLineParsing]' started.
+Test Case '-[TwoDegreesTests.UpdaterFlowTests testChecksumLineParsing]' passed (0.000 seconds).
+Test Case '-[TwoDegreesTests.UpdaterFlowTests testFailedRecheckKeepsAFoundUpdate]' started.
+Test Case '-[TwoDegreesTests.UpdaterFlowTests testFailedRecheckKeepsAFoundUpdate]' passed (0.002 seconds).
+Test Case '-[TwoDegreesTests.UpdaterFlowTests testMissingChecksumRefusesToInstall]' started.
+Test Case '-[TwoDegreesTests.UpdaterFlowTests testMissingChecksumRefusesToInstall]' passed (0.002 seconds).
+Test Case '-[TwoDegreesTests.UpdaterFlowTests testNewerReleaseIsOffered]' started.
+Test Case '-[TwoDegreesTests.UpdaterFlowTests testNewerReleaseIsOffered]' passed (0.001 seconds).
+Test Case '-[TwoDegreesTests.UpdaterFlowTests testRateLimitedAPIFallsBackToReleasePage]' started.
+Test Case '-[TwoDegreesTests.UpdaterFlowTests testRateLimitedAPIFallsBackToReleasePage]' passed (0.001 seconds).
+Test Case '-[TwoDegreesTests.UpdaterFlowTests testSameVersionSaysUpToDate]' started.
+Test Case '-[TwoDegreesTests.UpdaterFlowTests testSameVersionSaysUpToDate]' passed (0.001 seconds).
+Test Case '-[TwoDegreesTests.UpdaterFlowTests testTamperedDownloadFailsChecksum]' started.
+Test Case '-[TwoDegreesTests.UpdaterFlowTests testTamperedDownloadFailsChecksum]' passed (0.002 seconds).
+Test Case '-[TwoDegreesTests.UpdaterFlowTests testUserCheckDuringAutomaticCheckIsAnswered]' started.
+Test Case '-[TwoDegreesTests.UpdaterFlowTests testUserCheckDuringAutomaticCheckIsAnswered]' passed (0.437 seconds).
+Test Case '-[TwoDegreesTests.UpdaterFlowTests testUserCheckDuringInstallIsAnswered]' started.
+Test Case '-[TwoDegreesTests.UpdaterFlowTests testUserCheckDuringInstallIsAnswered]' passed (0.000 seconds).
+Test Suite 'UpdaterFlowTests' passed at 2026-10-31 18:49:23.118.
+	 Executed 11 tests, with 0 failures (0 unexpected) in 0.453 (0.454) seconds
+Test Suite 'UpdaterTests' started at 2026-10-31 18:49:23.118.
+Test Case '-[TwoDegreesTests.UpdaterTests testFallbackReadsVersionFromReleasePage]' started.
+Test Case '-[TwoDegreesTests.UpdaterTests testFallbackReadsVersionFromReleasePage]' passed (0.000 seconds).
+Test Case '-[TwoDegreesTests.UpdaterTests testParsesRealRelease]' started.
+Test Case '-[TwoDegreesTests.UpdaterTests testParsesRealRelease]' passed (0.000 seconds).
+Test Case '-[TwoDegreesTests.UpdaterTests testReleaseWithoutDMGIsAnError]' started.
+Test Case '-[TwoDegreesTests.UpdaterTests testReleaseWithoutDMGIsAnError]' passed (0.000 seconds).
+Test Case '-[TwoDegreesTests.UpdaterTests testVersionComparison]' started.
+Test Case '-[TwoDegreesTests.UpdaterTests testVersionComparison]' passed (0.000 seconds).
+Test Suite 'UpdaterTests' passed at 2026-10-31 18:49:23.118.
+	 Executed 4 tests, with 0 failures (0 unexpected) in 0.001 (0.001) seconds
+Test Suite 'WeatherTests' started at 2026-10-31 18:49:23.119.
+Test Case '-[TwoDegreesTests.WeatherTests testConditions]' started.
+Test Case '-[TwoDegreesTests.WeatherTests testConditions]' passed (0.000 seconds).
+Test Case '-[TwoDegreesTests.WeatherTests testDateParsingIsCityLocal]' started.
+Test Case '-[TwoDegreesTests.WeatherTests testDateParsingIsCityLocal]' passed (0.001 seconds).
+Test Case '-[TwoDegreesTests.WeatherTests testDecodesNullsInArrays]' started.
+Test Case '-[TwoDegreesTests.WeatherTests testDecodesNullsInArrays]' passed (0.006 seconds).
+Test Case '-[TwoDegreesTests.WeatherTests testDecodesOpenMeteoAndPicksUpcomingHours]' started.
+Test Case '-[TwoDegreesTests.WeatherTests testDecodesOpenMeteoAndPicksUpcomingHours]' passed (0.006 seconds).
+Test Case '-[TwoDegreesTests.WeatherTests testTodayIncludesNow]' started.
+Test Case '-[TwoDegreesTests.WeatherTests testTodayIncludesNow]' passed (0.000 seconds).
+Test Case '-[TwoDegreesTests.WeatherTests testUnits]' started.
+Test Case '-[TwoDegreesTests.WeatherTests testUnits]' passed (0.000 seconds).
+Test Suite 'WeatherTests' passed at 2026-10-31 18:49:23.131.
+	 Executed 6 tests, with 0 failures (0 unexpected) in 0.012 (0.012) seconds
+Test Suite 'WidgetDataTests' started at 2026-10-31 18:49:23.131.
+Test Case '-[TwoDegreesTests.WidgetDataTests testCitySettingReadsBackWithAccentsPipesAndEdgeCoordinates]' started.
+Test Case '-[TwoDegreesTests.WidgetDataTests testCitySettingReadsBackWithAccentsPipesAndEdgeCoordinates]' passed (0.001 seconds).
+Test Case '-[TwoDegreesTests.WidgetDataTests testOfflineWithNothingSavedSaysSoInsteadOfGoingBlank]' started.
+Test Case '-[TwoDegreesTests.WidgetDataTests testOfflineWithNothingSavedSaysSoInsteadOfGoingBlank]' passed (0.002 seconds).
+Test Case '-[TwoDegreesTests.WidgetDataTests testPickedCityLoadsAndIsSavedForOffline]' started.
+Test Case '-[TwoDegreesTests.WidgetDataTests testPickedCityLoadsAndIsSavedForOffline]' passed (0.009 seconds).
+Test Case '-[TwoDegreesTests.WidgetDataTests testSearchNeverThrowsAndShortQueriesShowSuggestions]' started.
+Test Case '-[TwoDegreesTests.WidgetDataTests testSearchNeverThrowsAndShortQueriesShowSuggestions]' passed (0.001 seconds).
+Test Suite 'WidgetDataTests' passed at 2026-10-31 18:49:23.144.
+	 Executed 4 tests, with 0 failures (0 unexpected) in 0.013 (0.013) seconds
+Test Suite 'TwoDegreesPackageTests.xctest' passed at 2026-10-31 18:49:23.144.
+	 Executed 54 tests, with 0 failures (0 unexpected) in 2.801 (2.804) seconds
+Test Suite 'All tests' passed at 2026-10-31 18:49:23.144.
+	 Executed 54 tests, with 0 failures (0 unexpected) in 2.801 (2.806) seconds
+◇ Test run started.
+↳ Testing Library Version: 124.4
+↳ Target Platform: arm64e-apple-macos14.0
+✔ Test run with 0 tests passed after 0.001 seconds.

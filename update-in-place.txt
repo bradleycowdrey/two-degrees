@@ -1,0 +1,10 @@
+== old install script (no lsregister) (new build 122)
+path:                       /Users/runner/work/_temp/inplace/app/TwoDegrees.app (0x384c)
+identifier:                 com.bradcowdrey.twodegrees
+version:                    30.0 ({length = 32, bytes = 0x1e000000 00000000 00000000 00000000 ... 00000000 00000000 })
+versionString:              30
+== new install script (new build 122)
+path:                       /Users/runner/work/_temp/inplace/app/TwoDegrees.app (0x385c)
+identifier:                 com.bradcowdrey.twodegrees
+version:                    122.0 ({length = 32, bytes = 0x7a000000 00000000 00000000 00000000 ... 00000000 00000000 })
+versionString:              122

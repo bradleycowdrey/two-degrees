@@ -1,0 +1,22 @@
+== entitlements
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>com.apple.security.app-sandbox</key>
+	<true/>
+	<key>com.apple.security.application-groups</key>
+	<array>
+		<string>2XV97FZ86G.com.bradcowdrey.twodegrees</string>
+	</array>
+	<key>com.apple.security.network.client</key>
+	<true/>
+</dict>
+</plist>
+== App Intents metadata
+dist/TwoDegrees.app/Contents/PlugIns/TwoDegreesWidget.appex/Contents/Resources/Metadata.appintents
+== extension point
+com.apple.widgetkit-extension
+== pluginkit
+     com.bradcowdrey.twodegrees.widget(0.0.0-selftest)	AB93E3EE-62F1-48FC-9836-F5C6DC122686	2026-10-31 18:50:37 +0000	/Users/runner/work/two-degrees/two-degrees/build/Build/Products/Release/TwoDegrees.app/Contents/PlugIns/TwoDegreesWidget.appex
+ (1 plug-in)
