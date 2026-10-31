@@ -16,6 +16,8 @@ stop() { adb shell am force-stop $ID; }
 
 # 1. First launch: the terms.
 launch; sleep 6; shot android-1-terms; stop
+# 1b. Right after the terms: "Show the weather where you are?"
+launch --es show location; sleep 5; shot android-1b-location; stop
 
 # 2. The self-test, then the main screen.
 adb shell run-as $ID rm -f files/report.txt

@@ -46,7 +46,7 @@ import com.bradcowdrey.twodegrees.Brand
 import com.bradcowdrey.twodegrees.WeatherStore
 
 /** What the self-test asks the screen to show (CI screenshots). */
-data class ShowOptions(val scrollTo: String? = null, val list: Boolean = false)
+data class ShowOptions(val scrollTo: String? = null, val list: Boolean = false, val locationPrompt: Boolean = false)
 
 /**
  * The app's layout, after the iPhone's: one full-screen page per city that you swipe between, on that
@@ -69,6 +69,11 @@ fun PhoneScreen(
     LaunchedEffect(agreed) { if (agreed) onReady() }
     if (!agreed) {
         TermsScreen(onAgree = { store.termsAccepted = true; agreed = true })
+        return
+    }
+    // Right after the terms, once: "Show the weather where you are?"
+    if (show.locationPrompt || (!skipTerms && !state.locationAsked)) {
+        LocationPromptScreen(onAnswer = { yes -> store.answerLocationPrompt(yes); if (yes) onLocationSetting() })
         return
     }
     CompositionLocalProvider(LocalMetrics provides metrics) {

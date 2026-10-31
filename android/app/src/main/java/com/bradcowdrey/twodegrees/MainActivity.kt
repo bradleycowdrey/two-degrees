@@ -34,7 +34,7 @@ class MainActivity : ComponentActivity() {
         store.locate = { PhoneLocation.currentCity(applicationContext) }
         setContent {
             PhoneScreen(
-                store, ShowOptions(scrollTo = show?.takeIf { it != "list" }, list = show == "list"), skipTerms = selfTest,
+                store, ShowOptions(scrollTo = show?.takeIf { it in setOf("days", "tiles") }, list = show == "list", locationPrompt = show == "location"), skipTerms = selfTest,
                 // Use My Location starts once the terms are agreed (the self-test checks it itself).
                 onReady = { if (!selfTest) { ready = true; useLocation() } },
                 onLocationSetting = ::useLocation,
@@ -45,6 +45,7 @@ class MainActivity : ComponentActivity() {
 
     /** Finds where you are, asking for permission the first time. */
     private fun useLocation() {
+        if (!store.current.locationAsked) return   // our own question comes first
         if (!store.current.useLocation) { store.locateNow(); return }
         val prefs = getSharedPreferences("two-degrees", MODE_PRIVATE)
         if (!PhoneLocation.allowed(this) && !prefs.getBoolean("locationAsked", false)) {

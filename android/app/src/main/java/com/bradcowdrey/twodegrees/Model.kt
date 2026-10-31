@@ -234,3 +234,18 @@ object Summary {
         else -> "Rain"
     }
 }
+
+/**
+ * When to ask for the Terms of Use and Privacy, as on the Mac and iPhone: always the first time; again
+ * when they change, but no more than once a month.
+ */
+object TermsSchedule {
+    const val INTERVAL_MS = 30L * 24 * 60 * 60 * 1000
+
+    fun shouldAsk(acceptedVersion: String?, acceptedAt: Long?, current: String, now: Long = System.currentTimeMillis()): Boolean {
+        if (acceptedVersion.isNullOrEmpty()) return true   // never agreed
+        if (acceptedVersion == current) return false
+        if (acceptedAt == null || acceptedAt <= 0) return true   // agreed before the date was kept
+        return now - acceptedAt >= INTERVAL_MS
+    }
+}

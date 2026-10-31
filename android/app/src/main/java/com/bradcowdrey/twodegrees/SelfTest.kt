@@ -44,7 +44,9 @@ object SelfTest {
         // Use My Location: where the emulator says you are (CI grants the permission and sets the place),
         // first in the list and shown; gone when turned off; back when turned on.
         if (locate) {
-            store.updateLocation()
+            check(!store.current.locationAsked, "a first launch asks whether to use your location")
+            store.answerLocationPrompt(true)
+            repeat(40) { if (store.current.cities.none { it.isCurrent }) delay(250) }
             val here = store.current.cities.firstOrNull()
             check(store.current.locationStatus == LocationStatus.FOUND && here?.isCurrent == true && store.current.activeID == here.id,
                 "Use My Location finds ${if (here?.isCurrent == true) "${here.name}, ${here.region}" else "nothing (${store.current.locationStatus})"} and shows it first")

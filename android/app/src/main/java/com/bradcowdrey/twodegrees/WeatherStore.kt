@@ -34,6 +34,8 @@ class WeatherStore private constructor(context: Context) {
         val font: AppFont,
         /** Use My Location: keep a page for where you are, first in the list. On unless turned off. */
         val useLocation: Boolean = true,
+        /** Whether "Show the weather where you are?" has been asked (after the terms, once). */
+        val locationAsked: Boolean = false,
         val locationStatus: LocationStatus = LocationStatus.IDLE,
         val forecasts: Map<String, Forecast> = emptyMap(),
         val failed: Set<String> = emptySet(),
@@ -68,6 +70,7 @@ class WeatherStore private constructor(context: Context) {
             textSize = prefs.getString("textSize", null)?.let { runCatching { TextSize.valueOf(it) }.getOrNull() } ?: TextSize.MEDIUM,
             font = prefs.getString("font", null)?.let { runCatching { AppFont.valueOf(it) }.getOrNull() } ?: AppFont.INTER,
             useLocation = prefs.getBoolean("useLocation", true),
+            locationAsked = prefs.getBoolean("locationAsked", false),
             forecasts = Codec.forecasts(prefs.getString("forecasts", null)),
         ))
     }
@@ -137,9 +140,16 @@ class WeatherStore private constructor(context: Context) {
 
     // Use My Location
 
+    /**
+     * The answer to "Show the weather where you are?": Use My Location (recommended) turns it on, Not
+     * Now turns it off. Either way it's never asked again; the setting stays in the ⋮ menu.
+     */
+    fun answerLocationPrompt(yes: Boolean) = setUseLocation(yes)
+
     fun setUseLocation(on: Boolean) {
-        _state.update { it.copy(useLocation = on) }
-        prefs.edit().putBoolean("useLocation", on).apply()
+        // Choosing it in the menu answers the question too.
+        _state.update { it.copy(useLocation = on, locationAsked = true) }
+        prefs.edit().putBoolean("useLocation", on).putBoolean("locationAsked", true).apply()
         scope.launch { updateLocation() }
     }
 
@@ -153,6 +163,7 @@ class WeatherStore private constructor(context: Context) {
             _state.update { it.copy(locationStatus = LocationStatus.OFF) }
             return
         }
+        if (!current.locationAsked) return   // not before the question
         val locate = locate ?: return
         if (current.locationStatus == LocationStatus.LOCATING) return
         _state.update { it.copy(locationStatus = LocationStatus.LOCATING) }
@@ -245,9 +256,13 @@ class WeatherStore private constructor(context: Context) {
 
     // Terms
 
+    /** True when there's no need to ask (agreed to these terms, or to earlier ones within the month). */
     var termsAccepted: Boolean
-        get() = prefs.getString(TERMS_KEY, null) == Brand.TERMS_VERSION
-        set(value) { prefs.edit().putString(TERMS_KEY, if (value) Brand.TERMS_VERSION else null).apply() }
+        get() = !TermsSchedule.shouldAsk(prefs.getString(TERMS_KEY, null), prefs.getLong("terms.acceptedAt", 0), Brand.TERMS_VERSION)
+        set(value) {
+            if (value) prefs.edit().putString(TERMS_KEY, Brand.TERMS_VERSION).putLong("terms.acceptedAt", System.currentTimeMillis()).apply()
+            else prefs.edit().remove(TERMS_KEY).remove("terms.acceptedAt").apply()
+        }
 
     /** A one-line reading for the current city, both units, to share. */
     fun readingText(): String? {
@@ -288,5 +303,5 @@ object Brand {
     const val ISSUES = "https://github.com/bradleycowdrey/two-degrees/issues"
     const val DATA_CREDIT = "https://open-meteo.com/"
     const val SHARE_MESSAGE = "Two Degrees: the weather in °F and °C at once, on your Android phone and its Home Screen. Free and open source, by Bradley Cowdrey."
-    const val TERMS_SUMMARY = "Two Degrees is free and provided as is, without warranty. It is not a safety tool: for severe weather, follow official warnings. Your cities, and where you are if Use My Location is on, stay on your phone; only their locations go to Open-Meteo to get the weather."
+    const val TERMS_SUMMARY = "Two Degrees is free and provided as is, without warranty. It is not a safety tool: for severe weather, follow official warnings. Your cities stay on your phone; only their locations go to Open-Meteo to get the weather. If you allow it, your location is used only to show the weather where you are."
 }

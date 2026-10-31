@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.filled.NearMe
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -58,6 +59,33 @@ fun TermsScreen(onAgree: () -> Unit) {
                 Modifier.fillMaxWidth().heightIn(min = 44.dp).clickable(role = Role.Button) { uri.openUri(Brand.LEGAL) },
                 contentAlignment = Alignment.Center,
             ) { Text("Read the Terms", style = ui.text(17f, FontWeight.Medium).copy(color = Color.White)) }
+        }
+    }
+}
+
+/** Asked once, right after the terms: Use My Location (recommended) or Not Now; changeable in the ⋮ menu. */
+@Composable
+fun LocationPromptScreen(onAnswer: (Boolean) -> Unit) {
+    val ui = Metrics(1f, Inter)
+    Box(Modifier.fillMaxSize().background(Palette.bg).systemBarsPadding(), contentAlignment = Alignment.Center) {
+        Column(Modifier.widthIn(max = 520.dp).fillMaxSize().padding(horizontal = 24.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
+            Spacer(Modifier.weight(1f))
+            androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Filled.NearMe, null, tint = Palette.cream, modifier = Modifier.size(52.dp))
+            Text("Show the weather where you are?", style = ui.text(28f, FontWeight.SemiBold))
+            Text("Two Degrees can put the place you’re in first in your cities and keep it up to date as you move. Recommended.",
+                style = ui.text(17f).copy(color = Palette.textSecondary))
+            Text("Your location is rounded to about a kilometre and used only to get its weather. You can change this anytime in the ⋮ menu.",
+                style = ui.text(15f).copy(color = Palette.textMuted))
+            Spacer(Modifier.weight(1f))
+            Box(
+                Modifier.fillMaxWidth().heightIn(min = 50.dp).clip(CircleShape).background(Palette.cream)
+                    .clickable(role = Role.Button) { onAnswer(true) },
+                contentAlignment = Alignment.Center,
+            ) { Text("Use My Location", style = ui.text(17f, FontWeight.SemiBold).copy(color = Palette.bg)) }
+            Box(
+                Modifier.fillMaxWidth().heightIn(min = 44.dp).clickable(role = Role.Button) { onAnswer(false) },
+                contentAlignment = Alignment.Center,
+            ) { Text("Not Now", style = ui.text(17f, FontWeight.Medium).copy(color = Color.White)) }
         }
     }
 }
