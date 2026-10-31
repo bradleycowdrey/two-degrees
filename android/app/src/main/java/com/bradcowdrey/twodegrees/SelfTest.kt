@@ -46,7 +46,8 @@ object SelfTest {
         if (locate) {
             check(!store.current.locationAsked, "a first launch asks whether to use your location")
             store.answerLocationPrompt(true)
-            repeat(40) { if (store.current.cities.none { it.isCurrent }) delay(250) }
+            // The page appears a moment before the status reads FOUND: wait for both.
+            repeat(80) { if (store.current.locationStatus != LocationStatus.FOUND) delay(250) }
             val here = store.current.cities.firstOrNull()
             check(store.current.locationStatus == LocationStatus.FOUND && here?.isCurrent == true && store.current.activeID == here.id,
                 "Use My Location finds ${if (here?.isCurrent == true) "${here.name}, ${here.region}" else "nothing (${store.current.locationStatus})"} and shows it first")
