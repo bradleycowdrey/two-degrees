@@ -122,8 +122,10 @@ internal fun JSONArray.stringOrNull(i: Int): String? = if (i < length() && !isNu
 object Codec {
     fun city(c: City): JSONObject = JSONObject()
         .put("name", c.name).put("region", c.region).put("latitude", c.latitude).put("longitude", c.longitude)
+        .put("isCurrent", c.isCurrent)
 
-    fun city(o: JSONObject): City = City(o.getString("name"), o.optString("region"), o.getDouble("latitude"), o.getDouble("longitude"))
+    fun city(o: JSONObject): City =
+        City(o.getString("name"), o.optString("region"), o.getDouble("latitude"), o.getDouble("longitude"), o.optBoolean("isCurrent", false))
 
     fun cities(list: List<City>): String = JSONArray(list.map(::city)).toString()
 

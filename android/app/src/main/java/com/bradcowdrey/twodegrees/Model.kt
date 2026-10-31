@@ -8,9 +8,23 @@ import java.util.Locale
 import kotlin.math.ln
 import kotlin.math.roundToInt
 
-/** A saved place. Coordinates are what Open-Meteo needs; the name is what people see. */
-data class City(val name: String, val region: String, val latitude: Double, val longitude: Double) {
-    val id: String get() = String.format(Locale.US, "%.2f,%.2f", latitude, longitude)
+/**
+ * A saved place. Coordinates are what Open-Meteo needs; the name is what people see. `isCurrent` marks
+ * where you are (Use My Location), kept up to date by the app.
+ */
+data class City(
+    val name: String,
+    val region: String,
+    val latitude: Double,
+    val longitude: Double,
+    val isCurrent: Boolean = false,
+) {
+    /** Where you are has one ID wherever you go, so its page, forecast and widgets stay put. */
+    val id: String get() = if (isCurrent) CURRENT_ID else String.format(Locale.US, "%.2f,%.2f", latitude, longitude)
+
+    companion object {
+        const val CURRENT_ID = "here"
+    }
 }
 
 enum class TempUnit(val letter: String) {

@@ -121,8 +121,8 @@ private fun Settings(state: WeatherStore.State, chosen: City?, onDone: (City?) -
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Column(Modifier.weight(1f)) {
-                            Text(city.name, color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.Medium)
-                            Text(city.region, color = Palette.textMuted, fontSize = 14.sp)
+                            Text(if (city.isCurrent) "My Location" else city.name, color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.Medium)
+                            Text(if (city.isCurrent) "Wherever you are · now ${city.name}" else city.region, color = Palette.textMuted, fontSize = 14.sp)
                         }
                         if (chosen?.id == city.id) Icon(Icons.Filled.Check, "Chosen", tint = Color.White)
                     }

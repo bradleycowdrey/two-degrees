@@ -32,6 +32,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.NearMe
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material3.CircularProgressIndicator
@@ -153,6 +154,12 @@ private fun Header(city: City, forecast: Forecast?, unit: TempUnit, store: Weath
     val ui = LocalMetrics.current
     val other = unit.other
     Column(modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(ui.dp(2f))) {
+        if (city.isCurrent) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.alpha(0.8f)) {
+                Icon(Icons.Filled.NearMe, null, tint = Color.White, modifier = Modifier.size(ui.dp(13f)))
+                Text("MY LOCATION", style = ui.text(13f, FontWeight.SemiBold))
+            }
+        }
         Text(city.name, style = ui.text(34f, align = TextAlign.Center), maxLines = 1, overflow = TextOverflow.Ellipsis)
         if (forecast != null) {
             val now = forecast.now

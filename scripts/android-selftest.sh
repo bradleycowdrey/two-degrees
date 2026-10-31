@@ -19,7 +19,12 @@ launch; sleep 6; shot android-1-terms; stop
 
 # 2. The self-test, then the main screen.
 adb shell run-as $ID rm -f files/report.txt
-launch --ez selftest true
+# Use My Location: allow it, turn location on, and put the emulator in Denver.
+adb shell pm grant $ID android.permission.ACCESS_COARSE_LOCATION || true
+adb shell cmd location set-location-enabled true || true
+adb emu geo fix -104.9847 39.7392 || true
+sleep 2; adb emu geo fix -104.9847 39.7392 || true
+launch --ez selftest true --ez locate true
 for i in $(seq 1 150); do adb shell run-as $ID ls files/report.txt >/dev/null 2>&1 && break; sleep 1; done
 sleep 2; shot android-2-main
 adb shell run-as $ID cat files/report.txt > "$OUT/report.txt" || echo "FAILED (no report)" > "$OUT/report.txt"

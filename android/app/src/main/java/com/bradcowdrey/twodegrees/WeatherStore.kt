@@ -32,13 +32,17 @@ class WeatherStore private constructor(context: Context) {
         val unit: TempUnit,
         val textSize: TextSize,
         val font: AppFont,
+        /** Use My Location: keep a page for where you are, first in the list. On unless turned off. */
+        val useLocation: Boolean = true,
+        val locationStatus: LocationStatus = LocationStatus.IDLE,
         val forecasts: Map<String, Forecast> = emptyMap(),
         val failed: Set<String> = emptySet(),
         val loading: Boolean = false,
     ) {
         val active: City get() = cities.firstOrNull { it.id == activeID } ?: cities[0]
         val activeForecast: Forecast? get() = forecasts[active.id]
-        val canAdd: Boolean get() = cities.size < MAX_CITIES
+        /** Up to five cities of your own; where you are doesn't count. */
+        val canAdd: Boolean get() = cities.count { !it.isCurrent } < MAX_CITIES
     }
 
     private val app = context.applicationContext
@@ -47,6 +51,9 @@ class WeatherStore private constructor(context: Context) {
     private val _state: MutableStateFlow<State>
     val state: StateFlow<State> get() = _state.asStateFlow()
     val current: State get() = _state.value
+
+    /** Finds where you are. Set by the activity once the terms are agreed; never in unit tests. */
+    @Volatile var locate: (suspend () -> LocationResult)? = null
 
     /** Called when the cities or the current city change, so the widgets redraw. */
     @Volatile var onCitiesChanged: () -> Unit = {}
@@ -60,6 +67,7 @@ class WeatherStore private constructor(context: Context) {
             unit = prefs.getString("unit", null)?.let { runCatching { TempUnit.valueOf(it) }.getOrNull() } ?: TempUnit.localeDefault(),
             textSize = prefs.getString("textSize", null)?.let { runCatching { TextSize.valueOf(it) }.getOrNull() } ?: TextSize.MEDIUM,
             font = prefs.getString("font", null)?.let { runCatching { AppFont.valueOf(it) }.getOrNull() } ?: AppFont.INTER,
+            useLocation = prefs.getBoolean("useLocation", true),
             forecasts = Codec.forecasts(prefs.getString("forecasts", null)),
         ))
     }
@@ -76,6 +84,8 @@ class WeatherStore private constructor(context: Context) {
     }
 
     fun remove(city: City) {
+        // Removing where you are turns Use My Location off; otherwise it would come straight back.
+        if (city.isCurrent) { setUseLocation(false); return }
         val s = current
         if (s.cities.size < 2) return
         val cities = s.cities.filter { it.id != city.id }
@@ -123,6 +133,73 @@ class WeatherStore private constructor(context: Context) {
     fun setFont(font: AppFont) {
         _state.update { it.copy(font = font) }
         prefs.edit().putString("font", font.name).apply()
+    }
+
+    // Use My Location
+
+    fun setUseLocation(on: Boolean) {
+        _state.update { it.copy(useLocation = on) }
+        prefs.edit().putBoolean("useLocation", on).apply()
+        scope.launch { updateLocation() }
+    }
+
+    /**
+     * Finds where you are and keeps its page up to date (first in the list), or removes it when Use My
+     * Location is off. The first time, it also shows that page.
+     */
+    suspend fun updateLocation() {
+        if (!current.useLocation) {
+            removeCurrent()
+            _state.update { it.copy(locationStatus = LocationStatus.OFF) }
+            return
+        }
+        val locate = locate ?: return
+        if (current.locationStatus == LocationStatus.LOCATING) return
+        _state.update { it.copy(locationStatus = LocationStatus.LOCATING) }
+        val result = locate()
+        if (!current.useLocation) { _state.update { it.copy(locationStatus = LocationStatus.OFF) }; return }
+        val status = when (result) {
+            is LocationResult.Found -> { placeCurrent(result.city); LocationStatus.FOUND }
+            LocationResult.Denied -> LocationStatus.DENIED
+            LocationResult.Unavailable -> LocationStatus.UNAVAILABLE
+        }
+        _state.update { it.copy(locationStatus = status) }
+    }
+
+    fun locateNow() { scope.launch { updateLocation() } }
+
+    /** Puts where you are first in the list (or updates it in place), and loads its weather. */
+    fun placeCurrent(place: City) {
+        val here = place.copy(isCurrent = true)
+        val s = current
+        val i = s.cities.indexOfFirst { it.isCurrent }
+        if (i >= 0) {
+            val old = s.cities[i]
+            if (old == here) return
+            if (old.latitude != here.latitude || old.longitude != here.longitude) {
+                _state.update { it.copy(forecasts = it.forecasts - here.id, failed = it.failed - here.id) }
+            }
+            saveCities(s.cities.toMutableList().also { it[i] = here }, s.activeID)
+        } else {
+            saveCities(listOf(here) + s.cities, here.id)
+        }
+        if (here.id !in current.forecasts) launchLoad(here)
+    }
+
+    private fun removeCurrent() {
+        val s = current
+        val i = s.cities.indexOfFirst { it.isCurrent }
+        if (i < 0) return
+        if (s.cities.size == 1) {
+            // Never leave the list empty: keep it as an ordinary city.
+            val city = s.cities[0].copy(isCurrent = false)
+            saveCities(listOf(city), city.id)
+            return
+        }
+        val cities = s.cities.filterIndexed { j, _ -> j != i }
+        _state.update { it.copy(forecasts = it.forecasts - City.CURRENT_ID, failed = it.failed - City.CURRENT_ID) }
+        saveForecasts()
+        saveCities(cities, if (s.activeID == City.CURRENT_ID) cities[0].id else s.activeID)
     }
 
     // Forecasts

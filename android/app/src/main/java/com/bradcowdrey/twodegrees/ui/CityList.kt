@@ -82,7 +82,7 @@ import kotlinx.coroutines.withContext
  * offline too), tap a card to open it, Edit to remove and reorder. The ⋮ menu holds the settings.
  */
 @Composable
-fun CityList(store: WeatherStore, onDismiss: () -> Unit) {
+fun CityList(store: WeatherStore, onDismiss: () -> Unit, onLocationSetting: () -> Unit = {}) {
     val ui = LocalMetrics.current
     val state by store.state.collectAsStateWithLifecycle()
     var query by remember { mutableStateOf("") }
@@ -108,7 +108,7 @@ fun CityList(store: WeatherStore, onDismiss: () -> Unit) {
                 IconButton(onClick = onDismiss) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = Color.White) }
                 Spacer(Modifier.weight(1f))
                 if (editing) TextButton(onClick = { editing = false }) { Text("Done", style = ui.text(16f, FontWeight.SemiBold)) }
-                SettingsMenu(store, state, onEdit = { editing = true })
+                SettingsMenu(store, state, onEdit = { editing = true }, onLocationSetting = onLocationSetting)
             }
             Text(Brand.APP_NAME, style = ui.text(32f, FontWeight.SemiBold), modifier = Modifier.padding(horizontal = 16.dp))
             OutlinedTextField(
@@ -161,7 +161,7 @@ fun CityList(store: WeatherStore, onDismiss: () -> Unit) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             if (editing) {
                                 IconButton(onClick = { store.remove(city) }, enabled = state.cities.size > 1) {
-                                    Icon(Icons.Filled.Delete, "Remove ${city.name}", tint = if (state.cities.size > 1) Palette.pink else Color.Gray)
+                                    Icon(Icons.Filled.Delete, if (city.isCurrent) "Stop using My Location" else "Remove ${city.name}", tint = if (state.cities.size > 1) Palette.pink else Color.Gray)
                                 }
                             }
                             CityCard(city, state, Modifier.weight(1f).clickable(enabled = !editing) { store.select(city); onDismiss() })
@@ -190,7 +190,7 @@ fun CityList(store: WeatherStore, onDismiss: () -> Unit) {
 }
 
 @Composable
-private fun SettingsMenu(store: WeatherStore, state: WeatherStore.State, onEdit: () -> Unit) {
+private fun SettingsMenu(store: WeatherStore, state: WeatherStore.State, onEdit: () -> Unit, onLocationSetting: () -> Unit) {
     val ui = LocalMetrics.current
     val uri = LocalUriHandler.current
     val context = LocalContext.current
@@ -200,6 +200,22 @@ private fun SettingsMenu(store: WeatherStore, state: WeatherStore.State, onEdit:
         MaterialTheme(colorScheme = androidx.compose.material3.darkColorScheme()) {
             DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
                 DropdownMenuItem(text = { Text("Edit List") }, enabled = state.cities.size > 1, onClick = { open = false; onEdit() })
+                HorizontalDivider()
+                DropdownMenuItem(
+                    text = { Text("Use My Location") },
+                    onClick = { store.setUseLocation(!state.useLocation); onLocationSetting() },
+                    trailingIcon = { if (state.useLocation) Icon(Icons.Filled.Check, "On") },
+                )
+                if (state.useLocation && state.locationStatus == com.bradcowdrey.twodegrees.LocationStatus.DENIED) {
+                    // Android asks only once: point to where it's turned back on.
+                    DropdownMenuItem(text = { Text("Allow Location in Settings…") }, onClick = {
+                        open = false
+                        context.startActivity(
+                            android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                                .setData(android.net.Uri.fromParts("package", context.packageName, null)),
+                        )
+                    })
+                }
                 HorizontalDivider()
                 MenuLabel("Units")
                 for (unit in TempUnit.entries) {
@@ -256,8 +272,12 @@ private fun CityCard(city: City, state: WeatherStore.State, modifier: Modifier) 
             .semantics(mergeDescendants = true) {},
     ) {
         Column(Modifier.weight(1f)) {
-            Text(city.name, style = ui.text(22f, FontWeight.SemiBold), maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(forecast?.let { Forecast.clock(it.now.time) } ?: city.region, style = ui.text(14f, FontWeight.Medium), modifier = Modifier.alpha(0.85f), maxLines = 1)
+            // As on the iPhone: where you are reads "My Location", with the place beneath.
+            Text(if (city.isCurrent) "My Location" else city.name, style = ui.text(22f, FontWeight.SemiBold), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                if (city.isCurrent) city.name else forecast?.let { Forecast.clock(it.now.time) } ?: city.region,
+                style = ui.text(14f, FontWeight.Medium), modifier = Modifier.alpha(0.85f), maxLines = 1,
+            )
             Spacer(Modifier.weight(1f))
             Text(
                 forecast?.let { Condition.name(it.now.code) } ?: if (city.id in state.failed) "Offline" else "Loading…",

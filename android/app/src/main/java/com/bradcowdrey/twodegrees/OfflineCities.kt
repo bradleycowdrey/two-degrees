@@ -53,6 +53,26 @@ object OfflineCities {
         return (exact + starts).take(limit).map { City(it.name, it.region, it.latitude, it.longitude) }
     }
 
+    /**
+     * The listed city nearest a point, within 50 km, keeping the point's own coordinates: names where
+     * you are when the phone's geocoder can't (offline).
+     */
+    fun nearest(latitude: Double, longitude: Double, list: List<Entry> = all): City? {
+        val k = Math.cos(Math.toRadians(latitude))
+        var best: Entry? = null
+        var bestD = Double.MAX_VALUE
+        for (e in list) {
+            val dy = e.latitude - latitude
+            var dx = Math.abs(e.longitude - longitude)
+            if (dx > 180) dx = 360 - dx
+            val d = dy * dy + (dx * k) * (dx * k)
+            if (d < bestD) { bestD = d; best = e }
+        }
+        val b = best ?: return null
+        if (Math.sqrt(bestD) * 111 > 50) return null
+        return City(b.name, b.region, latitude, longitude)
+    }
+
     private val marks = Regex("\\p{Mn}+")
 
     fun fold(text: String): String =

@@ -62,6 +62,15 @@ class ModelTest {
         assertEquals(cities, Codec.cities(Codec.cities(cities)))
         assertNull(Codec.cities("not json"))
     }
+
+    @Test fun whereYouAreHasOneIDAndOlderSavedCitiesStillLoad() {
+        val here = City("Denver", "Colorado, United States", 39.74, -104.98, isCurrent = true)
+        assertEquals(City.CURRENT_ID, here.id)
+        assertEquals(listOf(here), Codec.cities(Codec.cities(listOf(here))))
+        val old = Codec.cities("""[{"name":"Paris","region":"France","latitude":48.85,"longitude":2.35}]""")!!
+        assertEquals(false, old[0].isCurrent)
+        assertEquals("48.85,2.35", old[0].id)
+    }
 }
 
 class OfflineCitiesTest {
@@ -88,6 +97,14 @@ class OfflineCitiesTest {
         assertEquals(listOf("Maine, United States"), OfflineCities.search("Portland, maine", list).map { it.region })
         assertTrue(OfflineCities.search("  ", list).isEmpty())
         assertTrue(OfflineCities.search("Atlantis", list).isEmpty())
+    }
+
+    @Test fun nearestListedCityNamesASpot() {
+        val near = OfflineCities.nearest(45.52, -122.68, list)
+        assertEquals("Portland", near?.name)
+        assertEquals("Oregon, United States", near?.region)
+        assertEquals(45.52, near!!.latitude, 0.0)
+        assertNull("nothing within 50 km", OfflineCities.nearest(0.0, 0.0, list))
     }
 
     @Test fun searchFallsBackOfflineWhenTheNetworkFails() {

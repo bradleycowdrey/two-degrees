@@ -17,6 +17,7 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.NearMe
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -52,13 +53,20 @@ data class ShowOptions(val scrollTo: String? = null, val list: Boolean = false)
  * city's sky, with a bottom bar of Share, page dots and the city list.
  */
 @Composable
-fun PhoneScreen(store: WeatherStore, show: ShowOptions, skipTerms: Boolean) {
+fun PhoneScreen(
+    store: WeatherStore,
+    show: ShowOptions,
+    skipTerms: Boolean,
+    onReady: () -> Unit = {},
+    onLocationSetting: () -> Unit = {},
+) {
     val state by store.state.collectAsStateWithLifecycle()
     val tablet = LocalConfiguration.current.screenWidthDp >= 600
     val metrics = Metrics.of(state.textSize.scale * if (tablet) 1.3f else 1f, state.font)
     var showingList by rememberSaveable { mutableStateOf(show.list) }
     var agreed by remember { mutableStateOf(skipTerms || store.termsAccepted) }
 
+    LaunchedEffect(agreed) { if (agreed) onReady() }
     if (!agreed) {
         TermsScreen(onAgree = { store.termsAccepted = true; agreed = true })
         return
@@ -83,7 +91,7 @@ fun PhoneScreen(store: WeatherStore, show: ShowOptions, skipTerms: Boolean) {
             }
             BottomBar(state, onList = { showingList = true }, modifier = Modifier.align(Alignment.BottomCenter))
         }
-        if (showingList) CityList(store, onDismiss = { showingList = false })
+        if (showingList) CityList(store, onDismiss = { showingList = false }, onLocationSetting = onLocationSetting)
     }
 }
 
@@ -108,7 +116,13 @@ private fun BottomBar(state: WeatherStore.State, onList: () -> Unit, modifier: M
                 horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
             ) {
                 state.cities.forEach { city ->
-                    Box(Modifier.size(7.dp).clip(CircleShape).background(Color.White.copy(alpha = if (city.id == state.activeID) 1f else 0.35f)))
+                    val alpha = if (city.id == state.activeID) 1f else 0.35f
+                    if (city.isCurrent) {
+                        // Where you are gets an arrow, as on the iPhone.
+                        Icon(Icons.Filled.NearMe, null, tint = Color.White.copy(alpha = alpha), modifier = Modifier.size(9.dp))
+                    } else {
+                        Box(Modifier.size(7.dp).clip(CircleShape).background(Color.White.copy(alpha = alpha)))
+                    }
                 }
             }
             IconButton(onClick = onList) { Icon(Icons.AutoMirrored.Filled.List, "Cities and settings", tint = Color.White) }

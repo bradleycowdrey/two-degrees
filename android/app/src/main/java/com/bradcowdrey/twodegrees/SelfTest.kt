@@ -14,7 +14,7 @@ import java.io.File
  * first line "ALL PASSED (n passed)" or "FAILED (…)", as the Mac and iPhone self-tests do.
  */
 object SelfTest {
-    suspend fun run(context: Context, store: WeatherStore) {
+    suspend fun run(context: Context, store: WeatherStore, locate: Boolean = false) {
         val lines = mutableListOf<String>()
         var failures = 0
         fun check(ok: Boolean, what: String) {
@@ -41,6 +41,23 @@ object SelfTest {
         store.toggleUnit()
         check(store.current.unit == unit, "switch back to ${unit.label}")
 
+        // Use My Location: where the emulator says you are (CI grants the permission and sets the place),
+        // first in the list and shown; gone when turned off; back when turned on.
+        if (locate) {
+            store.updateLocation()
+            val here = store.current.cities.firstOrNull()
+            check(store.current.locationStatus == LocationStatus.FOUND && here?.isCurrent == true && store.current.activeID == here.id,
+                "Use My Location finds ${if (here?.isCurrent == true) "${here.name}, ${here.region}" else "nothing (${store.current.locationStatus})"} and shows it first")
+            repeat(40) { if (City.CURRENT_ID !in store.current.forecasts) delay(500) }
+            check(City.CURRENT_ID in store.current.forecasts, "where you are: its forecast loads")
+            store.setUseLocation(false)
+            repeat(20) { if (store.current.cities.any { it.isCurrent }) delay(100) }
+            check(store.current.cities.none { it.isCurrent }, "turning Use My Location off removes it")
+            store.setUseLocation(true)
+            repeat(40) { if (store.current.cities.none { it.isCurrent }) delay(250) }
+            check(store.current.cities.firstOrNull()?.isCurrent == true, "turning it back on brings it back")
+        }
+
         // 3. City search, online and offline.
         val found = withContext(Dispatchers.IO) { runCatching { OpenMeteo.search("Denver") }.getOrDefault(emptyList()) }
         check(found.isNotEmpty(), "city search finds Denver (${found.firstOrNull()?.region ?: "nothing"})")
@@ -60,6 +77,8 @@ object SelfTest {
             check(store.current.cities.size == before && store.current.cities.none { it.id == denver.id }, "remove Denver")
             store.select(store.current.cities[0])
         }
+        // Back to where you are, if it's on, for the screenshots.
+        store.current.cities.firstOrNull { it.isCurrent }?.let { store.select(it) }
 
         // 5. The widgets' data path: following the app, and a city of its own.
         val following = WidgetData.entry(context, 9001)
