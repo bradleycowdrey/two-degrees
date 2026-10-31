@@ -55,21 +55,34 @@ object PhoneLocation {
         val recent = providers.mapNotNull { runCatching { manager.getLastKnownLocation(it) }.getOrNull() }
             .maxByOrNull { it.time }
         if (recent != null && System.currentTimeMillis() - recent.time < 10 * 60 * 1000) return recent
-        val provider = listOf(LocationManager.NETWORK_PROVIDER, LocationManager.FUSED_PROVIDER, LocationManager.GPS_PROVIDER)
-            .firstOrNull { it in providers } ?: providers.first()
+        // Ask every enabled source at once (network, fused, GPS) and take the first answer.
         val fresh = withTimeoutOrNull(15_000) {
             suspendCancellableCoroutine { continuation ->
-                if (Build.VERSION.SDK_INT >= 30) {
-                    val cancel = CancellationSignal()
-                    continuation.invokeOnCancellation { cancel.cancel() }
-                    manager.getCurrentLocation(provider, cancel, { it.run() }) { continuation.resume(it) }
-                } else {
-                    @Suppress("DEPRECATION")
-                    manager.requestSingleUpdate(provider, { continuation.resume(it) }, android.os.Looper.getMainLooper())
+                val cancels = mutableListOf<CancellationSignal>()
+                continuation.invokeOnCancellation { cancels.forEach { it.cancel() } }
+                val answered = java.util.concurrent.atomic.AtomicInteger(0)
+                val finished = java.util.concurrent.atomic.AtomicBoolean(false)
+                // Sources answer on their own threads: resume once, with the first fix, or null if none has one.
+                val done = { location: Location? ->
+                    val last = answered.incrementAndGet() == providers.size
+                    if ((location != null || last) && finished.compareAndSet(false, true)) {
+                        cancels.forEach { it.cancel() }
+                        continuation.resume(location)
+                    }
+                }
+                for (provider in providers) {
+                    if (Build.VERSION.SDK_INT >= 30) {
+                        val cancel = CancellationSignal().also { cancels += it }
+                        runCatching { manager.getCurrentLocation(provider, cancel, { it.run() }) { done(it) } }.onFailure { done(null) }
+                    } else {
+                        @Suppress("DEPRECATION")
+                        runCatching { manager.requestSingleUpdate(provider, { done(it) }, android.os.Looper.getMainLooper()) }.onFailure { done(null) }
+                    }
                 }
             }
         }
         return fresh ?: recent
+            ?: providers.mapNotNull { runCatching { manager.getLastKnownLocation(it) }.getOrNull() }.maxByOrNull { it.time }
     }
 
     /** The place's name and region; its coordinates rounded to about a kilometre, all the forecast needs. */
