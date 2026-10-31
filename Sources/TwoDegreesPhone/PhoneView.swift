@@ -70,7 +70,7 @@ struct PhoneView: View {
             HStack(spacing: 8) {
                 ForEach(store.cities) { city in
                     let opacity = city.id == store.activeID ? 1 : 0.35
-                    if city.isCurrent {
+                    if store.isHere(city) {
                         // Where you are gets an arrow, as in Apple's Weather.
                         Image(systemName: "location.fill")
                             .font(.system(size: 8, weight: .bold))

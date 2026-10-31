@@ -153,7 +153,7 @@ private struct LocationSetting: View {
         case .unavailable: return "Couldn’t find where you are just now. It tries again when your Mac wakes."
         case .locating: return "Finding where you are…"
         default:
-            let here = store.cities.first(where: \.isCurrent)
+            let here = store.cities.first(where: store.isHere)
             return here.map { "Showing \($0.name), first in your cities." } ?? "Show the weather where you are, first in your cities."
         }
     }

@@ -47,6 +47,15 @@ final class WeatherStore: ObservableObject {
     /// Whether the person has been asked "Show the weather where you are?" (after the terms, once).
     @Published private(set) var locationAsked: Bool { didSet { defaults.set(locationAsked, forKey: "locationAsked") } }
     var needsLocationPrompt: Bool { !locationAsked }
+    /// The saved city that's where you are, when there's one: it gets the My Location label and arrow
+    /// instead of a second card for the same place.
+    @Published private(set) var hereID: String? { didSet { defaults.set(hereID, forKey: "hereID"); shareWithWidgets() } }
+
+    /// Where you are: the separate My Location card, or the saved city standing in for it.
+    func isHere(_ city: City) -> Bool { city.isCurrent || (hereID != nil && city.id == hereID) }
+
+    /// The last place Use My Location found, kept so a card for it can come back without a new fix.
+    private var lastPlace: City? { didSet { save(lastPlace, "herePlace") } }
     /// Finds where you are. Set by the app once the terms are agreed; never in unit tests or the self-test.
     var locate: (@MainActor () async -> LocationResult)?
 
@@ -72,6 +81,8 @@ final class WeatherStore: ObservableObject {
         floatOnTop = defaults.bool(forKey: "floatOnTop")
         useLocation = defaults.object(forKey: "useLocation") as? Bool ?? true
         locationAsked = defaults.bool(forKey: "locationAsked")
+        hereID = defaults.string(forKey: "hereID").flatMap { id in cities.contains { $0.id == id } ? id : nil }
+        lastPlace = Self.load("herePlace", from: defaults)
         if let cached: [String: Forecast] = Self.load("forecasts", from: defaults) { forecasts = cached }
         guard autoRefresh else { return }
         shareWithWidgets()
@@ -119,6 +130,8 @@ final class WeatherStore: ObservableObject {
             cities.append(city)
             activeID = city.id
             Task { await load(city) }
+            // Added the place you're in: it becomes My Location, with no second card.
+            if useLocation, let place = lastPlace, City.samePlace(city, place) { placeCurrent(place) }
         }
     }
 
@@ -126,11 +139,17 @@ final class WeatherStore: ObservableObject {
         // Removing where you are turns Use My Location off; otherwise it would come straight back.
         if city.isCurrent && useLocation { useLocation = false; return }
         guard cities.count > 1 else { return }
+        let wasHere = city.id == hereID
         cities.removeAll { $0.id == city.id }
         forecasts[city.id] = nil
         failed.remove(city.id)
         save(forecasts, "forecasts")
         if activeID == city.id { activeID = cities[0].id }
+        // It stood in for My Location: bring back the separate card for where you are.
+        if wasHere {
+            hereID = nil
+            if useLocation, let place = lastPlace { placeCurrent(place) }
+        }
     }
 
     func move(from source: IndexSet, to destination: Int) {
@@ -181,10 +200,25 @@ final class WeatherStore: ObservableObject {
         }
     }
 
-    /// Puts where you are first in the list (or updates it in place), and loads its weather.
+    /// Puts where you are first in the list (or updates it in place), and loads its weather. When a
+    /// saved city is the same place, that city becomes My Location instead, with no second card.
     func placeCurrent(_ place: City) {
         var here = place
         here.isCurrent = true
+        lastPlace = here
+        if let match = cities.first(where: { !$0.isCurrent && City.samePlace($0, here) }) {
+            let firstTime = hereID == nil && !cities.contains(where: \.isCurrent)
+            let wasShowingHere = activeID == City.currentID
+            if let i = cities.firstIndex(where: \.isCurrent) {
+                cities.remove(at: i)
+                forecasts[City.currentID] = nil
+                failed.remove(City.currentID)
+            }
+            hereID = match.id
+            if firstTime || wasShowingHere { activeID = match.id }
+            return
+        }
+        hereID = nil
         if let i = cities.firstIndex(where: \.isCurrent) {
             let old = cities[i]
             guard old != here else { return }
@@ -201,6 +235,8 @@ final class WeatherStore: ObservableObject {
     }
 
     private func removeCurrent() {
+        hereID = nil
+        lastPlace = nil
         guard let i = cities.firstIndex(where: \.isCurrent) else { return }
         if cities.count == 1 {
             cities[0].isCurrent = false   // never leave the list empty: keep it as an ordinary city
@@ -257,7 +293,7 @@ final class WeatherStore: ObservableObject {
         #if os(macOS)
         guard !SelfTest.isActive else { return }   // the self-test's ad-hoc build isn't in the App Group
         #endif
-        let snapshot = SharedCities.Snapshot(cities: cities, activeID: activeID)
+        let snapshot = SharedCities.Snapshot(cities: cities, activeID: activeID, hereID: hereID)
         guard snapshot != SharedCities.load() else { return }
         SharedCities.save(snapshot)
         WidgetCenter.shared.reloadAllTimelines()

@@ -30,6 +30,17 @@ struct City: Codable, Hashable, Identifiable {
     /// Where you are has one ID wherever you go, so the page, its forecast and widgets following it stay put.
     var id: String { isCurrent ? City.currentID : String(format: "%.2f,%.2f", latitude, longitude) }
     static let currentID = "here"
+
+    /// Whether two cities are the same place: the same name within 25 km, or anything within 2 km. Where
+    /// you are and a saved city that's the same place share one card.
+    static func samePlace(_ a: City, _ b: City) -> Bool {
+        let k = cos(a.latitude * .pi / 180)
+        var dx = abs(a.longitude - b.longitude)
+        if dx > 180 { dx = 360 - dx }
+        let km = ((a.latitude - b.latitude) * (a.latitude - b.latitude) + (dx * k) * (dx * k)).squareRoot() * 111
+        let fold = { (s: String) in s.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil) }
+        return km <= 2 || (km <= 25 && fold(a.name) == fold(b.name))
+    }
 }
 
 enum TempUnit: String, Codable, CaseIterable, Identifiable {

@@ -78,7 +78,7 @@ struct CityPage: View {
     private func header(_ forecast: Forecast?) -> some View {
         let unit = store.unit, other = unit.other
         return VStack(spacing: ui.pt(2)) {
-            if city.isCurrent {
+            if store.isHere(city) {
                 Label("My Location", systemImage: "location.fill")
                     .font(ui.font(13, .semibold))
                     .textCase(.uppercase)

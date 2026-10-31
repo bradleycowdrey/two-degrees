@@ -176,8 +176,8 @@ struct CityCard: View {
         HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: ui.pt(2)) {
                 // As in Apple's Weather: where you are reads "My Location", with the place beneath.
-                Text(city.isCurrent ? "My Location" : city.name).font(ui.font(22, .semibold)).lineLimit(1).minimumScaleFactor(0.7)
-                Text(city.isCurrent ? city.name : forecast.map { Forecast.format($0.now.time, "jmm") } ?? city.region)
+                Text(store.isHere(city) ? "My Location" : city.name).font(ui.font(22, .semibold)).lineLimit(1).minimumScaleFactor(0.7)
+                Text(store.isHere(city) ? city.name : forecast.map { Forecast.format($0.now.time, "jmm") } ?? city.region)
                     .font(ui.font(14, .medium)).opacity(0.85).lineLimit(1)
                 Spacer(minLength: ui.pt(8))
                 Text(forecast.map { Condition.name($0.now.code) } ?? (store.failed.contains(city.id) ? "Offline" : "Loading…"))

@@ -79,6 +79,8 @@ enum SharedCities {
     struct Snapshot: Codable, Equatable {
         var cities: [City]
         var activeID: String
+        /// The saved city that's where you are, when it stands in for a separate My Location.
+        var hereID: String? = nil
     }
 
     static func save(_ snapshot: Snapshot, to defaults: UserDefaults? = SharedCities.defaults) {
@@ -96,6 +98,10 @@ enum SharedCities {
     static func resolve(_ choice: String?, in snapshot: Snapshot) -> City? {
         let active = snapshot.cities.first { $0.id == snapshot.activeID } ?? snapshot.cities.first
         guard let choice, choice != currentID else { return active }
+        // My Location: the separate card, or the saved city that's where you are.
+        if choice == City.currentID {
+            return snapshot.cities.first { $0.isCurrent } ?? snapshot.cities.first { $0.id == snapshot.hereID } ?? active
+        }
         return snapshot.cities.first { $0.id == choice } ?? active
     }
 }

@@ -450,6 +450,47 @@ final class StoreTests: XCTestCase {
         XCTAssertFalse(store.cities.contains(where: \.isCurrent))
     }
 
+    func testWhereYouAreSharesACardWithASavedCityThatIsThatPlace() async throws {
+        let store = WeatherStore(defaults: defaults, autoRefresh: false)
+        store.answerLocationPrompt(true)
+        var place = City(name: "London", region: "England, United Kingdom", latitude: 51.51, longitude: -0.13)
+        store.locate = { .found(place) }
+        await store.updateLocation()
+        XCTAssertEqual(store.cities.count, 3, "no second London card")
+        XCTAssertFalse(store.cities.contains(where: \.isCurrent))
+        let london = store.cities.first { $0.name == "London" }!
+        XCTAssertTrue(store.isHere(london), "London is labelled My Location")
+        XCTAssertEqual(store.activeID, london.id, "the first time, it's shown")
+
+        // Moving away brings back a separate My Location card.
+        place = City(name: "Paris", region: "France", latitude: 48.86, longitude: 2.35)
+        await store.updateLocation()
+        XCTAssertEqual(store.cities.first?.isCurrent, true)
+        XCTAssertFalse(store.isHere(london))
+        XCTAssertEqual(store.cities.count, 4)
+
+        // Adding the place you're in folds the two together.
+        store.add(City(name: "Paris", region: "Île-de-France, France", latitude: 48.8534, longitude: 2.3488))
+        XCTAssertFalse(store.cities.contains(where: \.isCurrent))
+        XCTAssertEqual(store.cities.count, 4)
+        let paris = store.cities.first { $0.name == "Paris" }!
+        XCTAssertTrue(store.isHere(paris))
+        XCTAssertTrue(WeatherStore(defaults: defaults, autoRefresh: false).isHere(paris), "remembered")
+
+        // Removing it brings My Location back as its own card.
+        store.remove(paris)
+        XCTAssertEqual(store.cities.first?.isCurrent, true)
+        XCTAssertEqual(store.cities.first?.name, "Paris")
+    }
+
+    func testSamePlace() {
+        let denver = City(name: "Denver", region: "", latitude: 39.74, longitude: -104.98)
+        XCTAssertTrue(City.samePlace(denver, City(name: "Denver", region: "CO", latitude: 39.68, longitude: -104.90)), "same name, nearby")
+        XCTAssertTrue(City.samePlace(denver, City(name: "Downtown", region: "", latitude: 39.745, longitude: -104.985)), "within 2 km")
+        XCTAssertFalse(City.samePlace(denver, City(name: "Aurora", region: "", latitude: 39.73, longitude: -104.83)), "a neighbouring city stays separate")
+        XCTAssertFalse(City.samePlace(denver, City(name: "Denver", region: "", latitude: 40.5, longitude: -104.98)), "same name, far away")
+    }
+
     func testNotNowTurnsItOffAndIsNeverAskedAgain() async throws {
         let store = WeatherStore(defaults: defaults, autoRefresh: false)
         store.locate = { .found(City(name: "Denver", region: "", latitude: 39.74, longitude: -104.98)) }

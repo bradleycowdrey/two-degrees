@@ -87,7 +87,7 @@ struct CityChips: View {
                 let on = city.id == store.activeID
                 Button { store.select(city) } label: {
                     HStack(spacing: ui.pt(6)) {
-                        if city.isCurrent {
+                        if store.isHere(city) {
                             Image(systemName: "location.fill")
                                 .font(ui.font(10, .semibold))
                                 .accessibilityLabel("My Location:")
