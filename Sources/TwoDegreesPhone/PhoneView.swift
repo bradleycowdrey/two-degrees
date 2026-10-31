@@ -7,6 +7,7 @@ struct PhoneView: View {
     @Environment(\.dynamicTypeSize) private var dynamicType
     @Environment(\.horizontalSizeClass) private var sizeClass
     @AppStorage(Terms.key) private var agreedVersion = ""
+    @AppStorage(TermsSchedule.dateKey) private var agreedAt: Double = 0
     /// The city list. `--show-list` (CI screenshots) opens it at launch.
     @State private var showingList = PhoneSelfTest.showList
 
@@ -33,18 +34,28 @@ struct PhoneView: View {
         .fullScreenCover(isPresented: $showingList) {
             CityList().environment(\.metrics, ui)
         }
-        .fullScreenCover(isPresented: .constant(agreedVersion != Brand.termsVersion && !PhoneSelfTest.isActive)) {
-            TermsView { agreedVersion = Brand.termsVersion }
+        // First launch: the terms, then "Show the weather where you are?". Changed terms are asked
+        // again, at most once a month.
+        .fullScreenCover(isPresented: .constant(PhoneSelfTest.showLocationPrompt || (!PhoneSelfTest.isActive && (needsTerms || store.needsLocationPrompt)))) {
+            if needsTerms && !PhoneSelfTest.showLocationPrompt {
+                TermsView { agreedVersion = Brand.termsVersion; agreedAt = Date().timeIntervalSince1970 }
+            } else {
+                LocationPromptView { store.answerLocationPrompt($0) }
+            }
         }
         .task {
             if PhoneSelfTest.isActive { await PhoneSelfTest.run(store: store) }
         }
         // Use My Location, once the terms are agreed (the self-test checks it itself).
-        .task(id: agreedVersion) {
-            guard agreedVersion == Brand.termsVersion, !PhoneSelfTest.isActive else { return }
+        .task(id: needsTerms) {
+            guard !needsTerms, !PhoneSelfTest.isActive else { return }
             store.locate = { await LocationService.shared.currentCity() }
             await store.updateLocation()
         }
+    }
+
+    private var needsTerms: Bool {
+        TermsSchedule.shouldAsk(acceptedVersion: agreedVersion, acceptedAt: agreedAt > 0 ? Date(timeIntervalSince1970: agreedAt) : nil)
     }
 
     /// Share · page dots · city list, on a thin frosted bar.

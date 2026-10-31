@@ -15,6 +15,8 @@ enum PhoneSelfTest {
     nonisolated static let showList = ProcessInfo.processInfo.arguments.contains("--show-list")
     /// Checks Use My Location (CI grants the permission and sets the Simulator's location first).
     nonisolated static let locate = ProcessInfo.processInfo.arguments.contains("--locate")
+    /// Shows the "Show the weather where you are?" question, for a screenshot.
+    nonisolated static let showLocationPrompt = ProcessInfo.processInfo.arguments.contains("--show-location-prompt")
 
     private static var lines: [String] = []
     private static var failures = 0
@@ -53,6 +55,8 @@ enum PhoneSelfTest {
         // when the setting is turned off.
         if locate {
             store.locate = { await LocationService.shared.currentCity() }
+            check(store.needsLocationPrompt, "a first launch asks whether to use your location")
+            store.answerLocationPrompt(true)
             await store.updateLocation()
             let here = store.cities.first
             check(store.locationStatus == .found && here?.isCurrent == true && store.activeID == here?.id,

@@ -1,14 +1,16 @@
 import AppKit
 
-/// Terms of Use and Privacy: asked once, and again whenever `Brand.termsVersion` changes.
+/// Terms of Use and Privacy: asked once, and again when `Brand.termsVersion` changes, at most once a
+/// month (TermsSchedule).
 /// Never asked during the CI self-test, so the test can drive the app unattended; the self-test
 /// shows the same dialog itself and clicks I Agree.
 enum Terms {
-    static let key = "terms.accepted"
+    static let key = TermsSchedule.key
 
     static var accepted: Bool { accepted(in: .standard) }
 
-    static func accepted(in defaults: UserDefaults) -> Bool { defaults.string(forKey: key) == Brand.termsVersion }
+    /// True when there's no need to ask (agreed to these terms, or to earlier ones within the month).
+    static func accepted(in defaults: UserDefaults) -> Bool { !TermsSchedule.shouldAsk(in: defaults) }
 
     @MainActor
     static func askIfNeeded() {
@@ -23,7 +25,7 @@ enum Terms {
         NSApp.activate(ignoringOtherApps: true)
         let alert = NSAlert()
         alert.messageText = "Terms of Use and Privacy"
-        alert.informativeText = "Two Degrees is free and provided as is, without warranty. It is not a safety tool: for severe weather, follow official warnings. Your cities, and where you are if Use My Location is on, stay on your Mac; only their locations go to Open-Meteo to get the weather.\n\nBy choosing I Agree and using \(Brand.appName), you agree to the Terms of Use and Privacy at bradcowdrey.com/legal."
+        alert.informativeText = "Two Degrees is free and provided as is, without warranty. It is not a safety tool: for severe weather, follow official warnings. Your cities stay on your Mac; only their locations go to Open-Meteo to get the weather. If you allow it, your location is used only to show the weather where you are.\n\nBy choosing I Agree and using \(Brand.appName), you agree to the Terms of Use and Privacy at bradcowdrey.com/legal."
         alert.addButton(withTitle: "I Agree")
         alert.addButton(withTitle: "Read the Terms")
         alert.addButton(withTitle: "Quit")
@@ -34,7 +36,7 @@ enum Terms {
             }
             switch alert.runModal() {
             case .alertFirstButtonReturn:
-                defaults.set(Brand.termsVersion, forKey: key)
+                TermsSchedule.agree(in: defaults)
                 return true
             case .alertSecondButtonReturn:
                 NSWorkspace.shared.open(Brand.legal)

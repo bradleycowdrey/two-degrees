@@ -406,6 +406,10 @@ final class StoreTests: XCTestCase {
         var place = City(name: "Denver", region: "Colorado, United States", latitude: 39.74, longitude: -104.98)
         store.locate = { .found(place) }
         await store.updateLocation()
+        XCTAssertFalse(store.cities.contains(where: \.isCurrent), "nothing until the question is answered")
+        XCTAssertTrue(store.needsLocationPrompt)
+        store.answerLocationPrompt(true)
+        await store.updateLocation()
         XCTAssertEqual(store.cities.first?.name, "Denver")
         XCTAssertEqual(store.cities.first?.isCurrent, true)
         XCTAssertEqual(store.activeID, City.currentID, "the first time, it's shown")
@@ -433,6 +437,7 @@ final class StoreTests: XCTestCase {
 
     func testLocationDeniedOrRemovedByHand() async throws {
         let store = WeatherStore(defaults: defaults, autoRefresh: false)
+        store.answerLocationPrompt(true)
         store.locate = { .denied }
         await store.updateLocation()
         XCTAssertEqual(store.locationStatus, .denied)
@@ -443,6 +448,18 @@ final class StoreTests: XCTestCase {
         try await Task.sleep(for: .milliseconds(100))
         XCTAssertFalse(store.useLocation, "removing where you are turns Use My Location off")
         XCTAssertFalse(store.cities.contains(where: \.isCurrent))
+    }
+
+    func testNotNowTurnsItOffAndIsNeverAskedAgain() async throws {
+        let store = WeatherStore(defaults: defaults, autoRefresh: false)
+        store.locate = { .found(City(name: "Denver", region: "", latitude: 39.74, longitude: -104.98)) }
+        store.answerLocationPrompt(false)
+        try await Task.sleep(for: .milliseconds(100))
+        XCTAssertFalse(store.useLocation)
+        XCTAssertFalse(store.cities.contains(where: \.isCurrent))
+        let again = WeatherStore(defaults: defaults, autoRefresh: false)
+        XCTAssertFalse(again.needsLocationPrompt, "asked once")
+        XCTAssertFalse(again.useLocation)
     }
 
     func testMenuBarText() {
@@ -569,6 +586,22 @@ final class WidgetDataTests: XCTestCase {
         StubProtocol.routes = [(searchURL, 200, Data(body.utf8), nil)]
         let found = await WidgetData.search("Denver", suggestions: suggestions, session: StubProtocol.session())
         XCTAssertEqual(found.first?.region, "Colorado, United States")
+    }
+}
+
+/// Changed terms are asked again, but no more than once a month.
+final class TermsScheduleTests: XCTestCase {
+    func testAsksFirstTimeThenOnChangeAtMostMonthly() {
+        let now = Date()
+        let day: TimeInterval = 24 * 3600
+        XCTAssertTrue(TermsSchedule.shouldAsk(acceptedVersion: nil, acceptedAt: nil, current: "b", now: now), "first launch")
+        XCTAssertFalse(TermsSchedule.shouldAsk(acceptedVersion: "b", acceptedAt: now.addingTimeInterval(-90 * day), current: "b", now: now), "same terms")
+        XCTAssertFalse(TermsSchedule.shouldAsk(acceptedVersion: "a", acceptedAt: now.addingTimeInterval(-10 * day), current: "b", now: now), "changed, but asked 10 days ago")
+        XCTAssertTrue(TermsSchedule.shouldAsk(acceptedVersion: "a", acceptedAt: now.addingTimeInterval(-31 * day), current: "b", now: now), "changed, a month on")
+        XCTAssertTrue(TermsSchedule.shouldAsk(acceptedVersion: "a", acceptedAt: nil, current: "b", now: now), "agreed before dates were kept")
+        let defaults = UserDefaults(suiteName: "TwoDegrees.tests.schedule.\(UUID().uuidString)")!
+        TermsSchedule.agree(in: defaults, now: now)
+        XCTAssertFalse(TermsSchedule.shouldAsk(in: defaults, now: now))
     }
 }
 

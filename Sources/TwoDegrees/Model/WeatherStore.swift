@@ -39,10 +39,14 @@ final class WeatherStore: ObservableObject {
     @Published var useLocation: Bool {
         didSet {
             defaults.set(useLocation, forKey: "useLocation")
+            if !locationAsked { locationAsked = true }   // choosing it in settings answers the question too
             if useLocation != oldValue { Task { await updateLocation() } }
         }
     }
     @Published private(set) var locationStatus: LocationStatus = .idle
+    /// Whether the person has been asked "Show the weather where you are?" (after the terms, once).
+    @Published private(set) var locationAsked: Bool { didSet { defaults.set(locationAsked, forKey: "locationAsked") } }
+    var needsLocationPrompt: Bool { !locationAsked }
     /// Finds where you are. Set by the app once the terms are agreed; never in unit tests or the self-test.
     var locate: (@MainActor () async -> LocationResult)?
 
@@ -67,6 +71,7 @@ final class WeatherStore: ObservableObject {
         appFont = defaults.string(forKey: "appFont").flatMap(AppFont.init(rawValue:)) ?? .inter
         floatOnTop = defaults.bool(forKey: "floatOnTop")
         useLocation = defaults.object(forKey: "useLocation") as? Bool ?? true
+        locationAsked = defaults.bool(forKey: "locationAsked")
         if let cached: [String: Forecast] = Self.load("forecasts", from: defaults) { forecasts = cached }
         guard autoRefresh else { return }
         shareWithWidgets()
@@ -146,6 +151,13 @@ final class WeatherStore: ObservableObject {
 
     // MARK: Use My Location
 
+    /// The answer to "Show the weather where you are?": Use My Location (recommended) turns it on,
+    /// Not Now turns it off. Either way it's never asked again; the setting stays in settings.
+    func answerLocationPrompt(_ yes: Bool) {
+        locationAsked = true
+        if useLocation == yes { Task { await updateLocation() } } else { useLocation = yes }
+    }
+
     /// Finds where you are and keeps its page up to date (first in the list), or removes it when
     /// Use My Location is off. The first time, it also shows that page.
     func updateLocation() async {
@@ -154,7 +166,7 @@ final class WeatherStore: ObservableObject {
             locationStatus = .off
             return
         }
-        guard let locate, locationStatus != .locating else { return }
+        guard locationAsked, let locate, locationStatus != .locating else { return }   // not before the question
         locationStatus = .locating
         let result = await locate()
         guard useLocation else { locationStatus = .off; return }

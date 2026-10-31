@@ -259,7 +259,9 @@ enum SelfTest {
         check(termsText.contains("bradcowdrey.com/legal") && termsText.contains("Open-Meteo"), "terms: the dialog names the terms page and where locations go")
         check(agreed && Terms.accepted(in: termsDefaults), "terms: I Agree is remembered, so it isn't asked again")
         termsDefaults.set("an-older-version", forKey: Terms.key)
-        check(!Terms.accepted(in: termsDefaults), "terms: after the terms change, it asks again")
+        check(Terms.accepted(in: termsDefaults), "terms: a change within a month of agreeing waits (at most one ask a month)")
+        termsDefaults.set(Date().addingTimeInterval(-31 * 24 * 3600).timeIntervalSince1970, forKey: TermsSchedule.dateKey)
+        check(!Terms.accepted(in: termsDefaults), "terms: after the terms change, and a month on, it asks again")
 
         // 8b. The menu bar panel: click the menu bar item, and the panel opens centred under it.
         if let item = NSApp.windows.first(where: { $0.className.contains("StatusBarWindow") && $0.isVisible }),

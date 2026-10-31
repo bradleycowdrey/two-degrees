@@ -48,6 +48,10 @@ jobs:
           xcrun simctl launch "$DEVICE" $ID; sleep 6
           xcrun simctl io "$DEVICE" screenshot "$OUT/phone-1-terms.png"
           xcrun simctl terminate "$DEVICE" $ID || true
+          # 1b. Right after the terms: "Show the weather where you are?"
+          xcrun simctl launch "$DEVICE" $ID --selftest-skip --show-location-prompt; sleep 5
+          xcrun simctl io "$DEVICE" screenshot "$OUT/phone-1b-location.png"
+          xcrun simctl terminate "$DEVICE" $ID || true
           # 2. The self-test, then the main screen.
           DOCS="$(xcrun simctl get_app_container "$DEVICE" $ID data)/Documents"; mkdir -p "$DOCS"; rm -f "$DOCS/report.txt"
           # Use My Location: allow it, and put the Simulator in Denver.

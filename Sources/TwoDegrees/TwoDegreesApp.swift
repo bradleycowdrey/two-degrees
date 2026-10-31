@@ -122,8 +122,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if !SelfTest.isActive {
             let store = WeatherStore.shared
             store.locate = { await LocationService.shared.currentCity() }
+            if store.needsLocationPrompt { store.answerLocationPrompt(Self.askAboutLocation()) }
             Task { await store.updateLocation() }
         }
+    }
+
+    /// Asked once, right after the terms: Use My Location (recommended, the default button) or Not Now.
+    @MainActor
+    static func askAboutLocation() -> Bool {
+        NSApp.activate(ignoringOtherApps: true)
+        let alert = NSAlert()
+        alert.messageText = "Show the weather where you are?"
+        alert.informativeText = "Two Degrees can put the place you’re in first in your cities and keep it up to date. Recommended.\n\nYour location is rounded to about a kilometre and used only to get its weather. You can change this anytime in Settings."
+        alert.icon = NSImage(systemSymbolName: "location.circle.fill", accessibilityDescription: nil)
+        alert.addButton(withTitle: "Use My Location")
+        alert.addButton(withTitle: "Not Now")
+        return alert.runModal() == .alertFirstButtonReturn
     }
 
     static func endWidgetProcesses() {
