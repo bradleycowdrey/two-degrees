@@ -67,7 +67,7 @@ fun PhoneScreen(
     var agreed by remember { mutableStateOf(skipTerms || store.termsAccepted) }
 
     LaunchedEffect(agreed) { if (agreed) onReady() }
-    if (!agreed) {
+    if (!agreed && !show.locationPrompt) {
         TermsScreen(onAgree = { store.termsAccepted = true; agreed = true })
         return
     }
