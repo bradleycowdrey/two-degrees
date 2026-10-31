@@ -3,6 +3,18 @@
 Two Degrees updates itself: when a new version is out, the app shows a banner with an **Update** button
 (or use **Check for Updates** in the ⋯ menu). Every version is on [Releases](https://github.com/bradleycowdrey/two-degrees/releases).
 
+## [0.4.6] - 2026-10-31
+
+- **Use My Location**: after you agree to the terms, Two Degrees asks once whether to show the weather
+  where you are (recommended). Say yes and the place you're in comes first in your cities, kept up to
+  date as you move, with an arrow beside it. Say no and it never asks again. Change it anytime in
+  Settings (Mac) or the ⋯ menu. Your location is rounded to about a kilometre and used only to get its
+  weather.
+- **Pick cities with the internet out**: search falls back on a built-in list of 34,000 cities.
+- **Updated terms**: they now cover Use My Location, so you'll be asked to agree once more. When the
+  terms change, Two Degrees asks again no more than once a month.
+- **Two Degrees for Android**: the same app and widgets, as an APK from bradcowdrey.com/two-degrees.
+
 ## [0.4.5] - 2026-10-26
 
 - **Widgets can follow your Two Degrees cities**, like Meridian's: edit a widget and turn on **Use Two
