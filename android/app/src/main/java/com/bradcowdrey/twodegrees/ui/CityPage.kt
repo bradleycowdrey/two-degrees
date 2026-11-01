@@ -75,6 +75,13 @@ import com.bradcowdrey.twodegrees.City
 import com.bradcowdrey.twodegrees.Condition
 import com.bradcowdrey.twodegrees.Forecast
 import com.bradcowdrey.twodegrees.Meteo
+import com.bradcowdrey.twodegrees.Air
+import com.bradcowdrey.twodegrees.Detail
+import com.bradcowdrey.twodegrees.Moon
+import com.bradcowdrey.twodegrees.NextHours
+import com.bradcowdrey.twodegrees.Normals
+import com.bradcowdrey.twodegrees.Pollen
+import com.bradcowdrey.twodegrees.Units
 import com.bradcowdrey.twodegrees.Speech
 import com.bradcowdrey.twodegrees.Summary
 import com.bradcowdrey.twodegrees.TempUnit
@@ -88,16 +95,20 @@ import kotlinx.coroutines.delay
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CityPage(city: City, state: WeatherStore.State, store: WeatherStore, scrollTo: String?, bottomInset: Dp) {
+fun CityPage(city: City, state: WeatherStore.State, store: WeatherStore, scrollTo: String?, bottomInset: Dp, onOpen: (Overlay) -> Unit = {}) {
     val ui = LocalMetrics.current
     val forecast = state.forecasts[city.id]
+    val alerts = state.alerts[city.id].orEmpty()
+    val nextHours = forecast != null && NextHours.shows(forecast)
     val list = rememberLazyListState()
     val collapsed by remember { derivedStateOf { list.firstVisibleItemIndex > 0 || list.firstVisibleItemScrollOffset > 420 } }
 
     LaunchedEffect(scrollTo, forecast != null) {
         if (scrollTo != null && forecast != null && city.id == state.activeID) {
             delay(2500)
-            list.animateScrollToItem(if (scrollTo == "days") 2 else 3)
+            // Header, alerts, next 2 hours, 24 hours, days, map, tiles, more tiles.
+            val days = 2 + (if (alerts.isNotEmpty()) 1 else 0) + (if (nextHours) 1 else 0)
+            list.animateScrollToItem(when (scrollTo) { "days" -> days; "more" -> days + 3; else -> days + 2 })
         }
     }
 
@@ -114,9 +125,13 @@ fun CityPage(city: City, state: WeatherStore.State, store: WeatherStore, scrollT
             ) {
                 item { Header(city, state.isHere(city), forecast, state.unit, store, Modifier.statusBarsPadding().padding(top = ui.dp(36f), bottom = ui.dp(26f))) }
                 if (forecast != null) {
+                    if (alerts.isNotEmpty()) item { AlertCards(city, alerts, forecast, onOpen) }
+                    if (nextHours) item { NextHoursCard(forecast, state.units) }
                     item { HourlyCard(forecast, state.unit) }
-                    item { DailyCard(forecast, state.unit) }
-                    item { DetailTiles(forecast, state.unit) }
+                    item { DailyCard(forecast, state.unit) { i -> onOpen(Overlay.Day(city.id, i)) } }
+                    item { MapCard(city, onOpen) }
+                    item { DetailTiles(forecast, state.units) }
+                    item { MoreTiles(city, forecast, state) }
                     item { Footer(city, forecast, offline = city.id in state.failed) }
                 } else {
                     item {
@@ -257,7 +272,7 @@ private fun HourlyCard(forecast: Forecast, unit: TempUnit) {
 }
 
 @Composable
-private fun DailyCard(forecast: Forecast, unit: TempUnit) {
+private fun DailyCard(forecast: Forecast, unit: TempUnit, onDay: (Int) -> Unit) {
     val days = forecast.days.take(10)
     val now = forecast.now.temperature
     val low = minOf(now, days.minOfOrNull { it.low } ?: now)
@@ -266,18 +281,18 @@ private fun DailyCard(forecast: Forecast, unit: TempUnit) {
         Column {
             days.forEachIndexed { i, day ->
                 HorizontalDivider(color = Color.White.copy(alpha = 0.2f))
-                DailyRow(if (i == 0) day.including(now) else day, i == 0, low, high, if (i == 0) now else null, unit)
+                DailyRow(if (i == 0) day.including(now) else day, i == 0, low, high, if (i == 0) now else null, unit, Modifier.clickable { onDay(i) })
             }
         }
     }
 }
 
 @Composable
-private fun DailyRow(day: Forecast.Day, isToday: Boolean, scaleLow: Double, scaleHigh: Double, now: Double?, unit: TempUnit) {
+private fun DailyRow(day: Forecast.Day, isToday: Boolean, scaleLow: Double, scaleHigh: Double, now: Double?, unit: TempUnit, modifier: Modifier) {
     val ui = LocalMetrics.current
     val name = if (isToday) "Today" else Forecast.weekday(day.date)
     Row(
-        Modifier.fillMaxWidth().heightIn(min = ui.dp(48f)).semantics(mergeDescendants = true) {
+        modifier.fillMaxWidth().heightIn(min = ui.dp(48f)).semantics(mergeDescendants = true) {
             contentDescription = "$name: ${Condition.name(day.code)}. Low ${Speech.temperature(day.low)}. High ${Speech.temperature(day.high)}." +
                 if (day.rainChance >= 20) " ${day.rainChance} percent chance of rain." else ""
         },
@@ -328,24 +343,17 @@ private fun DayBar(day: Forecast.Day, scaleLow: Double, scaleHigh: Double, now: 
 }
 
 @Composable
-private fun DetailTiles(forecast: Forecast, unit: TempUnit) {
-    val ui = LocalMetrics.current
+private fun DetailTiles(forecast: Forecast, units: Units) {
     val now = forecast.now
+    val unit = units.temperature
     val other = unit.other
     val today = forecast.days.firstOrNull()?.including(now.temperature)
     val dew = Meteo.dewPoint(now.temperature, now.humidity)
-    val kmh = now.wind.roundHalfUp()
+    val (wind, windOther) = units.wind(now.wind)
     val tiles = listOf<@Composable (Modifier) -> Unit>(
         { DetailTile("Feels like", unit.spaced(now.feelsLike), other.spaced(now.feelsLike), feelsNote(forecast), it) },
         { DetailTile("Humidity", "${now.humidity.roundHalfUp()}%", null, "The dew point is ${unit.spaced(dew)} · ${other.spaced(dew)} right now.", it) },
-        {
-            DetailTile(
-                "Wind",
-                if (unit == TempUnit.FAHRENHEIT) "${Meteo.mph(now.wind)} mph" else "$kmh km/h",
-                if (unit == TempUnit.FAHRENHEIT) "$kmh km/h" else "${Meteo.mph(now.wind)} mph",
-                windNote(forecast), it,
-            )
-        },
+        { DetailTile("Wind", wind, windOther, listOfNotNull(windNote(forecast), Detail.gustNote(now, units)?.let { "$it." }).joinToString(" "), it) },
         { DetailTile("Rain", "${today?.rainChance ?: 0}%", "chance today", Summary.rainNote(forecast), it) },
         { mod ->
             val sunset = today?.sunset
@@ -363,12 +371,119 @@ private fun DetailTiles(forecast: Forecast, unit: TempUnit) {
             else DetailTile("UV index", "–", null, "Pull down to refresh.", mod)
         },
     )
+    TileGrid(tiles)
+}
+
+/** Two across; an odd one out keeps its half width. */
+@Composable
+private fun TileGrid(tiles: List<@Composable (Modifier) -> Unit>) {
+    val ui = LocalMetrics.current
     Column(verticalArrangement = Arrangement.spacedBy(ui.dp(10f))) {
         tiles.chunked(2).forEach { row ->
             Row(horizontalArrangement = Arrangement.spacedBy(ui.dp(10f))) {
                 row.forEach { tile -> tile(Modifier.weight(1f)) }
+                if (row.size == 1) Spacer(Modifier.weight(1f))
             }
         }
+    }
+}
+
+/**
+ * The tiles after the first six: pressure, visibility, precipitation, cloud cover and the moon, then
+ * air quality, pollen and how today compares with normal. Each one only when its data is there.
+ */
+@Composable
+private fun MoreTiles(city: City, forecast: Forecast, state: WeatherStore.State) {
+    val units = state.units
+    val unit = units.temperature
+    val now = forecast.now
+    val today = forecast.days.firstOrNull()
+    val tiles = mutableListOf<@Composable (Modifier) -> Unit>()
+    now.pressure?.let { hpa ->
+        val (main, other) = units.pressure(hpa)
+        tiles.add { DetailTile("Pressure", main, other, Detail.pressureTrend(forecast), it) }
+    }
+    now.visibility?.let { m -> tiles.add { DetailTile("Visibility", units.visibility(m), null, Detail.visibilityWord(m), it) } }
+    today?.precipitationSum?.let { mm ->
+        val (main, other) = units.rain(mm)
+        val next = Detail.next24Hours(forecast)
+        val note = when {
+            next == null -> null
+            next >= 0.05 -> "Expected in the next 24 hours: ${units.rain.text(next)}"
+            else -> "None expected"
+        }
+        tiles.add { DetailTile("Precipitation", main, other?.let { "$it today" } ?: "today", note, it) }
+    }
+    now.cloudCover?.let { pct -> tiles.add { DetailTile("Cloud cover", "${pct.roundHalfUp()}%", Detail.cloudWord(pct), null, it) } }
+    val moon = Moon.phase(java.time.Instant.ofEpochMilli(System.currentTimeMillis()))
+    tiles.add { DetailTile("Moon", moon.text, null, null, it) { MoonDisc(moon.fraction) } }
+
+    state.air[city.id]?.let { air ->
+        val scale = Air.scale(city)
+        Air.value(air, scale)?.let { aqi ->
+            tiles.add {
+                DetailTile("Air quality", "${aqi.roundHalfUp()}", Air.category(aqi, scale), Air.note(air, scale), it) {
+                    AirScaleBar(aqi, scale)
+                    Text(scale.title, style = LocalMetrics.current.text(11f), modifier = Modifier.alpha(0.6f))
+                }
+            }
+        }
+        Pollen.summary(air)?.let { p -> tiles.add { DetailTile("Pollen", p.level, p.type, p.note, it) } }
+    }
+    val normal = today?.let { state.normals(city)?.of(it.date) }
+    if (today != null && normal?.normalHigh != null) {
+        tiles.add { DetailTile("Averages", Normals.versus(today.high, normal.normalHigh, unit), null, Normals.normalLine(normal, unit), it) }
+    }
+    TileGrid(tiles)
+}
+
+/** A thin bar in the scale's colours, with a dot at the value. */
+@Composable
+private fun AirScaleBar(value: Double, scale: Air.Scale) {
+    val ui = LocalMetrics.current
+    androidx.compose.foundation.Canvas(Modifier.fillMaxWidth().height(ui.dp(10f))) {
+        val h = 4.dp.toPx()
+        val y = size.height / 2
+        val w = size.width / scale.bands.size
+        scale.bands.forEachIndexed { i, band ->
+            drawRect(Color(band.color), androidx.compose.ui.geometry.Offset(i * w, y - h / 2), androidx.compose.ui.geometry.Size(w, h))
+        }
+        val x = (size.width * Air.position(value, scale).toFloat()).coerceIn(size.height / 2, size.width - size.height / 2)
+        drawCircle(Color.White, size.height / 2, androidx.compose.ui.geometry.Offset(x, y))
+        drawCircle(Color.Black.copy(alpha = 0.4f), size.height / 2, androidx.compose.ui.geometry.Offset(x, y), style = androidx.compose.ui.graphics.drawscope.Stroke(1.dp.toPx()))
+    }
+}
+
+/** The moon's lit part: 0 new, 0.5 full; waxing lit on the right, as seen from the north. */
+@Composable
+private fun MoonDisc(fraction: Double) {
+    val ui = LocalMetrics.current
+    androidx.compose.foundation.Canvas(Modifier.padding(top = ui.dp(4f)).size(ui.dp(30f))) {
+        val r = size.minDimension / 2
+        val c = center
+        drawCircle(Color.White.copy(alpha = 0.15f), r, c)
+        // The terminator is an ellipse whose width follows the phase.
+        val k = kotlin.math.cos(2 * Math.PI * fraction).toFloat()   // 1 new, -1 full
+        val waxing = fraction < 0.5
+        val path = androidx.compose.ui.graphics.Path().apply {
+            val steps = 48
+            for (s in 0..steps) {
+                val a = Math.PI * s / steps - Math.PI / 2   // top to bottom
+                val y = c.y + r * kotlin.math.sin(a).toFloat()
+                val edge = r * kotlin.math.cos(a).toFloat()
+                val x = if (waxing) c.x + edge else c.x - edge
+                if (s == 0) moveTo(x, y) else lineTo(x, y)
+            }
+            for (s in steps downTo 0) {
+                val a = Math.PI * s / steps - Math.PI / 2
+                val y = c.y + r * kotlin.math.sin(a).toFloat()
+                val edge = r * kotlin.math.cos(a).toFloat() * k
+                val x = if (waxing) c.x + edge else c.x - edge
+                lineTo(x, y)
+            }
+            close()
+        }
+        drawPath(path, Color(0xFFF3EEDF))
     }
 }
 
@@ -395,8 +510,10 @@ private fun windNote(forecast: Forecast): String {
 }
 
 @Composable
-private fun DetailTile(title: String, value: String, sub: String?, note: String, modifier: Modifier) {
+private fun DetailTile(title: String, value: String, sub: String?, note: String?, modifier: Modifier, extra: @Composable () -> Unit = {}) {
     val ui = LocalMetrics.current
+    // A reading in words ("Waxing Gibbous · 78%", "4° above normal") is set smaller, on up to two lines.
+    val words = value.length > 7
     Column(
         modifier.heightIn(min = ui.dp(160f)).clip(RoundedCornerShape(ui.dp(16f))).background(Palette.card)
             .border(1.dp, Palette.cardStroke, RoundedCornerShape(ui.dp(16f))).padding(ui.dp(14f))
@@ -404,10 +521,11 @@ private fun DetailTile(title: String, value: String, sub: String?, note: String,
         verticalArrangement = Arrangement.spacedBy(ui.dp(4f)),
     ) {
         Text(title.uppercase(), style = ui.text(12f, FontWeight.SemiBold), modifier = Modifier.alpha(0.6f))
-        Text(value, style = ui.text(30f, FontWeight.Medium), maxLines = 1, modifier = Modifier.padding(top = ui.dp(4f)))
-        if (sub != null) Text(sub, style = ui.text(15f), modifier = Modifier.alpha(0.7f), maxLines = 1)
+        Text(value, style = ui.text(if (words) 21f else 30f, FontWeight.Medium), maxLines = if (words) 2 else 1, modifier = Modifier.padding(top = ui.dp(4f)))
+        if (sub != null) Text(sub, style = ui.text(15f), modifier = Modifier.alpha(0.7f), maxLines = 2)
+        extra()
         Spacer(Modifier.weight(1f, fill = false).height(ui.dp(4f)))
-        Text(note, style = ui.text(13f), modifier = Modifier.alpha(0.85f))
+        if (!note.isNullOrEmpty()) Text(note, style = ui.text(13f), modifier = Modifier.alpha(0.85f))
     }
 }
 

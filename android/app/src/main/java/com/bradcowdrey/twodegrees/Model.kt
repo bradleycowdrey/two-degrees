@@ -68,13 +68,18 @@ enum class TempUnit(val letter: String) {
 /** Rounds .5 away from zero, as Swift's `rounded()` does, so every app shows the same number. */
 fun Double.roundHalfUp(): Int = if (this >= 0) (this + 0.5).toInt() else -((-this + 0.5).toInt())
 
-/** One city's forecast, in Celsius and km/h, with times as the city's own wall-clock. */
+/**
+ * One city's forecast, in Celsius, km/h, mm, hPa and metres, with times as the city's own wall-clock.
+ * Everything added in 0.5 is optional: a missing value hides its tile, never the forecast.
+ */
 data class Forecast(
     val now: Now,
     val hours: List<Hour>,
     val days: List<Day>,
     val timeZone: String,
     val fetchedAt: Long,
+    /** The next two hours' precipitation, in 15-minute steps from the current one. */
+    val steps: List<Step> = emptyList(),
 ) {
     data class Now(
         val time: LocalDateTime,
@@ -86,9 +91,28 @@ data class Forecast(
         val isDay: Boolean,
         /** Degrees the wind comes from (0 = north). */
         val windDirection: Double?,
+        val pressure: Double? = null,
+        val cloudCover: Double? = null,
+        val gusts: Double? = null,
+        val visibility: Double? = null,
+        val precipitation: Double? = null,
     )
 
-    data class Hour(val time: LocalDateTime, val temperature: Double, val code: Int, val rainChance: Int, val isDay: Boolean)
+    data class Hour(
+        val time: LocalDateTime,
+        val temperature: Double,
+        val code: Int,
+        val rainChance: Int,
+        val isDay: Boolean,
+        val precipitation: Double? = null,
+        val wind: Double? = null,
+        val gusts: Double? = null,
+        val pressure: Double? = null,
+        val visibility: Double? = null,
+    )
+
+    /** One 15-minute step: its start and the precipitation in it (mm). */
+    data class Step(val time: LocalDateTime, val precipitation: Double)
 
     data class Day(
         val date: LocalDate,
@@ -99,6 +123,12 @@ data class Forecast(
         val sunrise: LocalDateTime?,
         val sunset: LocalDateTime?,
         val uvIndex: Double?,
+        val precipitationSum: Double? = null,
+        val rainSum: Double? = null,
+        val snowfallSum: Double? = null,
+        val windMax: Double? = null,
+        val gustMax: Double? = null,
+        val windDirection: Double? = null,
     ) {
         /** This day with its range widened to include a reading, so today never contradicts "now". */
         fun including(celsius: Double) = copy(low = minOf(low, celsius), high = maxOf(high, celsius))
@@ -111,6 +141,16 @@ data class Forecast(
             return hours.dropWhile { it.time < hourStart }.take(24)
         }
 
+    /** One day's hours, midnight to midnight. */
+    fun hoursOf(date: LocalDate): List<Hour> = hours.filter { it.time.toLocalDate() == date }
+
+    /** The hourly entry for the current hour, if the forecast has it. */
+    val nowIndex: Int
+        get() {
+            val hourStart = now.time.withMinute(0).withSecond(0).withNano(0)
+            return hours.indexOfFirst { it.time == hourStart }
+        }
+
     companion object {
         fun hour(time: LocalDateTime): String =
             time.format(DateTimeFormatter.ofPattern(if (is24Hour()) "HH" else "h a", Locale.getDefault()))
@@ -119,6 +159,9 @@ data class Forecast(
             time.format(DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).withLocale(Locale.getDefault()))
 
         fun weekday(date: LocalDate): String = date.format(DateTimeFormatter.ofPattern("EEE", Locale.getDefault()))
+
+        /** "Tuesday, Nov 4". */
+        fun longDate(date: LocalDate): String = date.format(DateTimeFormatter.ofPattern("EEEE, MMM d", Locale.getDefault()))
 
         /** Set by the app from the phone's 12/24-hour setting. */
         @Volatile var uses24Hour: Boolean? = null

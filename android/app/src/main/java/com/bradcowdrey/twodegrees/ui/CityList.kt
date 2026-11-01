@@ -1,6 +1,8 @@
 package com.bradcowdrey.twodegrees.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -25,6 +27,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
@@ -64,7 +68,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.bradcowdrey.twodegrees.Alerts
 import com.bradcowdrey.twodegrees.AppFont
+import com.bradcowdrey.twodegrees.Notifier
+import com.bradcowdrey.twodegrees.PressureUnit
+import com.bradcowdrey.twodegrees.RainUnit
+import com.bradcowdrey.twodegrees.WindUnit
 import com.bradcowdrey.twodegrees.Brand
 import com.bradcowdrey.twodegrees.City
 import com.bradcowdrey.twodegrees.Condition
@@ -82,7 +91,7 @@ import kotlinx.coroutines.withContext
  * offline too), tap a card to open it, Edit to remove and reorder. The ⋮ menu holds the settings.
  */
 @Composable
-fun CityList(store: WeatherStore, onDismiss: () -> Unit, onLocationSetting: () -> Unit = {}) {
+fun CityList(store: WeatherStore, onDismiss: () -> Unit, onLocationSetting: () -> Unit = {}, openMenu: String? = null) {
     val ui = LocalMetrics.current
     val state by store.state.collectAsStateWithLifecycle()
     var query by remember { mutableStateOf("") }
@@ -108,7 +117,7 @@ fun CityList(store: WeatherStore, onDismiss: () -> Unit, onLocationSetting: () -
                 IconButton(onClick = onDismiss) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = Color.White) }
                 Spacer(Modifier.weight(1f))
                 if (editing) TextButton(onClick = { editing = false }) { Text("Done", style = ui.text(16f, FontWeight.SemiBold)) }
-                SettingsMenu(store, state, onEdit = { editing = true }, onLocationSetting = onLocationSetting)
+                SettingsMenu(store, state, onEdit = { editing = true }, onLocationSetting = onLocationSetting, openMenu = openMenu)
             }
             Text(Brand.APP_NAME, style = ui.text(32f, FontWeight.SemiBold), modifier = Modifier.padding(horizontal = 16.dp))
             OutlinedTextField(
@@ -189,16 +198,81 @@ fun CityList(store: WeatherStore, onDismiss: () -> Unit, onLocationSetting: () -
     }
 }
 
+/**
+ * The settings, in the ⋮ menu. Units and Notifications each open their own page of the menu, so the
+ * first page stays short.
+ */
 @Composable
-private fun SettingsMenu(store: WeatherStore, state: WeatherStore.State, onEdit: () -> Unit, onLocationSetting: () -> Unit) {
-    val ui = LocalMetrics.current
+private fun SettingsMenu(store: WeatherStore, state: WeatherStore.State, onEdit: () -> Unit, onLocationSetting: () -> Unit, openMenu: String?) {
     val uri = LocalUriHandler.current
     val context = LocalContext.current
-    var open by remember { mutableStateOf(false) }
+    var open by remember { mutableStateOf(openMenu != null) }
+    var page by remember { mutableStateOf(openMenu ?: "main") }
+    // Re-read whether notifications are allowed after the system's question, and on each opening.
+    var asked by remember { mutableStateOf(0) }
+    val notificationsAllowed = remember(asked, open) { Notifier.allowed(context) }
+    val askNotifications = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { asked++ }
+    fun turnOn(set: (Boolean) -> Unit, on: Boolean) {
+        set(on)
+        if (on && Notifier.needsPermission(context)) askNotifications.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+    }
     Box {
-        IconButton(onClick = { open = true }) { Icon(Icons.Filled.MoreVert, "More", tint = Color.White) }
+        IconButton(onClick = { page = "main"; open = true }) { Icon(Icons.Filled.MoreVert, "More", tint = Color.White) }
         MaterialTheme(colorScheme = androidx.compose.material3.darkColorScheme()) {
             DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+              when (page) {
+              "units" -> {
+                DropdownMenuItem(text = { Text("Units") }, leadingIcon = { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }, onClick = { page = "main" })
+                HorizontalDivider()
+                MenuLabel("Temperature")
+                for (unit in TempUnit.entries) {
+                    val label = if (unit == TempUnit.FAHRENHEIT) "°F large, °C beside" else "°C large, °F beside"
+                    DropdownMenuItem(text = { Text(label) }, onClick = { store.setUnit(unit) },
+                        trailingIcon = { if (state.unit == unit) Icon(Icons.Filled.Check, "Selected") })
+                }
+                HorizontalDivider()
+                MenuLabel("Wind")
+                for (unit in WindUnit.entries) {
+                    val label = if (unit == WindUnit.AUTO) "Automatic (${unit.resolved(state.unit).label})" else unit.label
+                    DropdownMenuItem(text = { Text(label) }, onClick = { store.setWindUnit(unit) },
+                        trailingIcon = { if (state.windUnit == unit) Icon(Icons.Filled.Check, "Selected") })
+                }
+                HorizontalDivider()
+                MenuLabel("Rain")
+                for (unit in RainUnit.entries) {
+                    val label = if (unit == RainUnit.AUTO) "Automatic (${unit.resolved(state.unit).label})" else unit.label
+                    DropdownMenuItem(text = { Text(label) }, onClick = { store.setRainUnit(unit) },
+                        trailingIcon = { if (state.rainUnit == unit) Icon(Icons.Filled.Check, "Selected") })
+                }
+                HorizontalDivider()
+                MenuLabel("Pressure")
+                for (unit in PressureUnit.entries) {
+                    val label = if (unit == PressureUnit.AUTO) "Automatic (${unit.resolved(state.unit).label})" else unit.label
+                    DropdownMenuItem(text = { Text(label) }, onClick = { store.setPressureUnit(unit) },
+                        trailingIcon = { if (state.pressureUnit == unit) Icon(Icons.Filled.Check, "Selected") })
+                }
+              }
+              "notifications" -> {
+                DropdownMenuItem(text = { Text("Notifications") }, leadingIcon = { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }, onClick = { page = "main" })
+                HorizontalDivider()
+                DropdownMenuItem(
+                    text = { Text("Severe Weather") },
+                    onClick = { turnOn(store::setNotifySevere, !state.notifySevere) },
+                    trailingIcon = { if (state.notifySevere) Icon(Icons.Filled.Check, "On") },
+                )
+                DropdownMenuItem(
+                    text = { Text("Rain Starting Soon") },
+                    onClick = { turnOn(store::setNotifyRain, !state.notifyRain) },
+                    trailingIcon = { if (state.notifyRain) Icon(Icons.Filled.Check, "On") },
+                )
+                MenuNote("For ${if (state.isHere(state.notifyCity)) "My Location" else state.notifyCity.name}. ${Alerts.SETTINGS_NOTE}")
+                if ((state.notifySevere || state.notifyRain) && !notificationsAllowed) {
+                    HorizontalDivider()
+                    MenuNote("Notifications are off for Two Degrees in Settings")
+                    DropdownMenuItem(text = { Text("Open Settings…") }, onClick = { open = false; context.startActivity(Notifier.settingsIntent(context)) })
+                }
+              }
+              else -> {
                 DropdownMenuItem(text = { Text("Edit List") }, enabled = state.cities.size > 1, onClick = { open = false; onEdit() })
                 HorizontalDivider()
                 DropdownMenuItem(
@@ -216,6 +290,11 @@ private fun SettingsMenu(store: WeatherStore, state: WeatherStore.State, onEdit:
                         )
                     })
                 }
+                DropdownMenuItem(
+                    text = { Text("Notifications") },
+                    onClick = { page = "notifications" },
+                    trailingIcon = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null) },
+                )
                 HorizontalDivider()
                 MenuLabel("Units")
                 for (unit in TempUnit.entries) {
@@ -223,6 +302,11 @@ private fun SettingsMenu(store: WeatherStore, state: WeatherStore.State, onEdit:
                     DropdownMenuItem(text = { Text(label) }, onClick = { store.setUnit(unit) },
                         trailingIcon = { if (state.unit == unit) Icon(Icons.Filled.Check, "Selected") })
                 }
+                DropdownMenuItem(
+                    text = { Text("Wind, Rain and Pressure") },
+                    onClick = { page = "units" },
+                    trailingIcon = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null) },
+                )
                 HorizontalDivider()
                 MenuLabel("Text Size")
                 for (size in TextSize.entries) {
@@ -245,6 +329,8 @@ private fun SettingsMenu(store: WeatherStore, state: WeatherStore.State, onEdit:
                 DropdownMenuItem(text = { Text("Get Two Degrees for Mac and iPhone") }, onClick = { open = false; uri.openUri(Brand.PRODUCT_PAGE) })
                 DropdownMenuItem(text = { Text("Terms & Privacy") }, onClick = { open = false; uri.openUri(Brand.LEGAL) })
                 DropdownMenuItem(text = { Text("Report an Issue") }, onClick = { open = false; uri.openUri(Brand.ISSUES) })
+              }
+              }
             }
         }
     }
@@ -253,6 +339,12 @@ private fun SettingsMenu(store: WeatherStore, state: WeatherStore.State, onEdit:
 @Composable
 private fun MenuLabel(text: String) {
     Text(text.uppercase(), style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.6f), modifier = Modifier.padding(16.dp, 8.dp, 16.dp, 2.dp))
+}
+
+/** A line of explanation in the menu, too long for an item. */
+@Composable
+private fun MenuNote(text: String) {
+    Text(text, style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.7f), modifier = Modifier.widthIn(max = 260.dp).padding(16.dp, 6.dp, 16.dp, 8.dp))
 }
 
 /** One city in the list: name, local time and condition on the left; both temperatures and today's range on the right; its own sky behind. */
@@ -273,7 +365,16 @@ private fun CityCard(city: City, state: WeatherStore.State, modifier: Modifier) 
     ) {
         Column(Modifier.weight(1f)) {
             // As on the iPhone: where you are reads "My Location", with the place beneath.
-            Text(if (state.isHere(city)) "My Location" else city.name, style = ui.text(22f, FontWeight.SemiBold), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    if (state.isHere(city)) "My Location" else city.name, style = ui.text(22f, FontWeight.SemiBold), maxLines = 1,
+                    overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false),
+                )
+                // A weather alert: a small triangle in its severity's colour.
+                state.alerts[city.id]?.firstOrNull()?.let { alert ->
+                    Icon(Icons.Filled.Warning, "Weather alert: ${alert.event}", tint = alertColor(alert.severity), modifier = Modifier.size(ui.dp(18f)))
+                }
+            }
             Text(
                 if (state.isHere(city)) city.name else forecast?.let { Forecast.clock(it.now.time) } ?: city.region,
                 style = ui.text(14f, FontWeight.Medium), modifier = Modifier.alpha(0.85f), maxLines = 1,

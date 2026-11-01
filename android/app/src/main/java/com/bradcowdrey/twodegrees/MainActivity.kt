@@ -15,8 +15,8 @@ import kotlinx.coroutines.launch
 
 /**
  * The app: one screen of city pages. Extras for the self-test (CI): `selftest` runs the checks and
- * writes files/report.txt (`locate` adds Use My Location); `show` scrolls to "days" or "tiles", or
- * opens the "list".
+ * writes files/report.txt (`locate` adds Use My Location); `show` scrolls to "days", "tiles" or "more"
+ * (the newer tiles), opens tomorrow's "day", or opens the "list" (with its ⋮ "menu", or its "units" page).
  */
 class MainActivity : ComponentActivity() {
     private val store by lazy { WeatherStore.get(this) }
@@ -34,7 +34,15 @@ class MainActivity : ComponentActivity() {
         store.locate = { PhoneLocation.currentCity(applicationContext) }
         setContent {
             PhoneScreen(
-                store, ShowOptions(scrollTo = show?.takeIf { it in setOf("days", "tiles") }, list = show == "list", locationPrompt = show == "location"), skipTerms = selfTest,
+                store,
+                ShowOptions(
+                    scrollTo = show?.takeIf { it in setOf("days", "tiles", "more") },
+                    list = show in setOf("list", "menu", "units", "notifications"),
+                    locationPrompt = show == "location",
+                    day = show == "day",
+                    menu = when (show) { "menu" -> "main"; "units", "notifications" -> show; else -> null },
+                ),
+                skipTerms = selfTest,
                 // Use My Location starts once the terms are agreed (the self-test checks it itself).
                 onReady = { if (!selfTest) { ready = true; useLocation() } },
                 onLocationSetting = ::useLocation,
