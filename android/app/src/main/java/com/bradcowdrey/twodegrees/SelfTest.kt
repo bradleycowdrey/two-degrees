@@ -96,10 +96,15 @@ object SelfTest {
             repeat(40) { if (City.CURRENT_ID !in store.current.forecasts) delay(500) }
             check(City.CURRENT_ID in store.current.forecasts, "where you are: its forecast loads")
             // Its extras follow the forecast: air quality soon, the normals table (a big request) a little later.
-            repeat(60) { if (City.CURRENT_ID !in store.current.air || store.current.cities.firstOrNull()?.let { store.current.normals(it) } == null) delay(500) }
+            val waitStart = System.currentTimeMillis()
+            var airAfter = -1L
+            repeat(60) {
+                if (airAfter < 0 && City.CURRENT_ID in store.current.air) airAfter = System.currentTimeMillis() - waitStart
+                if (City.CURRENT_ID !in store.current.air || store.current.cities.firstOrNull()?.let { store.current.normals(it) } == null) delay(500)
+            }
             val hereNow = store.current.forecasts[City.CURRENT_ID]
             val hereAir = store.current.air[City.CURRENT_ID]
-            check(hereAir != null, "where you are: air quality loads (${hereAir?.usAqi?.roundHalfUp()?.let { "US AQI $it" } ?: "none"})")
+            check(hereAir != null, "where you are: air quality loads (${hereAir?.usAqi?.roundHalfUp()?.let { "US AQI $it" } ?: "none"}, after ${airAfter} ms)")
             // The hourly series starts at midnight: before 3 AM there is no trend yet, and the tile shows none.
             check(hereNow != null && (Detail.pressureTrend(hereNow) != null || hereNow.nowIndex in 0..2),
                 "where you are: pressure trend ${hereNow?.let { f -> "${Detail.pressureTrend(f) ?: "none yet"} (hour ${f.nowIndex} of ${f.hours.size}, " +
