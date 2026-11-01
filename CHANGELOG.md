@@ -3,6 +3,12 @@
 Two Degrees updates itself: when a new version is out, the app shows a banner with an **Update** button
 (or use **Check for Updates** in the ⋯ menu). Every version is on [Releases](https://github.com/bradleycowdrey/two-degrees/releases).
 
+## [0.4.7] - 2026-11-01
+
+- **No more duplicate cards**: when where you are is a city you've saved, that city's card shows My
+  Location (with the arrow) instead of a second card for the same place. Move somewhere else and My
+  Location gets its own card again.
+
 ## [0.4.6] - 2026-10-31
 
 - **Use My Location**: after you agree to the terms, Two Degrees asks once whether to show the weather
