@@ -465,10 +465,13 @@ struct DetailTile: View {
             Label(title.uppercased(), systemImage: icon)
                 .font(ui.font(12, .semibold))
                 .foregroundStyle(.white.opacity(0.6))
+            // A reading in words ("18° above normal") is set smaller, on up to two lines, as on Android.
+            let words = value.count > 7
             Text(value)
-                .font(ui.font(32, .medium))
-                .lineLimit(1)
+                .font(ui.font(words ? 22 : 32, .medium))
+                .lineLimit(words ? 2 : 1)
                 .minimumScaleFactor(0.6)
+                .fixedSize(horizontal: false, vertical: words)
                 .padding(.top, ui.pt(4))
             if let sub {
                 Text(sub).font(ui.font(15)).opacity(0.7).lineLimit(1)
