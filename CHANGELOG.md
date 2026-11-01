@@ -8,7 +8,7 @@ Two Degrees updates itself: when a new version is out, the app shows a banner wi
 - **Severe weather alerts**: warnings, watches and advisories from the US National Weather Service show
   at the top of a city, most serious first; tap one for the full text and what to do. Turn on
   **Notifications** to hear about new alerts and rain starting soon (off unless you turn them on).
-- **Rain map**: live radar for the past two hours and the next half hour, centred on your city.
+- **Rain map**: live radar for the past two hours, centred on your city, with a short look ahead when the radar service offers one.
 - **Next two hours**: when rain or snow is near, see when it starts and stops in 15-minute steps.
 - **Air quality and pollen**: the US AQI in the US and the European AQI elsewhere, with what's driving
   it, plus tree, grass and weed pollen where it's measured.
