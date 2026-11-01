@@ -3,6 +3,25 @@
 Two Degrees updates itself: when a new version is out, the app shows a banner with an **Update** button
 (or use **Check for Updates** in the ⋯ menu). Every version is on [Releases](https://github.com/bradleycowdrey/two-degrees/releases).
 
+## [0.5.0] - 2026-11-01
+
+- **Severe weather alerts**: warnings, watches and advisories from the US National Weather Service show
+  at the top of a city, most serious first; tap one for the full text and what to do. Turn on
+  **Notifications** to hear about new alerts and rain starting soon (off unless you turn them on).
+- **Rain map**: live radar for the past two hours and the next half hour, centred on your city.
+- **Next two hours**: when rain or snow is near, see when it starts and stops in 15-minute steps.
+- **Air quality and pollen**: the US AQI in the US and the European AQI elsewhere, with what's driving
+  it, plus tree, grass and weed pollen where it's measured.
+- **More details**: pressure and whether it's rising or falling, visibility, cloud cover, the day's rain
+  or snow, wind gusts and the moon.
+- **Tap a day** for its temperature, rain and wind through the day, sunrise and sunset, UV and the
+  strongest gust.
+- **Averages and records**: how today compares with the 1991–2020 normal, and the record high and low
+  for the date, with the year.
+- **Your units**: choose wind in km/h, mph, m/s or knots, rain in mm or inches, and pressure in hPa,
+  inHg or mmHg. Temperatures are always in both, as ever.
+- **Up to 20 cities**, up from 5.
+
 ## [0.4.7] - 2026-11-01
 
 - **No more duplicate cards**: when where you are is a city you've saved, that city's card shows My
