@@ -220,117 +220,117 @@ private fun SettingsMenu(store: WeatherStore, state: WeatherStore.State, onEdit:
         IconButton(onClick = { page = "main"; open = true }) { Icon(Icons.Filled.MoreVert, "More", tint = Color.White) }
         MaterialTheme(colorScheme = androidx.compose.material3.darkColorScheme()) {
             DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-              when (page) {
-              "units" -> {
-                DropdownMenuItem(text = { Text("Units") }, leadingIcon = { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }, onClick = { page = "main" })
-                HorizontalDivider()
-                MenuLabel("Temperature")
-                for (unit in TempUnit.entries) {
-                    val label = if (unit == TempUnit.FAHRENHEIT) "°F large, °C beside" else "°C large, °F beside"
-                    DropdownMenuItem(text = { Text(label) }, onClick = { store.setUnit(unit) },
-                        trailingIcon = { if (state.unit == unit) Icon(Icons.Filled.Check, "Selected") })
-                }
-                HorizontalDivider()
-                MenuLabel("Wind")
-                for (unit in WindUnit.entries) {
-                    val label = if (unit == WindUnit.AUTO) "Automatic (${unit.resolved(state.unit).label})" else unit.label
-                    DropdownMenuItem(text = { Text(label) }, onClick = { store.setWindUnit(unit) },
-                        trailingIcon = { if (state.windUnit == unit) Icon(Icons.Filled.Check, "Selected") })
-                }
-                HorizontalDivider()
-                MenuLabel("Rain")
-                for (unit in RainUnit.entries) {
-                    val label = if (unit == RainUnit.AUTO) "Automatic (${unit.resolved(state.unit).label})" else unit.label
-                    DropdownMenuItem(text = { Text(label) }, onClick = { store.setRainUnit(unit) },
-                        trailingIcon = { if (state.rainUnit == unit) Icon(Icons.Filled.Check, "Selected") })
-                }
-                HorizontalDivider()
-                MenuLabel("Pressure")
-                for (unit in PressureUnit.entries) {
-                    val label = if (unit == PressureUnit.AUTO) "Automatic (${unit.resolved(state.unit).label})" else unit.label
-                    DropdownMenuItem(text = { Text(label) }, onClick = { store.setPressureUnit(unit) },
-                        trailingIcon = { if (state.pressureUnit == unit) Icon(Icons.Filled.Check, "Selected") })
-                }
-              }
-              "notifications" -> {
-                DropdownMenuItem(text = { Text("Notifications") }, leadingIcon = { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }, onClick = { page = "main" })
-                HorizontalDivider()
-                DropdownMenuItem(
-                    text = { Text("Severe Weather") },
-                    onClick = { turnOn(store::setNotifySevere, !state.notifySevere) },
-                    trailingIcon = { if (state.notifySevere) Icon(Icons.Filled.Check, "On") },
-                )
-                DropdownMenuItem(
-                    text = { Text("Rain Starting Soon") },
-                    onClick = { turnOn(store::setNotifyRain, !state.notifyRain) },
-                    trailingIcon = { if (state.notifyRain) Icon(Icons.Filled.Check, "On") },
-                )
-                MenuNote("For ${if (state.isHere(state.notifyCity)) "My Location" else state.notifyCity.name}. ${Alerts.SETTINGS_NOTE}")
-                if ((state.notifySevere || state.notifyRain) && !notificationsAllowed) {
-                    HorizontalDivider()
-                    MenuNote("Notifications are off for Two Degrees in Settings")
-                    DropdownMenuItem(text = { Text("Open Settings…") }, onClick = { open = false; context.startActivity(Notifier.settingsIntent(context)) })
-                }
-              }
-              else -> {
-                DropdownMenuItem(text = { Text("Edit List") }, enabled = state.cities.size > 1, onClick = { open = false; onEdit() })
-                HorizontalDivider()
-                DropdownMenuItem(
-                    text = { Text("Use My Location") },
-                    onClick = { store.setUseLocation(!state.useLocation); onLocationSetting() },
-                    trailingIcon = { if (state.useLocation) Icon(Icons.Filled.Check, "On") },
-                )
-                if (state.useLocation && state.locationStatus == com.bradcowdrey.twodegrees.LocationStatus.DENIED) {
-                    // Android asks only once: point to where it's turned back on.
-                    DropdownMenuItem(text = { Text("Allow Location in Settings…") }, onClick = {
-                        open = false
-                        context.startActivity(
-                            android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
-                                .setData(android.net.Uri.fromParts("package", context.packageName, null)),
+                when (page) {
+                    "units" -> {
+                        DropdownMenuItem(text = { Text("Units") }, leadingIcon = { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }, onClick = { page = "main" })
+                        HorizontalDivider()
+                        MenuLabel("Temperature")
+                        for (unit in TempUnit.entries) {
+                            val label = if (unit == TempUnit.FAHRENHEIT) "°F large, °C beside" else "°C large, °F beside"
+                            DropdownMenuItem(text = { Text(label) }, onClick = { store.setUnit(unit) },
+                                trailingIcon = { if (state.unit == unit) Icon(Icons.Filled.Check, "Selected") })
+                        }
+                        HorizontalDivider()
+                        MenuLabel("Wind")
+                        for (unit in WindUnit.entries) {
+                            val label = if (unit == WindUnit.AUTO) "Automatic (${unit.resolved(state.unit).label})" else unit.label
+                            DropdownMenuItem(text = { Text(label) }, onClick = { store.setWindUnit(unit) },
+                                trailingIcon = { if (state.windUnit == unit) Icon(Icons.Filled.Check, "Selected") })
+                        }
+                        HorizontalDivider()
+                        MenuLabel("Rain")
+                        for (unit in RainUnit.entries) {
+                            val label = if (unit == RainUnit.AUTO) "Automatic (${unit.resolved(state.unit).label})" else unit.label
+                            DropdownMenuItem(text = { Text(label) }, onClick = { store.setRainUnit(unit) },
+                                trailingIcon = { if (state.rainUnit == unit) Icon(Icons.Filled.Check, "Selected") })
+                        }
+                        HorizontalDivider()
+                        MenuLabel("Pressure")
+                        for (unit in PressureUnit.entries) {
+                            val label = if (unit == PressureUnit.AUTO) "Automatic (${unit.resolved(state.unit).label})" else unit.label
+                            DropdownMenuItem(text = { Text(label) }, onClick = { store.setPressureUnit(unit) },
+                                trailingIcon = { if (state.pressureUnit == unit) Icon(Icons.Filled.Check, "Selected") })
+                        }
+                    }
+                    "notifications" -> {
+                        DropdownMenuItem(text = { Text("Notifications") }, leadingIcon = { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }, onClick = { page = "main" })
+                        HorizontalDivider()
+                        DropdownMenuItem(
+                            text = { Text("Severe Weather") },
+                            onClick = { turnOn(store::setNotifySevere, !state.notifySevere) },
+                            trailingIcon = { if (state.notifySevere) Icon(Icons.Filled.Check, "On") },
                         )
-                    })
+                        DropdownMenuItem(
+                            text = { Text("Rain Starting Soon") },
+                            onClick = { turnOn(store::setNotifyRain, !state.notifyRain) },
+                            trailingIcon = { if (state.notifyRain) Icon(Icons.Filled.Check, "On") },
+                        )
+                        MenuNote("For ${if (state.isHere(state.notifyCity)) "My Location" else state.notifyCity.name}. ${Alerts.SETTINGS_NOTE}")
+                        if ((state.notifySevere || state.notifyRain) && !notificationsAllowed) {
+                            HorizontalDivider()
+                            MenuNote("Notifications are off for Two Degrees in Settings")
+                            DropdownMenuItem(text = { Text("Open Settings…") }, onClick = { open = false; context.startActivity(Notifier.settingsIntent(context)) })
+                        }
+                    }
+                    else -> {
+                        DropdownMenuItem(text = { Text("Edit List") }, enabled = state.cities.size > 1, onClick = { open = false; onEdit() })
+                        HorizontalDivider()
+                        DropdownMenuItem(
+                            text = { Text("Use My Location") },
+                            onClick = { store.setUseLocation(!state.useLocation); onLocationSetting() },
+                            trailingIcon = { if (state.useLocation) Icon(Icons.Filled.Check, "On") },
+                        )
+                        if (state.useLocation && state.locationStatus == com.bradcowdrey.twodegrees.LocationStatus.DENIED) {
+                            // Android asks only once: point to where it's turned back on.
+                            DropdownMenuItem(text = { Text("Allow Location in Settings…") }, onClick = {
+                                open = false
+                                context.startActivity(
+                                    android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                                        .setData(android.net.Uri.fromParts("package", context.packageName, null)),
+                                )
+                            })
+                        }
+                        DropdownMenuItem(
+                            text = { Text("Notifications") },
+                            onClick = { page = "notifications" },
+                            trailingIcon = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null) },
+                        )
+                        HorizontalDivider()
+                        MenuLabel("Units")
+                        for (unit in TempUnit.entries) {
+                            val label = if (unit == TempUnit.FAHRENHEIT) "°F large, °C beside" else "°C large, °F beside"
+                            DropdownMenuItem(text = { Text(label) }, onClick = { store.setUnit(unit) },
+                                trailingIcon = { if (state.unit == unit) Icon(Icons.Filled.Check, "Selected") })
+                        }
+                        DropdownMenuItem(
+                            text = { Text("Wind, Rain and Pressure") },
+                            onClick = { page = "units" },
+                            trailingIcon = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null) },
+                        )
+                        HorizontalDivider()
+                        MenuLabel("Text Size")
+                        for (size in TextSize.entries) {
+                            DropdownMenuItem(text = { Text(size.label) }, onClick = { store.setTextSize(size) },
+                                trailingIcon = { if (state.textSize == size) Icon(Icons.Filled.Check, "Selected") })
+                        }
+                        HorizontalDivider()
+                        MenuLabel("Font")
+                        for (font in AppFont.entries) {
+                            DropdownMenuItem(text = { Text(font.label) }, onClick = { store.setFont(font) },
+                                trailingIcon = { if (state.font == font) Icon(Icons.Filled.Check, "Selected") })
+                        }
+                        HorizontalDivider()
+                        DropdownMenuItem(text = { Text("Share Two Degrees") }, onClick = {
+                            open = false
+                            val send = android.content.Intent(android.content.Intent.ACTION_SEND).setType("text/plain")
+                                .putExtra(android.content.Intent.EXTRA_TEXT, "${Brand.SHARE_MESSAGE} ${Brand.PRODUCT_PAGE}")
+                            context.startActivity(android.content.Intent.createChooser(send, "Share Two Degrees"))
+                        })
+                        DropdownMenuItem(text = { Text("Get Two Degrees for Mac and iPhone") }, onClick = { open = false; uri.openUri(Brand.PRODUCT_PAGE) })
+                        DropdownMenuItem(text = { Text("Terms & Privacy") }, onClick = { open = false; uri.openUri(Brand.LEGAL) })
+                        DropdownMenuItem(text = { Text("Report an Issue") }, onClick = { open = false; uri.openUri(Brand.ISSUES) })
+                    }
                 }
-                DropdownMenuItem(
-                    text = { Text("Notifications") },
-                    onClick = { page = "notifications" },
-                    trailingIcon = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null) },
-                )
-                HorizontalDivider()
-                MenuLabel("Units")
-                for (unit in TempUnit.entries) {
-                    val label = if (unit == TempUnit.FAHRENHEIT) "°F large, °C beside" else "°C large, °F beside"
-                    DropdownMenuItem(text = { Text(label) }, onClick = { store.setUnit(unit) },
-                        trailingIcon = { if (state.unit == unit) Icon(Icons.Filled.Check, "Selected") })
-                }
-                DropdownMenuItem(
-                    text = { Text("Wind, Rain and Pressure") },
-                    onClick = { page = "units" },
-                    trailingIcon = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null) },
-                )
-                HorizontalDivider()
-                MenuLabel("Text Size")
-                for (size in TextSize.entries) {
-                    DropdownMenuItem(text = { Text(size.label) }, onClick = { store.setTextSize(size) },
-                        trailingIcon = { if (state.textSize == size) Icon(Icons.Filled.Check, "Selected") })
-                }
-                HorizontalDivider()
-                MenuLabel("Font")
-                for (font in AppFont.entries) {
-                    DropdownMenuItem(text = { Text(font.label) }, onClick = { store.setFont(font) },
-                        trailingIcon = { if (state.font == font) Icon(Icons.Filled.Check, "Selected") })
-                }
-                HorizontalDivider()
-                DropdownMenuItem(text = { Text("Share Two Degrees") }, onClick = {
-                    open = false
-                    val send = android.content.Intent(android.content.Intent.ACTION_SEND).setType("text/plain")
-                        .putExtra(android.content.Intent.EXTRA_TEXT, "${Brand.SHARE_MESSAGE} ${Brand.PRODUCT_PAGE}")
-                    context.startActivity(android.content.Intent.createChooser(send, "Share Two Degrees"))
-                })
-                DropdownMenuItem(text = { Text("Get Two Degrees for Mac and iPhone") }, onClick = { open = false; uri.openUri(Brand.PRODUCT_PAGE) })
-                DropdownMenuItem(text = { Text("Terms & Privacy") }, onClick = { open = false; uri.openUri(Brand.LEGAL) })
-                DropdownMenuItem(text = { Text("Report an Issue") }, onClick = { open = false; uri.openUri(Brand.ISSUES) })
-              }
-              }
             }
         }
     }

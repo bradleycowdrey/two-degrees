@@ -95,6 +95,14 @@ object SelfTest {
                 "Use My Location finds ${if (here?.isCurrent == true) "${here.name}, ${here.region}" else "nothing (${store.current.locationStatus})"} and shows it first")
             repeat(40) { if (City.CURRENT_ID !in store.current.forecasts) delay(500) }
             check(City.CURRENT_ID in store.current.forecasts, "where you are: its forecast loads")
+            // Its extras follow the forecast: air quality soon, the normals table (a big request) a little later.
+            repeat(60) { if (City.CURRENT_ID !in store.current.air || store.current.cities.firstOrNull()?.let { store.current.normals(it) } == null) delay(500) }
+            val hereNow = store.current.forecasts[City.CURRENT_ID]
+            val hereAir = store.current.air[City.CURRENT_ID]
+            check(hereAir != null, "where you are: air quality loads (${hereAir?.usAqi?.roundHalfUp()?.let { "US AQI $it" } ?: "none"})")
+            check(hereNow != null && Detail.pressureTrend(hereNow) != null,
+                "where you are: pressure trend ${hereNow?.let { f -> "${Detail.pressureTrend(f)} (hour ${f.nowIndex} of ${f.hours.size}, " +
+                    "${f.hours.getOrNull(f.nowIndex - 3)?.let { "${it.time.toLocalTime()} ${it.pressure}" }} → ${f.now.pressure})" }}")
             store.setUseLocation(false)
             repeat(20) { if (store.current.cities.any { it.isCurrent }) delay(100) }
             check(store.current.cities.none { it.isCurrent }, "turning Use My Location off removes it")
