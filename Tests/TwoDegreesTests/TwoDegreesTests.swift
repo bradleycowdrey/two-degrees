@@ -706,6 +706,8 @@ final class OfflineCitiesTests: XCTestCase {
 /// 0.5's weather details: units, words, moon, air quality, normals and records, alerts, the next two hours.
 final class WeatherExtrasTests: XCTestCase {
     private func date(_ text: String) -> Date { OpenMeteo.date(text)! }
+    /// Times read "3:30 PM" whichever space the system puts before PM (macOS uses a narrow no-break space).
+    private func plain(_ text: String?) -> String? { text?.replacingOccurrences(of: "\u{202F}", with: " ") }
 
     private func forecast(steps: [Double], code: Int = 61, hours: [(String, Double?)] = [], pressure: Double? = nil) -> Forecast {
         let now = date("2026-11-01T15:00")
@@ -743,8 +745,8 @@ final class WeatherExtrasTests: XCTestCase {
 
     func testNextTwoHours() {
         XCTAssertNil(NextHours.sentence(forecast(steps: [0, 0, 0, 0, 0, 0, 0, 0])), "dry: no card")
-        XCTAssertEqual(NextHours.sentence(forecast(steps: [0, 0, 0.4, 0.6, 0.6, 0.6, 0.6, 0.6])), "Rain starting around 3:30 PM")
-        XCTAssertEqual(NextHours.sentence(forecast(steps: [0.5, 0.4, 0.2, 0, 0, 0, 0, 0])), "Rain stopping around 3:45 PM")
+        XCTAssertEqual(plain(NextHours.sentence(forecast(steps: [0, 0, 0.4, 0.6, 0.6, 0.6, 0.6, 0.6]))), "Rain starting around 3:30 PM")
+        XCTAssertEqual(plain(NextHours.sentence(forecast(steps: [0.5, 0.4, 0.2, 0, 0, 0, 0, 0]))), "Rain stopping around 3:45 PM")
         XCTAssertEqual(NextHours.sentence(forecast(steps: Array(repeating: 0.5, count: 8))), "Rain for the next two hours")
         XCTAssertEqual(NextHours.sentence(forecast(steps: [0.3, 0, 0.3, 0, 0, 0.2, 0, 0])), "Light rain on and off")
         XCTAssertEqual(NextHours.sentence(forecast(steps: Array(repeating: 0.5, count: 8), code: 73)), "Snow for the next two hours")
