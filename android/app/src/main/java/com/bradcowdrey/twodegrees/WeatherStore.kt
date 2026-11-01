@@ -447,7 +447,7 @@ object Brand {
     const val AUTHOR = "Bradley Cowdrey"
     const val WEBSITE = "https://bradcowdrey.com"
     const val LEGAL = "https://bradcowdrey.com/legal"
-    const val TERMS_VERSION = "2026-10-31"
+    const val TERMS_VERSION = "2026-11-01"
     const val PRODUCT_PAGE = "https://bradcowdrey.com/two-degrees"
     const val ISSUES = "https://github.com/bradleycowdrey/two-degrees/issues"
     const val DATA_CREDIT = "https://open-meteo.com/"
