@@ -83,7 +83,8 @@ struct NextHoursTile: View {
     }
 }
 
-/// Air quality, pollen, averages, visibility, precipitation, clouds and the moon, four across.
+/// Air quality (with pollen where it's measured), averages, visibility, precipitation, clouds and the
+/// moon, three across. Every city shows all six; one whose data isn't there yet shows a dash.
 struct DetailsTile: View {
     @EnvironmentObject private var store: WeatherStore
     @Environment(\.metrics) private var ui
@@ -95,7 +96,7 @@ struct DetailsTile: View {
         Tile {
             VStack(alignment: .leading, spacing: ui.s) {
                 Eyebrow(title: "Details", aside: "")
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: ui.s), count: 4), spacing: ui.s) {
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: ui.s), count: 3), spacing: ui.s) {
                     ForEach(stats, id: \.key) { Stat(key: $0.key, value: $0.value, sub: $0.sub).help($0.help) }
                 }
             }
@@ -104,32 +105,43 @@ struct DetailsTile: View {
 
     private struct Item { let key: String; let value: String; let sub: String; let help: String }
 
+    private func missing(_ key: String) -> Item { Item(key: key, value: "–", sub: "Not available", help: "Not available right now.") }
+
     private var items: [Item] {
         let now = forecast.now, unit = store.unit
         var list: [Item] = []
         let inUS = WeatherAlert.inUS(latitude: city.latitude, longitude: city.longitude)
-        if let reading = store.airQuality[city.id]?.reading(inUS: inUS) {
-            list.append(Item(key: "Air quality", value: "\(reading.value)", sub: reading.category, help: "\(reading.scale). \(reading.note)"))
-        }
-        if let pollen = store.airQuality[city.id]?.pollenSummary {
-            list.append(Item(key: "Pollen", value: pollen.level, sub: pollen.top, help: pollen.others.joined(separator: ", ")))
+        let air = store.airQuality[city.id]
+        if let reading = air?.reading(inUS: inUS) {
+            let pollen = air?.pollenSummary.map { " Pollen: \($0.top.lowercased()) \($0.level.lowercased())." } ?? ""
+            list.append(Item(key: "Air quality", value: "\(reading.value)", sub: reading.category, help: "\(reading.scale). \(reading.note)" + pollen))
+        } else {
+            list.append(missing("Air quality"))
         }
         if let today = forecast.days.first?.including(now.temperature), let entry = store.climate[city.id]?.entry(for: today.date),
            let normalHigh = entry.normalHigh, let normalLow = entry.normalLow {
             list.append(Item(key: "Averages", value: Climate.comparison(high: today.high, normal: normalHigh, unit: unit),
                              sub: "\(unit.value(normalLow))–\(unit.value(normalHigh))\(unit.symbol) normal",
                              help: "Normal high \(unit.other.spaced(unit.other.value(normalHigh))), low \(unit.other.spaced(unit.other.value(normalLow)))"))
+        } else {
+            list.append(missing("Averages"))
         }
         if let metres = now.visibility {
             let v = Details.visibility(metres, miles: store.windUnit.usesMiles(unit))
             list.append(Item(key: "Visibility", value: v.value, sub: v.note.replacingOccurrences(of: ".", with: ""), help: v.note))
+        } else {
+            list.append(missing("Visibility"))
         }
         if let mm = forecast.days.first?.precipitation {
             let text = store.rainUnit.text(mm, temp: unit)
             list.append(Item(key: "Precipitation", value: text.main, sub: "\(text.other) today", help: Details.next24Hours(forecast).map { "Next 24 hours: \(store.rainUnit.text($0, temp: unit).main)" } ?? ""))
+        } else {
+            list.append(missing("Precipitation"))
         }
         if let cover = now.cloudCover {
             list.append(Item(key: "Cloud cover", value: "\(Int(cover.rounded()))%", sub: Details.clouds(cover), help: ""))
+        } else {
+            list.append(missing("Cloud cover"))
         }
         let moon = Moon.phase(at: Date())
         list.append(Item(key: "Moon", value: "\(moon.illumination)% lit", sub: moon.name, help: moon.name))

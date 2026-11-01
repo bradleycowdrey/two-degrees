@@ -183,42 +183,53 @@ private struct WebPage: UIViewRepresentable {
 
 // MARK: - More detail tiles
 
-/// Air quality, pollen, averages, visibility, precipitation, clouds and the moon, after the
-/// first six tiles. Each hides itself when its data isn't there.
+/// Air quality (with pollen where it's measured), averages, visibility, precipitation, clouds and the
+/// moon, after the first six tiles. Every city shows all six, so every city has the same twelve tiles:
+/// one whose data isn't there yet shows a dash instead of disappearing.
 struct ExtraTiles: View {
     @EnvironmentObject private var store: WeatherStore
     let forecast: Forecast
     let city: City
 
+    private static let missing = "Not available right now."
+
     var body: some View {
         let now = forecast.now, unit = store.unit
         let inUS = WeatherAlert.inUS(latitude: city.latitude, longitude: city.longitude)
-        if let air = store.airQuality[city.id], let reading = air.reading(inUS: inUS) {
+        let air = store.airQuality[city.id]
+        if let reading = air?.reading(inUS: inUS) {
+            let pollen = air?.pollenSummary.map { " Pollen: \($0.top.lowercased()) \($0.level.lowercased())." } ?? ""
             DetailTile(title: "Air quality", icon: "aqi.medium", value: "\(reading.value)", sub: reading.category,
-                       note: reading.note + " (\(reading.scale))")
-        }
-        if let pollen = store.airQuality[city.id]?.pollenSummary {
-            DetailTile(title: "Pollen", icon: "leaf.fill", value: pollen.level, sub: pollen.top,
-                       note: pollen.others.isEmpty ? "Other pollen is low." : "Also \(pollen.others.joined(separator: ", ")).")
+                       note: "\(reading.scale). \(reading.note)" + pollen)
+        } else {
+            DetailTile(title: "Air quality", icon: "aqi.medium", value: "–", sub: nil, note: Self.missing)
         }
         if let today = forecast.days.first?.including(now.temperature), let entry = store.climate[city.id]?.entry(for: today.date),
            let normalHigh = entry.normalHigh, let normalLow = entry.normalLow {
             DetailTile(title: "Averages", icon: "chart.line.uptrend.xyaxis",
                        value: Climate.comparison(high: today.high, normal: normalHigh, unit: unit), sub: nil,
                        note: "Normal high \(unit.spaced(unit.value(normalHigh))) · \(unit.other.spaced(unit.other.value(normalHigh))), low \(unit.spaced(unit.value(normalLow))) · \(unit.other.spaced(unit.other.value(normalLow))).")
+        } else {
+            DetailTile(title: "Averages", icon: "chart.line.uptrend.xyaxis", value: "–", sub: nil, note: Self.missing)
         }
         if let metres = now.visibility {
             let v = Details.visibility(metres, miles: store.windUnit.usesMiles(unit))
             DetailTile(title: "Visibility", icon: "eye.fill", value: v.value, sub: nil, note: v.note)
+        } else {
+            DetailTile(title: "Visibility", icon: "eye.fill", value: "–", sub: nil, note: Self.missing)
         }
         if let mm = forecast.days.first?.precipitation {
             let text = store.rainUnit.text(mm, temp: unit)
             let next = Details.next24Hours(forecast)
             DetailTile(title: "Precipitation", icon: "drop.fill", value: text.main, sub: "\(text.other) today",
                        note: next.map { $0 >= 0.1 ? "Expected in the next 24 hours: \(store.rainUnit.text($0, temp: unit).main)." : "None expected in the next 24 hours." } ?? "")
+        } else {
+            DetailTile(title: "Precipitation", icon: "drop.fill", value: "–", sub: nil, note: Self.missing)
         }
         if let cover = now.cloudCover {
             DetailTile(title: "Cloud cover", icon: "cloud.fill", value: "\(Int(cover.rounded()))%", sub: Details.clouds(cover), note: "")
+        } else {
+            DetailTile(title: "Cloud cover", icon: "cloud.fill", value: "–", sub: nil, note: Self.missing)
         }
         let moon = Moon.phase(at: Date())
         DetailTile(title: "Moon", icon: "moon.fill", value: "\(moon.illumination)%", sub: "lit", note: moon.name + ".")

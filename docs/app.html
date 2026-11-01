@@ -1157,30 +1157,34 @@
     const cur = data.current, tiles = [];
     const tile = (id, title, value, sub, note, extra = '', aside = '') => tiles.push(`<div class="tile dt" data-tile="${id}"><h3 class="eyebrow">${title}${aside}</h3>` +
       `<div class="dv">${value}</div>${sub ? `<div class="ds">${sub}</div>` : ''}${extra}${note ? `<div class="dn">${note}</div>` : ''}</div>`);
+    // Every city shows the same six tiles; one whose data isn't there yet shows a dash. Pollen, measured
+    // only in some places, is a line on the air quality tile.
+    const missing = (id, title) => tile(id, title, '–', '', 'Not available right now.');
     const aq = state.aq[keyOf(city)], aqr = aq && aqReading(city, aq);
-    if (aqr) tile('aqi', 'Air Quality', `${aqr.v} <span class="cat" style="color:${aqr.color}">${esc(aqr.cat)}</span>`, aqr.scale, esc(aqr.note),
-      `<div class="aqbar" style="background:${aqr.bar}" aria-hidden="true"><u style="left:${aqr.at}%"></u></div>`);
+    let pollen = '';
     if (aq && aq.pollen) {
       const kinds = POLLEN.filter(([k]) => aq.pollen[k] != null).map(([k, name]) => [name, aq.pollen[k]]).sort((a, b) => b[1] - a[1]);
-      const [name, g] = kinds[0];
-      const others = kinds.slice(1).filter(([, x]) => x >= 10).map(([n, x]) => `${n} (${pollenLevel(x).toLowerCase()})`);
-      tile('pollen', 'Pollen', pollenLevel(g), g > 0 ? `${name} pollen` : 'Little in the air', others.length ? 'Also ' + others.join(', ') : '');
+      if (kinds.length) pollen = ` Pollen: ${kinds[0][0].toLowerCase()} ${pollenLevel(kinds[0][1]).toLowerCase()}.`;
     }
+    if (aqr) tile('aqi', 'Air Quality', `${aqr.v} <span class="cat" style="color:${aqr.color}">${esc(aqr.cat)}</span>`, aqr.scale, esc(aqr.note + (pollen ? '.' + pollen : '')),
+      `<div class="aqbar" style="background:${aqr.bar}" aria-hidden="true"><u style="left:${aqr.at}%"></u></div>`);
+    else missing('aqi', 'Air Quality');
     const n = normalsFor(city, data.daily[0].date);
     const nw = (t) => `<span style="white-space:nowrap">${both(t)}</span>`;
     if (n) tile('normal', 'Averages', vsNormal(today.max, n[0]), '', `Normal high ${nw(n[0])}, low ${nw(n[1])}`);
+    else missing('normal', 'Averages');
     if (cur.vis != null) tile('visibility', 'Visibility', fmtVis(cur.vis), '', visLabel(cur.vis));
+    else missing('visibility', 'Visibility');
     if (data.daily[0].psum != null) {
       const [v, s] = fmtRain(data.daily[0].psum);
       const next = upcoming(data).map((h) => h.precip).filter((x) => x != null);
       const sum = next.reduce((x, y) => x + y, 0);
       tile('precip', 'Precipitation', v, s, !next.length ? '' : sum < 0.05 ? 'None expected' : `Expected in the next 24 hours: ${fmtRain(sum)[0]}`);
-    }
+    } else missing('precip', 'Precipitation');
     if (cur.cloud != null) tile('cloud', 'Cloud Cover', `${Math.round(cur.cloud)}%`, '', cloudLabel(cur.cloud));
+    else missing('cloud', 'Cloud Cover');
     const moon = moonPhase();
     tile('moon', 'Moon', `${moon.name} · ${moon.lit}%`, '', '', '', moonGlyph(moon.f));
-    // An odd one out spans the row.
-    if (tiles.length % 2) tiles[tiles.length - 1] = tiles[tiles.length - 1].replace('class="tile dt"', 'class="tile dt wide"');
     $('#dgrid').innerHTML = tiles.join('');
     $('#details').hidden = !tiles.length;
   }

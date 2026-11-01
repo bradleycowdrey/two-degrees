@@ -389,8 +389,9 @@ private fun TileGrid(tiles: List<@Composable (Modifier) -> Unit>) {
 }
 
 /**
- * The tiles after the first six: visibility, precipitation, cloud cover and the moon, then
- * air quality, pollen and how today compares with normal. Each one only when its data is there.
+ * The tiles after the first six: air quality (with pollen where it's measured), averages, visibility,
+ * precipitation, cloud cover and the moon. Every city shows all six, so every city has the same twelve
+ * tiles; one whose data isn't there yet shows a dash instead of disappearing.
  */
 @Composable
 private fun MoreTiles(city: City, forecast: Forecast, state: WeatherStore.State) {
@@ -398,9 +399,33 @@ private fun MoreTiles(city: City, forecast: Forecast, state: WeatherStore.State)
     val unit = units.temperature
     val now = forecast.now
     val today = forecast.days.firstOrNull()
+    val missing = "Not available right now."
     val tiles = mutableListOf<@Composable (Modifier) -> Unit>()
-    now.visibility?.let { m -> tiles.add { DetailTile("Visibility", units.visibility(m), null, Detail.visibilityWord(m), it) } }
-    today?.precipitationSum?.let { mm ->
+
+    val air = state.air[city.id]
+    val scale = Air.scale(city)
+    val aqi = air?.let { Air.value(it, scale) }
+    if (air != null && aqi != null) {
+        val pollen = Pollen.summary(air)?.let { " Pollen: ${it.type.lowercase()} ${it.level.lowercase()}." } ?: ""
+        tiles.add {
+            DetailTile("Air quality", "${aqi.roundHalfUp()}", Air.category(aqi, scale), listOfNotNull(Air.note(air, scale)?.let { n -> "$n." }, pollen.trim().ifEmpty { null }).joinToString(" "), it) {
+                AirScaleBar(aqi, scale)
+                Text(scale.title, style = LocalMetrics.current.text(11f), modifier = Modifier.alpha(0.6f))
+            }
+        }
+    } else {
+        tiles.add { DetailTile("Air quality", "–", null, missing, it) }
+    }
+    val normal = today?.let { state.normals(city)?.of(it.date) }
+    if (today != null && normal?.normalHigh != null) {
+        tiles.add { DetailTile("Averages", Normals.versus(today.high, normal.normalHigh, unit), null, Normals.normalLine(normal, unit), it) }
+    } else {
+        tiles.add { DetailTile("Averages", "–", null, missing, it) }
+    }
+    val m = now.visibility
+    tiles.add { if (m != null) DetailTile("Visibility", units.visibility(m), null, Detail.visibilityWord(m), it) else DetailTile("Visibility", "–", null, missing, it) }
+    val mm = today?.precipitationSum
+    if (mm != null) {
         val (main, other) = units.rain(mm)
         val next = Detail.next24Hours(forecast)
         val note = when {
@@ -409,27 +434,13 @@ private fun MoreTiles(city: City, forecast: Forecast, state: WeatherStore.State)
             else -> "None expected"
         }
         tiles.add { DetailTile("Precipitation", main, other?.let { "$it today" } ?: "today", note, it) }
+    } else {
+        tiles.add { DetailTile("Precipitation", "–", null, missing, it) }
     }
-    now.cloudCover?.let { pct -> tiles.add { DetailTile("Cloud cover", "${pct.roundHalfUp()}%", Detail.cloudWord(pct), null, it) } }
+    val pct = now.cloudCover
+    tiles.add { if (pct != null) DetailTile("Cloud cover", "${pct.roundHalfUp()}%", Detail.cloudWord(pct), null, it) else DetailTile("Cloud cover", "–", null, missing, it) }
     val moon = Moon.phase(java.time.Instant.ofEpochMilli(System.currentTimeMillis()))
     tiles.add { DetailTile("Moon", moon.text, null, null, it) { MoonDisc(moon.fraction) } }
-
-    state.air[city.id]?.let { air ->
-        val scale = Air.scale(city)
-        Air.value(air, scale)?.let { aqi ->
-            tiles.add {
-                DetailTile("Air quality", "${aqi.roundHalfUp()}", Air.category(aqi, scale), Air.note(air, scale), it) {
-                    AirScaleBar(aqi, scale)
-                    Text(scale.title, style = LocalMetrics.current.text(11f), modifier = Modifier.alpha(0.6f))
-                }
-            }
-        }
-        Pollen.summary(air)?.let { p -> tiles.add { DetailTile("Pollen", p.level, p.type, p.note, it) } }
-    }
-    val normal = today?.let { state.normals(city)?.of(it.date) }
-    if (today != null && normal?.normalHigh != null) {
-        tiles.add { DetailTile("Averages", Normals.versus(today.high, normal.normalHigh, unit), null, Normals.normalLine(normal, unit), it) }
-    }
     TileGrid(tiles)
 }
 

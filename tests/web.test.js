@@ -147,15 +147,15 @@ async function setSize(page, size) {
     check((await page.$$('.hour[role="img"][aria-label]')).length === 24, t('24 labelled hours'));
 
     // More detail tiles: each one present with a value. Air quality and the archive (normals) answer after
-    // the forecast, so wait for them as a visitor would; tiles without data are hidden, never stuck empty.
-    await page.waitForSelector('.dt[data-tile="aqi"]', { timeout: 30000 }).catch(() => {});
-    await page.waitForSelector('.dt[data-tile="normal"]', { timeout: 30000 }).catch(() => {});
+    // the forecast, so wait for them as a visitor would; tiles without data show a dash, so every city has the same tiles.
+    await page.waitForSelector('.dt[data-tile="aqi"] .aqbar', { timeout: 30000 }).catch(() => {});
+    await page.waitForFunction(() => /Normal high/.test((document.querySelector('.dt[data-tile="normal"]') || {}).textContent || ''), null, { timeout: 30000 }).catch(() => {});
     const tiles = await page.$$eval('.dt', (els) => Object.fromEntries(els.map((e) => [e.dataset.tile, e.querySelector('.dv').textContent.trim() + ' | ' + (e.querySelector('.dn') || { textContent: '' }).textContent.trim()])));
     const expect = {
       visibility: /^\d+(\.\d)? mi \| (Clear view|Haze|Fog)$/, cloud: /^\d+% \| (Clear|Mostly clear|Partly cloudy|Mostly cloudy|Overcast)$/,
       precip: /^(0|\d+\.\d\d) in \| (None expected|Expected in the next 24 hours: .+ in)$/,
       moon: /^(New Moon|Waxing Crescent|First Quarter|Waxing Gibbous|Full Moon|Waning Gibbous|Last Quarter|Waning Crescent) · \d+% \| $/,
-      aqi: /^\d+ (Good|Moderate|Unhealthy for Sensitive Groups|Unhealthy|Very Unhealthy|Hazardous) \| (Better than yesterday|Worse than yesterday|About the same as yesterday|Mostly .+)$/,
+      aqi: /^\d+ (Good|Moderate|Unhealthy for Sensitive Groups|Unhealthy|Very Unhealthy|Hazardous) \| (Better than yesterday|Worse than yesterday|About the same as yesterday|Mostly .+)(\. Pollen: [a-z ]+\.)?$/,
       normal: /^(About normal|\d+° (above|below) normal) \| Normal high -?\d+°F · -?\d+°C, low -?\d+°F · -?\d+°C$/,
     };
     for (const [k, re] of Object.entries(expect)) check(re.test(tiles[k] || ''), t(`${k} tile shows a value (${tiles[k]})`));
@@ -380,7 +380,7 @@ async function setSize(page, size) {
   // Severe weather alerts: cards above everything, most severe first, coloured by severity; the full text opens.
   {
     const { context, page, errors } = await fresh(browser, 390, 844);
-    await page.waitForSelector('.dt[data-tile="normal"]', { timeout: 30000 }).catch(() => {});   // the slowest answer: everything else is in
+    await page.waitForFunction(() => /Normal high/.test((document.querySelector('.dt[data-tile="normal"]') || {}).textContent || ''), null, { timeout: 30000 }).catch(() => {});   // the slowest answer: everything else is in
     check(await page.isHidden('#alerts'), 'no alerts show when the NWS has none');
     const soon = new Date(Date.now() + 3 * 36e5).toISOString(), past = new Date(Date.now() - 36e5).toISOString();
     await page.evaluate(([soon, past]) => __twoDegreesTest.inject('alerts', [
@@ -427,12 +427,12 @@ async function setSize(page, size) {
     const cards = await page.$$eval('.alert b', (els) => els.map((e) => e.textContent));
     check(cards.join(',') === 'Winter Storm Warning', `live: the NWS alerts for New York show, expired ones left out (${cards.join(', ')})`);
     check((await page.$$('.chip[data-i="0"] svg.warn')).length === 1 && (await page.$$('.chip[data-i="1"] svg.warn')).length === 0, 'live: New York has the warning triangle, London (no NWS) none');
-    await page.waitForSelector('.dt[data-tile="aqi"]', { timeout: 15000 }).catch(() => {});
-    const early = await page.evaluate(() => [!!document.querySelector('.dt[data-tile="aqi"]'), !!document.querySelector('.dt[data-tile="normal"]')]);
+    await page.waitForSelector('.dt[data-tile="aqi"] .aqbar', { timeout: 15000 }).catch(() => {});
+    const early = await page.evaluate(() => [!!document.querySelector('.dt[data-tile="aqi"] .aqbar'), /Normal high/.test((document.querySelector('.dt[data-tile="normal"]') || {}).textContent || '')]);
     check(early[0] && !early[1], `live: air quality shows without waiting for the slow archive (aqi ${early[0]}, normals ${early[1]})`);
     const aq = await page.textContent('.dt[data-tile="aqi"]');
     check(/US AQI/.test(aq) && /Better than yesterday/.test(aq), `live: air quality in New York on the US scale, against yesterday (${aq})`);
-    await page.waitForSelector('.dt[data-tile="normal"]', { timeout: 30000 }).catch(() => {});
+    await page.waitForFunction(() => /Normal high/.test((document.querySelector('.dt[data-tile="normal"]') || {}).textContent || ''), null, { timeout: 30000 }).catch(() => {});
     check(/Normal high/.test(await page.textContent('.dt[data-tile="normal"]').catch(() => '')), 'live: the averages tile appears when the archive answers');
     await page.click('#daysToggle');
     await page.click('#days [data-day="0"]');
@@ -445,7 +445,8 @@ async function setSize(page, size) {
     const { context, page, errors } = await fresh(browser, 390, 844, '', { fail: ['aq', 'archive', 'alerts'] });
     await page.waitForTimeout(3500);   // every answer (and failure) is in
     const shown = await page.$$eval('.dt', (els) => els.map((e) => e.dataset.tile).join(','));
-    check(!/aqi|pollen|normal/.test(shown) && /visibility/.test(shown) && !/pressure/.test(shown) && await page.isHidden('#alerts'), `live: failed air quality, archive and NWS hide just their tiles (${shown})`);
+    const dashes = await page.$$eval('.dt[data-tile="aqi"] .dv, .dt[data-tile="normal"] .dv', (els) => els.map((e) => e.textContent.trim()).join(','));
+    check(shown === 'aqi,normal,visibility,precip,cloud,moon' && dashes === '–,–' && await page.isHidden('#alerts'), `live: failed air quality and archive keep their tiles with a dash, and NWS shows no alerts (${shown}; ${dashes})`);
     check(/Updated/.test(await page.textContent('#statusText')), 'live: the forecast itself still shows as live');
     await page.click('#daysToggle');
     await page.click('#days [data-day="0"]');
@@ -469,13 +470,14 @@ async function setSize(page, size) {
   {
     const { context, page } = await fresh(browser, 1280, 900);
     await page.click('.chip[data-i="1"]');   // London: the European AQI
-    await page.waitForFunction(() => document.querySelector('.place h2').textContent.trim() === 'London' && document.querySelector('.dt[data-tile="aqi"]') && document.querySelector('.dt[data-tile="normal"]'), null, { timeout: 30000 });
+    await page.waitForFunction(() => document.querySelector('.place h2').textContent.trim() === 'London' && document.querySelector('.dt[data-tile="aqi"] .aqbar') && /Normal high/.test(document.querySelector('.dt[data-tile="normal"]').textContent), null, { timeout: 30000 });
     await page.evaluate(() => __twoDegreesTest.inject('aq', { us: 60, eu: 45, usY: null, euY: null, pm25: 30, pm10: 20, o3: 50, no2: 10, pollen: { grass: 120, birch: 30, alder: 2 } }));
-    const aq = await page.textContent('.dt[data-tile="aqi"]'), pollen = await page.textContent('.dt[data-tile="pollen"]');
+    const aq = await page.textContent('.dt[data-tile="aqi"]');
     check(/45 Moderate/.test(aq) && /European AQI/.test(aq) && /Mostly PM2\.5/.test(aq), `London's air quality is on the European scale, with the main pollutant (${aq})`);
-    check(/High/.test(pollen) && /Grass pollen/.test(pollen) && /Also Birch \(moderate\)/.test(pollen), `the Pollen tile shows the highest type and others above Low (${pollen})`);
+    check(/Pollen: grass high\./.test(aq) && (await page.$$('.dt[data-tile="pollen"]')).length === 0, `pollen is a line on the air quality tile, not a tile of its own (${aq})`);
+    check(await page.$$eval('.dt', (els) => els.length) === 6, 'London has the same six tiles as New York');
     await page.evaluate(() => __twoDegreesTest.inject('aq', { us: null, eu: null, pollen: null }));
-    check((await page.$$('.dt[data-tile="aqi"], .dt[data-tile="pollen"]')).length === 0, 'no air quality reading: the tiles hide');
+    check(await page.$eval('.dt[data-tile="aqi"] .dv', (e) => e.textContent.trim()) === '–' && await page.$$eval('.dt', (els) => els.length) === 6, 'no air quality reading: its tile shows a dash and the count stays six');
     const m = await page.evaluate(() => [__twoDegreesTest.moonPhase(new Date(Date.UTC(2000, 0, 6, 18, 14))).name, __twoDegreesTest.moonPhase(new Date(Date.UTC(2000, 0, 21, 4, 40))).name, __twoDegreesTest.moonPhase(new Date(Date.UTC(2026, 9, 26, 4, 12))).lit]);
     check(m[0] === 'New Moon' && m[1] === 'Full Moon' && m[2] >= 99, `the moon phase is computed from the 2000-01-06 new moon (${m.join(', ')})`);
     await context.close();
