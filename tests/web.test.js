@@ -7,6 +7,7 @@ const fs = require('fs');
 let playwright;
 try { playwright = require('playwright'); } catch { playwright = require(path.join(require('child_process').execSync('npm root -g').toString().trim(), 'playwright')); }
 
+const { serveApis } = require('./web-fixtures');
 const PAGE = 'file://' + path.resolve(__dirname, '../docs/app.html');
 const SHOTS = process.argv[2];
 const VIEWPORTS = [['small phone', 320, 640], ['phone', 390, 844], ['tablet', 768, 1024], ['desktop', 1280, 900]];
@@ -17,8 +18,15 @@ let passed = 0, failed = 0;
 const results = [];
 function check(ok, what) { ok ? passed++ : failed++; results.push(`${ok ? 'PASS' : 'FAIL'} ${what}`); }
 
-async function fresh(browser, w, h, query = '') {
-  const context = await browser.newContext({ viewport: { width: w, height: h }, permissions: ['clipboard-read', 'clipboard-write'] });
+// Every page gets the live path from tests/web-fixtures.js (slow answers included); `api` changes it,
+// e.g. { offline: true } for the sample forecast, or { fail: ['aq'] }.
+async function newContext(browser, options, api = {}) {
+  const context = await browser.newContext(options);
+  await serveApis(context, api);
+  return context;
+}
+async function fresh(browser, w, h, query = '', api = {}) {
+  const context = await newContext(browser, { viewport: { width: w, height: h }, permissions: ['clipboard-read', 'clipboard-write'] }, api);
   const page = await context.newPage();
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
@@ -91,7 +99,7 @@ async function sheetProblems(page) {
       const w = svg.viewBox.baseVal.width, h = svg.viewBox.baseVal.height;
       for (const t of svg.querySelectorAll('text')) {
         const b = t.getBBox();
-        if (b.x < -1 || b.x + b.width > w + 1 || b.y < -1 || b.y + b.height > h + 1) problems.push(`${svg.dataset.chart} chart label "${t.textContent}" outside the chart`);
+        if (b.x < 0 || b.x + b.width > w || b.y < 0 || b.y + b.height > h) problems.push(`${svg.dataset.chart} chart label "${t.textContent}" outside the chart`);
       }
     }
     if (document.documentElement.scrollWidth > innerWidth) problems.push(`page scrolls sideways by ${document.documentElement.scrollWidth - innerWidth}px`);
@@ -138,7 +146,10 @@ async function setSize(page, size) {
     check(/degrees Fahrenheit, -?\d+ Celsius/.test(label || ''), t('screen readers hear both units'));
     check((await page.$$('.hour[role="img"][aria-label]')).length === 24, t('24 labelled hours'));
 
-    // More detail tiles, from the sample forecast: each one present with a value.
+    // More detail tiles: each one present with a value. Air quality and the archive (normals) answer after
+    // the forecast, so wait for them as a visitor would; tiles without data are hidden, never stuck empty.
+    await page.waitForSelector('.dt[data-tile="aqi"]', { timeout: 30000 }).catch(() => {});
+    await page.waitForSelector('.dt[data-tile="normal"]', { timeout: 30000 }).catch(() => {});
     const tiles = await page.$$eval('.dt', (els) => Object.fromEntries(els.map((e) => [e.dataset.tile, e.querySelector('.dv').textContent.trim() + ' | ' + (e.querySelector('.dn') || { textContent: '' }).textContent.trim()])));
     const expect = {
       pressure: /^\d+\.\d\d inHg \| (Rising|Falling|Steady)$/, visibility: /^\d+(\.\d)? mi \| (Clear view|Haze|Fog)$/, cloud: /^\d+% \| (Clear|Mostly clear|Partly cloudy|Mostly cloudy|Overcast)$/,
@@ -348,30 +359,33 @@ async function setSize(page, size) {
     await context.close();
   }
 
-  // Next 2 hours: the sample has a shower coming for some places; the card shows 8 steps and a plain line.
-  {
-    const { context, page, errors } = await fresh(browser, 390, 844);
+  // Next 2 hours, from the live 15-minute forecast (a shower on its way for New York) and from the sample
+  // (a shower coming for some places): the card shows 8 steps and a plain line.
+  for (const [mode, api] of [['live', {}], ['sample', { offline: true }]]) {
+    const { context, page, errors } = await fresh(browser, 390, 844, '', api);
+    const t = (what) => `${mode}: ${what}`;
     let found = null;
     for (const i of [0, 1, 2]) {
       await page.click(`.chip[data-i="${i}"]`);
       if (await page.isVisible('#soon')) { found = (await page.textContent('.place h2')).trim(); break; }
     }
-    check(!!found, `the Next 2 hours card shows for a city with rain coming (${found})`);
+    check(!!found && (mode === 'sample' || found === 'New York'), t(`the Next 2 hours card shows for a city with rain coming (${found})`));
     if (found) {
       const line = (await page.textContent('#soonLine')).trim();
-      check(/^((Rain|Snow) (starting|stopping) around \d{1,2}:\d\d [AP]M|(Rain|Snow) for the next two hours|Light (rain|snow) on and off)$/.test(line), `Next 2 hours says what's coming (${line})`);
-      check((await page.$$('#soonBars .b')).length === 8 && (await page.textContent('#soonBars .b .t')).trim() === 'Now', 'Next 2 hours has 8 bars, from Now');
-      check(/^(0|\d+\.\d\d) in · (0|\d+(\.\d)?) mm$/.test((await page.textContent('#soonAside')).trim()), `Next 2 hours totals it in the rain unit (${await page.textContent('#soonAside')})`);
-      check(/Now: /.test(await page.getAttribute('#soonBars', 'aria-label')), 'Next 2 hours is read out step by step');
+      check((mode === 'live' ? /^Rain starting around \d{1,2}:\d\d [AP]M$/ : /^((Rain|Snow) (starting|stopping) around \d{1,2}:\d\d [AP]M|(Rain|Snow) for the next two hours|Light (rain|snow) on and off)$/).test(line), t(`Next 2 hours says what's coming (${line})`));
+      check((await page.$$('#soonBars .b')).length === 8 && (await page.textContent('#soonBars .b .t')).trim() === 'Now', t('Next 2 hours has 8 bars, from Now'));
+      check(/^(0|\d+\.\d\d) in · (0|\d+(\.\d)?) mm$/.test((await page.textContent('#soonAside')).trim()), t(`Next 2 hours totals it in the rain unit (${await page.textContent('#soonAside')})`));
+      check(/Now: /.test(await page.getAttribute('#soonBars', 'aria-label')), t('Next 2 hours is read out step by step'));
     }
-    check(errors.length === 0, `Next 2 hours: no script errors${errors.length ? ': ' + errors.join(' | ') : ''}`);
+    check(errors.length === 0, t(`Next 2 hours: no script errors${errors.length ? ': ' + errors.join(' | ') : ''}`));
     await context.close();
   }
 
   // Severe weather alerts: cards above everything, most severe first, coloured by severity; the full text opens.
   {
     const { context, page, errors } = await fresh(browser, 390, 844);
-    check(await page.isHidden('#alerts') || (await page.textContent('#alerts')).includes('(sample)'), 'no alerts show unless there are some (or a marked sample)');
+    await page.waitForSelector('.dt[data-tile="normal"]', { timeout: 30000 }).catch(() => {});   // the slowest answer: everything else is in
+    check(await page.isHidden('#alerts'), 'no alerts show when the NWS has none');
     const soon = new Date(Date.now() + 3 * 36e5).toISOString(), past = new Date(Date.now() - 36e5).toISOString();
     await page.evaluate(([soon, past]) => __twoDegreesTest.inject('alerts', [
       { id: 'a', event: 'Frost Advisory', severity: 'Minor', headline: 'Frost Advisory until 9 AM', description: 'Temperatures as low as 30.', instruction: 'Cover plants.', expires: soon, senderName: 'NWS New York NY' },
@@ -404,11 +418,62 @@ async function setSize(page, size) {
     await context.close();
   }
 
+  // The live path's extras: NWS alerts parsed from the feed; air quality showing before the slow archive;
+  // and services that fail hide just their tiles, the way the app falls back.
+  {
+    const soon = new Date(Date.now() + 2 * 36e5).toISOString(), past = new Date(Date.now() - 36e5).toISOString();
+    const alerts = [
+      { id: 'urn:oid:1', event: 'Winter Storm Warning', severity: 'Severe', urgency: 'Expected', headline: 'Winter Storm Warning issued by NWS', description: 'Heavy snow expected.', instruction: 'Travel could be very difficult.', effective: past, expires: soon, senderName: 'NWS New York NY' },
+      { id: 'urn:oid:2', event: 'Special Weather Statement', severity: 'Moderate', headline: 'Old statement', description: 'Over.', expires: past, senderName: 'NWS New York NY' },
+    ];
+    const { context, page, errors } = await fresh(browser, 390, 844, '', { alerts, delay: { archive: 5000 } });
+    await page.waitForSelector('.alert', { timeout: 15000 }).catch(() => {});
+    const cards = await page.$$eval('.alert b', (els) => els.map((e) => e.textContent));
+    check(cards.join(',') === 'Winter Storm Warning', `live: the NWS alerts for New York show, expired ones left out (${cards.join(', ')})`);
+    check((await page.$$('.chip[data-i="0"] svg.warn')).length === 1 && (await page.$$('.chip[data-i="1"] svg.warn')).length === 0, 'live: New York has the warning triangle, London (no NWS) none');
+    await page.waitForSelector('.dt[data-tile="aqi"]', { timeout: 15000 }).catch(() => {});
+    const early = await page.evaluate(() => [!!document.querySelector('.dt[data-tile="aqi"]'), !!document.querySelector('.dt[data-tile="normal"]')]);
+    check(early[0] && !early[1], `live: air quality shows without waiting for the slow archive (aqi ${early[0]}, normals ${early[1]})`);
+    const aq = await page.textContent('.dt[data-tile="aqi"]');
+    check(/US AQI/.test(aq) && /Better than yesterday/.test(aq), `live: air quality in New York on the US scale, against yesterday (${aq})`);
+    await page.waitForSelector('.dt[data-tile="normal"]', { timeout: 30000 }).catch(() => {});
+    check(/Normal high/.test(await page.textContent('.dt[data-tile="normal"]').catch(() => '')), 'live: the averages tile appears when the archive answers');
+    await page.click('#daysToggle');
+    await page.click('#days [data-day="0"]');
+    check(/Record high.*\(\d{4}\).*Record low.*\(\d{4}\)/s.test(await page.textContent('#sheet .facts')), 'live: the day detail has the records from the archive');
+    await page.keyboard.press('Escape');
+    check(errors.length === 0, `live extras: no script errors${errors.length ? ': ' + errors.join(' | ') : ''}`);
+    await context.close();
+  }
+  {
+    const { context, page, errors } = await fresh(browser, 390, 844, '', { fail: ['aq', 'archive', 'alerts'] });
+    await page.waitForTimeout(3500);   // every answer (and failure) is in
+    const shown = await page.$$eval('.dt', (els) => els.map((e) => e.dataset.tile).join(','));
+    check(!/aqi|pollen|normal/.test(shown) && /pressure/.test(shown) && await page.isHidden('#alerts'), `live: failed air quality, archive and NWS hide just their tiles (${shown})`);
+    check(/Updated/.test(await page.textContent('#statusText')), 'live: the forecast itself still shows as live');
+    await page.click('#daysToggle');
+    await page.click('#days [data-day="0"]');
+    const facts = await page.textContent('#sheet .facts');
+    check(/Sunrise/.test(facts) && !/Normal|Record/.test(facts) && (await page.$$('#sheet svg.chart')).length === 3, 'live: without the archive, the day detail leaves out normals and records');
+    await page.keyboard.press('Escape');
+    check(errors.length === 0, `failed extras: no script errors${errors.length ? ': ' + errors.join(' | ') : ''}`);
+    await context.close();
+  }
+
+  // The sample forecast (no internet): sample air quality, normals and records, labelled as a sample.
+  {
+    const { context, page, errors } = await fresh(browser, 390, 844, '', { offline: true });
+    const shown = await page.$$eval('.dt', (els) => els.map((e) => e.dataset.tile).join(','));
+    check(/aqi/.test(shown) && /normal/.test(shown) && /pressure/.test(shown) && /moon/.test(shown) && (await page.textContent('#statusText')) === 'Sample forecast', `sample: the tiles come with sample data, labelled Sample forecast (${shown})`);
+    check(errors.length === 0, `sample: no script errors${errors.length ? ': ' + errors.join(' | ') : ''}`);
+    await context.close();
+  }
+
   // Pollen (Europe, in season) and the air quality scale, from injected readings.
   {
     const { context, page } = await fresh(browser, 1280, 900);
     await page.click('.chip[data-i="1"]');   // London: the European AQI
-    await page.waitForFunction(() => document.querySelector('.place h2').textContent.trim() === 'London' && document.querySelector('.dt[data-tile="aqi"]'));
+    await page.waitForFunction(() => document.querySelector('.place h2').textContent.trim() === 'London' && document.querySelector('.dt[data-tile="aqi"]') && document.querySelector('.dt[data-tile="normal"]'), null, { timeout: 30000 });
     await page.evaluate(() => __twoDegreesTest.inject('aq', { us: 60, eu: 45, usY: null, euY: null, pm25: 30, pm10: 20, o3: 50, no2: 10, pollen: { grass: 120, birch: 30, alder: 2 } }));
     const aq = await page.textContent('.dt[data-tile="aqi"]'), pollen = await page.textContent('.dt[data-tile="pollen"]');
     check(/45 Moderate/.test(aq) && /European AQI/.test(aq) && /Mostly PM2\.5/.test(aq), `London's air quality is on the European scale, with the main pollutant (${aq})`);
@@ -422,7 +487,7 @@ async function setSize(page, size) {
 
   // Inside the product page's frame: the day detail takes the panel's place, then gives it back.
   {
-    const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const context = await newContext(browser, { viewport: { width: 1280, height: 900 } });
     const page = await context.newPage();
     await page.goto('file://' + path.resolve(__dirname, '../docs/index.html'));
     const frame = page.frameLocator('#app');
@@ -446,7 +511,7 @@ async function setSize(page, size) {
 
   // Use My Location: on at load (the browser allows it here), first and shown; off from the ⋯ menu.
   {
-    const context = await browser.newContext({ viewport: { width: 390, height: 844 }, permissions: ['geolocation', 'clipboard-read', 'clipboard-write'], geolocation: { latitude: 39.7392, longitude: -104.9847 } });
+    const context = await newContext(browser, { viewport: { width: 390, height: 844 }, permissions: ['geolocation', 'clipboard-read', 'clipboard-write'], geolocation: { latitude: 39.7392, longitude: -104.9847 } });
     const page = await context.newPage();
     await page.goto(PAGE);
     await page.waitForSelector('#askLoc:not([hidden])', { timeout: 10000 }).catch(() => {});
@@ -472,7 +537,7 @@ async function setSize(page, size) {
 
   // Where you are matches a saved city: one chip, labelled with the arrow, not two.
   {
-    const context = await browser.newContext({ viewport: { width: 390, height: 844 }, permissions: ['geolocation'], geolocation: { latitude: 51.5074, longitude: -0.1278 } });
+    const context = await newContext(browser, { viewport: { width: 390, height: 844 }, permissions: ['geolocation'], geolocation: { latitude: 51.5074, longitude: -0.1278 } });
     const page = await context.newPage();
     await page.goto(PAGE);
     await page.waitForSelector('#askLoc:not([hidden])', { timeout: 10000 }).catch(() => {});
@@ -486,7 +551,7 @@ async function setSize(page, size) {
 
   // Not Now: turned off, never asked again.
   {
-    const context = await browser.newContext({ viewport: { width: 390, height: 844 }, permissions: ['geolocation'], geolocation: { latitude: 39.7392, longitude: -104.9847 } });
+    const context = await newContext(browser, { viewport: { width: 390, height: 844 }, permissions: ['geolocation'], geolocation: { latitude: 39.7392, longitude: -104.9847 } });
     const page = await context.newPage();
     await page.goto(PAGE);
     await page.waitForSelector('#askLoc:not([hidden])', { timeout: 10000 }).catch(() => {});
@@ -501,7 +566,7 @@ async function setSize(page, size) {
 
   // Widget mode (app?widgets, shown on the product page): the Mac widgets, live, at every width.
   for (const [vp, w, h] of VIEWPORTS) {
-    const context = await browser.newContext({ viewport: { width: w, height: h } });
+    const context = await newContext(browser, { viewport: { width: w, height: h } });
     const page = await context.newPage();
     const errors = [];
     page.on('pageerror', (e) => errors.push(e.message));

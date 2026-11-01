@@ -955,13 +955,15 @@
     extrasAt[key] = Date.now();
     const isSample = (v) => v && (v.sample || (Array.isArray(v) && v.some((a) => a.sample)));
     const drop = (bag) => { if (isSample(bag[key])) delete bag[key]; };
-    const aq = fetchAQ(city).then((v) => { state.aq[key] = v; }, () => drop(state.aq));
-    const alerts = fetchAlerts(city).then((v) => { state.alerts[key] = v; }, () => drop(state.alerts));
+    // Each shows as soon as it arrives: the archive is slow, and air quality shouldn't wait for it (or for the NWS).
+    fetchAQ(city).then((v) => { state.aq[key] = v; }, () => drop(state.aq)).then(render);
+    fetchAlerts(city).then((v) => { state.alerts[key] = v; }, () => drop(state.alerts)).then(render);
     const cachedN = store.get('normals.' + key, null);
-    const normals = cachedN && cachedN.table && Date.now() - cachedN.at < NORMALS_MS ? Promise.resolve(state.normals[key] = { table: cachedN.table })
-      : fetchNormals(city).then((table) => { state.normals[key] = { table }; store.set('normals.' + key, { at: Date.now(), table }); },
-        () => { if (cachedN && cachedN.table) state.normals[key] = { table: cachedN.table }; else drop(state.normals); });
-    Promise.all([aq, alerts, normals]).then(() => render());
+    if (cachedN && cachedN.table && Date.now() - cachedN.at < NORMALS_MS) state.normals[key] = { table: cachedN.table };
+    else {
+      fetchNormals(city).then((table) => { state.normals[key] = { table }; store.set('normals.' + key, { at: Date.now(), table }); },
+        () => { if (cachedN && cachedN.table) state.normals[key] = { table: cachedN.table }; else drop(state.normals); }).then(render);
+    }
   }
 
   async function load(city) {
@@ -1337,7 +1339,8 @@
 
   // Charts share one horizontal scale: hour i sits at the middle of the i-th of n slots.
   function chartFrame(W, H, n, top, bottom) {
-    const L = 36, R = 36, slot = (W - L - R) / n;
+    // Room either side for the widest axis label ("100%", "-10°") in any font, with a margin to spare.
+    const L = 46, R = 38, slot = (W - L - R) / n;
     return { L, R, W, H, T: top, B: bottom, slot, x: (i) => L + (i + 0.5) * slot, plotH: H - top - bottom };
   }
   function hourLabels(f, hrs) {
@@ -1384,7 +1387,7 @@
   }
 
   function chartRain(hrs, W) {
-    const f = chartFrame(W, 96, hrs.length, 8, 22), y = (p) => f.T + (1 - p / 100) * f.plotH;
+    const f = chartFrame(W, 100, hrs.length, 12, 22), y = (p) => f.T + (1 - p / 100) * f.plotH;
     const grid = [0, 50, 100].map((p) => `<path d="M${f.L} ${y(p).toFixed(1)}H${W - f.R}" stroke="var(--border-strong)" stroke-width="0.5"/><text x="${f.L - 6}" y="${(y(p) + 3.5).toFixed(1)}" text-anchor="end">${p}%</text>`).join('');
     const bw = Math.max(1, f.slot - 2);
     const bars = hrs.map((h, i) => (h.pop > 0 ? `<rect x="${(f.x(i) - bw / 2).toFixed(1)}" y="${y(h.pop).toFixed(1)}" width="${bw.toFixed(1)}" height="${(f.plotH * h.pop / 100).toFixed(1)}" rx="1.5" fill="var(--rain)" opacity="${h.pop >= 50 ? 1 : 0.65}"/>` : '')).join('');
