@@ -100,8 +100,9 @@ object SelfTest {
             val hereNow = store.current.forecasts[City.CURRENT_ID]
             val hereAir = store.current.air[City.CURRENT_ID]
             check(hereAir != null, "where you are: air quality loads (${hereAir?.usAqi?.roundHalfUp()?.let { "US AQI $it" } ?: "none"})")
-            check(hereNow != null && Detail.pressureTrend(hereNow) != null,
-                "where you are: pressure trend ${hereNow?.let { f -> "${Detail.pressureTrend(f)} (hour ${f.nowIndex} of ${f.hours.size}, " +
+            // The hourly series starts at midnight: before 3 AM there is no trend yet, and the tile shows none.
+            check(hereNow != null && (Detail.pressureTrend(hereNow) != null || hereNow.nowIndex in 0..2),
+                "where you are: pressure trend ${hereNow?.let { f -> "${Detail.pressureTrend(f) ?: "none yet"} (hour ${f.nowIndex} of ${f.hours.size}, " +
                     "${f.hours.getOrNull(f.nowIndex - 3)?.let { "${it.time.toLocalTime()} ${it.pressure}" }} → ${f.now.pressure})" }}")
             store.setUseLocation(false)
             repeat(20) { if (store.current.cities.any { it.isCurrent }) delay(100) }
