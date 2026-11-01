@@ -355,7 +355,12 @@ class WeatherStore private constructor(context: Context) {
      */
     suspend fun loadExtras(city: City) = coroutineScope {
         extrasLoaded += city.id
-        val air = async(Dispatchers.IO) { Extras.air(city) }
+        fun kept() = current.cities.any { it.id == city.id }
+        // Each one shows as soon as it arrives: the NWS can be slow, and shouldn't hold up air quality.
+        launch {
+            val a = withContext(Dispatchers.IO) { Extras.air(city) }
+            if (kept()) _state.update { s -> s.copy(air = if (a != null) s.air + (city.id to a) else s.air - city.id) }
+        }
         val alerts = async(Dispatchers.IO) { Extras.alerts(city) }
         val key = normalsKey(city)
         val normals = async {
@@ -364,15 +369,11 @@ class WeatherStore private constructor(context: Context) {
                 withContext(Dispatchers.IO) { Extras.normals(city) }
             }
         }
-        val a = air.await()
         val list = alerts.await()
-        if (current.cities.any { it.id == city.id }) {
+        if (kept()) {
             val now = java.time.Instant.now()
             _state.update { s ->
-                s.copy(
-                    air = if (a != null) s.air + (city.id to a) else s.air - city.id,
-                    alerts = s.alerts + (city.id to (list ?: s.alerts[city.id].orEmpty()).filter { it.expires == null || it.expires.toInstant().isAfter(now) }),
-                )
+                s.copy(alerts = s.alerts + (city.id to (list ?: s.alerts[city.id].orEmpty()).filter { it.expires == null || it.expires.toInstant().isAfter(now) }))
             }
         }
         normals.await()?.let { n ->
