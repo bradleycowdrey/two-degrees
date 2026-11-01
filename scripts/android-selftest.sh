@@ -36,7 +36,7 @@ stop
 # 3. Scrolled: the 10-day forecast, then the detail tiles, then the newer tiles. 4. The city list.
 launch --ez selftest true --es show days; sleep 9; shot android-3-days; stop
 launch --ez selftest true --es show tiles; sleep 9; shot android-4-tiles; stop
-launch --ez selftest true --es show more; sleep 9; shot android-4b-more-tiles; stop
+launch --es show more; sleep 12; shot android-4b-more-tiles; stop
 launch --es show list; sleep 6; shot android-5-list; stop
 # 5. A day in detail, the ⋮ menu and its Units page.
 launch --es show day; sleep 8; shot android-6-day; stop

@@ -330,7 +330,9 @@ class WeatherStore private constructor(context: Context) {
     }
 
     fun refreshIfDue() {
-        if (current.cities.any(::isStale)) refresh()
+        if (current.cities.any(::isStale)) { refresh(); return }
+        // Air quality and alerts aren't saved: a fresh start with saved forecasts still fetches them, once.
+        current.cities.filter { it.id !in extrasLoaded }.forEach { city -> scope.launch { loadExtras(city) } }
     }
 
     private fun isStale(city: City): Boolean {
@@ -339,6 +341,9 @@ class WeatherStore private constructor(context: Context) {
     }
 
     private fun launchLoad(city: City) { scope.launch { load(city)?.let { loadExtras(city) } } }
+
+    /** Cities whose extras this process has asked for. */
+    private val extrasLoaded: MutableSet<String> = java.util.Collections.synchronizedSet(mutableSetOf())
 
     /** One big archive request at a time. */
     private val normalsLock = Mutex()
@@ -349,6 +354,7 @@ class WeatherStore private constructor(context: Context) {
      * touches the forecast.
      */
     suspend fun loadExtras(city: City) = coroutineScope {
+        extrasLoaded += city.id
         val air = async(Dispatchers.IO) { Extras.air(city) }
         val alerts = async(Dispatchers.IO) { Extras.alerts(city) }
         val key = normalsKey(city)
