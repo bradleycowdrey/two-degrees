@@ -37,7 +37,8 @@ async function layoutProblems(page) {
       const a = blocks[i - 1].getBoundingClientRect(), b = blocks[i].getBoundingClientRect();
       if (b.top < a.bottom - 0.5) problems.push(`${blocks[i].className || blocks[i].tagName} overlaps ${blocks[i - 1].className || blocks[i - 1].tagName} by ${(a.bottom - b.top).toFixed(1)}px`);
     }
-    for (const sel of ['.hdr h1', '.place h2', '.stat .v', '.stat .s', '.day .d', '.foot .brand', '#statusText', '.chip']) {
+    for (const sel of ['.hdr h1', '.place h2', '.stat .v', '.stat .s', '.day .d', '.foot .brand', '#statusText', '.chip', '.alert b', '.alert .m', '.soon-line', '#soonAside',
+      '.dt .eyebrow', '.dt .dv', '.dt .ds', '.dt .dn', '.mapcard p', '.mapcard .pill', '.mapcard .credit']) {
       for (const e of document.querySelectorAll(sel)) {
         if (e.offsetParent === null || getComputedStyle(e).clipPath === 'inset(50%)') continue;   // hidden, or visually hidden on purpose
         if (e.scrollWidth > e.clientWidth + 1 && getComputedStyle(e).textOverflow !== 'ellipsis') problems.push(`${sel} clipped ("${e.textContent.trim().slice(0, 30)}")`);
@@ -58,6 +59,41 @@ async function layoutProblems(page) {
     }
     const range = document.querySelector('.days-head .range'), title = document.querySelector('#daysTitle');
     if (range && range.offsetParent !== null && range.getBoundingClientRect().left < title.getBoundingClientRect().right - 0.5) problems.push('5-day range runs into the "5-day forecast" title');
+    if (document.documentElement.scrollWidth > innerWidth) problems.push(`page scrolls sideways by ${document.documentElement.scrollWidth - innerWidth}px`);
+    return problems;
+  });
+}
+
+// Layout inside a sheet (the day detail): nothing runs out of the sheet, nothing clipped or overlapping,
+// the title clear of its buttons, and every chart label inside its chart.
+async function sheetProblems(page) {
+  return page.evaluate(() => {
+    const problems = [], sheet = document.querySelector('#sheet'), sr = sheet.getBoundingClientRect();
+    if (sheet.scrollWidth > sheet.clientWidth + 1) problems.push('the sheet scrolls sideways');
+    for (const e of sheet.querySelectorAll('.sh-head, .tile, svg.chart, .facts dt, .facts dd')) {
+      const r = e.getBoundingClientRect();
+      if (r.left < sr.left - 0.5 || r.right > sr.right + 0.5) problems.push(`${e.className.baseVal ?? e.className ?? e.tagName} runs out of the sheet`);
+    }
+    const blocks = [...sheet.children];
+    for (let i = 1; i < blocks.length; i++) {
+      const a = blocks[i - 1].getBoundingClientRect(), b = blocks[i].getBoundingClientRect();
+      if (b.top < a.bottom - 0.5) problems.push(`sheet block ${i} overlaps the one above`);
+    }
+    const title = sheet.querySelector('#sheetTitle').getBoundingClientRect();
+    for (const b of sheet.querySelectorAll('.sh-head button')) {
+      const r = b.getBoundingClientRect();
+      if (r.left < title.right - 0.5 && r.right > title.left + 0.5) problems.push('the title runs into a button');
+    }
+    for (const e of sheet.querySelectorAll('#sheetTitle, .cond, .hl, .eyebrow, .facts dt, .facts dd')) {
+      if (e.scrollWidth > e.clientWidth + 1) problems.push(`clipped "${e.textContent.trim().slice(0, 30)}"`);
+    }
+    for (const svg of sheet.querySelectorAll('svg.chart')) {
+      const w = svg.viewBox.baseVal.width, h = svg.viewBox.baseVal.height;
+      for (const t of svg.querySelectorAll('text')) {
+        const b = t.getBBox();
+        if (b.x < -1 || b.x + b.width > w + 1 || b.y < -1 || b.y + b.height > h + 1) problems.push(`${svg.dataset.chart} chart label "${t.textContent}" outside the chart`);
+      }
+    }
     if (document.documentElement.scrollWidth > innerWidth) problems.push(`page scrolls sideways by ${document.documentElement.scrollWidth - innerWidth}px`);
     return problems;
   });
@@ -102,6 +138,42 @@ async function setSize(page, size) {
     check(/degrees Fahrenheit, -?\d+ Celsius/.test(label || ''), t('screen readers hear both units'));
     check((await page.$$('.hour[role="img"][aria-label]')).length === 24, t('24 labelled hours'));
 
+    // More detail tiles, from the sample forecast: each one present with a value.
+    const tiles = await page.$$eval('.dt', (els) => Object.fromEntries(els.map((e) => [e.dataset.tile, e.querySelector('.dv').textContent.trim() + ' | ' + (e.querySelector('.dn') || { textContent: '' }).textContent.trim()])));
+    const expect = {
+      pressure: /^\d+\.\d\d inHg \| (Rising|Falling|Steady)$/, visibility: /^\d+(\.\d)? mi \| (Clear view|Haze|Fog)$/, cloud: /^\d+% \| (Clear|Mostly clear|Partly cloudy|Mostly cloudy|Overcast)$/,
+      precip: /^(0|\d+\.\d\d) in \| (None expected|Expected in the next 24 hours: .+ in)$/,
+      moon: /^(New Moon|Waxing Crescent|First Quarter|Waxing Gibbous|Full Moon|Waning Gibbous|Last Quarter|Waning Crescent) · \d+% \| $/,
+      aqi: /^\d+ (Good|Moderate|Unhealthy for Sensitive Groups|Unhealthy|Very Unhealthy|Hazardous) \| (Better than yesterday|Worse than yesterday|About the same as yesterday|Mostly .+)$/,
+      normal: /^(About normal|\d+° (above|below) normal) \| Normal high -?\d+°F · -?\d+°C, low -?\d+°F · -?\d+°C$/,
+    };
+    for (const [k, re] of Object.entries(expect)) check(re.test(tiles[k] || ''), t(`${k} tile shows a value (${tiles[k]})`));
+    check(/^(\d+ mph|Gusts to \d+\u00A0mph)$/.test((await page.textContent('.stat:nth-child(3) .s')).trim()) || /km\/h$/.test(await page.textContent('.stat:nth-child(3) .s')),
+      t(`wind shows km/h beside mph, or the gusts (${(await page.textContent('.stat:nth-child(3)')).trim()})`));
+    const map = await page.getAttribute('#mapLink', 'href');
+    check(/^https:\/\/bradleycowdrey\.github\.io\/two-degrees\/radar\.html\?lat=40\.713&lon=-74\.006&z=7&units=F$/.test(map) && await page.getAttribute('#mapLink', 'target') === '_blank',
+      t(`Rain map opens the map page at the city, in a new tab (${map})`));
+
+    // Day detail: a day row opens it, with three charts; previous/next; Escape closes it and focus goes back.
+    await page.click('#daysToggle');
+    await page.click('#days [data-day="0"]');
+    await page.waitForSelector('#sheet svg.chart');
+    check(await page.isVisible('#sheet[role="dialog"][aria-modal="true"]') && /^Today, /.test(await page.textContent('#sheetTitle')), t('a day row opens its detail, as a dialog'));
+    check(await page.evaluate(() => document.activeElement.id) === 'sheetClose', t('the day detail takes focus (its close button)'));
+    const charts = await page.$$eval('#sheet svg.chart[role="img"][aria-label]', (els) => els.map((e) => e.dataset.chart).join(','));
+    check(charts === 'temp,rain,wind', t(`the day detail has three labelled charts (${charts})`));
+    const facts = await page.textContent('#sheet .facts');
+    check(/Sunrise.*Sunset.*UV max.*Max gust.*Normal.*High .*Record high.*\(\d{4}\).*Record low.*\(\d{4}\)/s.test(facts), t('the facts list sunrise, sunset, UV, gust, normals and records'));
+    check(await page.isDisabled('#sheetPrev'), t('no previous day before today'));
+    await page.click('#sheetNext');
+    check(!/^Today/.test(await page.textContent('#sheetTitle')) && !(await page.isDisabled('#sheetPrev')), t(`next goes to the next day (${await page.textContent('#sheetTitle')})`));
+    await page.keyboard.press('ArrowLeft');
+    check(/^Today/.test(await page.textContent('#sheetTitle')), t('the left arrow key goes back a day'));
+    await page.keyboard.press('Escape');
+    check(await page.isHidden('#sheetBack') && await page.evaluate(() => document.activeElement.dataset.day) === '0', t('Escape closes the day detail, back on its row'));
+    await page.click('#daysToggle');
+    await page.evaluate(() => scrollTo(0, 0));
+
     // Switch city. Selecting a chip must not move any chip or the Add | Edit controls.
     const chipBoxes = () => page.$$eval('.chip[data-i], #addBtn', (els) => els.map((e) => { const r = e.getBoundingClientRect(); return [r.x, r.y, r.width].map((v) => v.toFixed(1)).join(','); }).join(' '));
     // Wait until every city's temperature has arrived, so a chip growing as it loads isn't counted as a move.
@@ -132,15 +204,18 @@ async function setSize(page, size) {
     check((await page.textContent('#results')).includes('No match'), t('a search with no results says so'));
     await page.keyboard.press('Escape');
 
-    // City limit.
-    for (const q of ['Rome']) { await page.click('#addBtn'); await page.fill('#searchInput', q); await page.keyboard.press('Enter'); }
-    check((await page.$$('.chip[data-i]')).length === 5 && await page.isDisabled('#addBtn'), t('limit of 5 cities disables Add'));
+    // City limit: 20 of your own.
+    for (const q of ['Rome', 'Berlin', 'Madrid', 'Dublin', 'Amsterdam', 'Stockholm', 'Seoul', 'Sydney', 'Toronto', 'Chicago', 'Denver', 'Boston', 'Miami', 'Cairo', 'Dubai', 'Singapore']) {
+      await page.click('#addBtn'); await page.fill('#searchInput', q); await page.keyboard.press('Enter');
+    }
+    check((await page.$$('.chip[data-i]')).length === 20 && await page.isDisabled('#addBtn'), t('limit of 20 cities disables Add'));
+    check(await page.getAttribute('#addBtn', 'aria-label') === 'You can track up to 20 cities', t('the disabled Add says the limit is 20'));
 
     // Edit: remove, can't remove the last one.
     await page.click('#editBtn');
     check(await page.isVisible('.chip-x'), t('Edit shows remove buttons'));
-    await page.click('.chip-x[data-x="4"]');
-    check((await page.$$('.chip[data-i]')).length === 4 && !(await page.isDisabled('#addBtn')), t('removing a city re-enables Add'));
+    await page.click('.chip-x[data-x="1"]');
+    check((await page.$$('.chip[data-i]')).length === 19 && !(await page.isDisabled('#addBtn')), t('removing a city re-enables Add'));
     while ((await page.$$('.chip[data-i]')).length > 1) await page.click('.chip-x[data-x="0"]');
     check((await page.$$('.chip-x')).length === 0, t('the last city cannot be removed'));
     check(await page.getAttribute('#editBtn', 'aria-pressed') === 'false', t('Edit turns itself off at one city'));
@@ -189,6 +264,14 @@ async function setSize(page, size) {
         const problems = await layoutProblems(page);
         check(problems.length === 0, t(`${size}, forecast ${open ? 'open' : 'closed'}: layout${problems.length ? ' — ' + problems.join('; ') : ' clean'}`));
         if (SHOTS) await page.screenshot({ path: path.join(SHOTS, `web-${vp}-${i}-${size}-${open ? 'open' : 'closed'}.png`), fullPage: true });
+        if (open) {
+          await page.click('#days [data-day="1"]');
+          await page.waitForSelector('#sheet svg.chart');
+          const inSheet = await sheetProblems(page);
+          check(inSheet.length === 0, t(`${size}, day detail: layout${inSheet.length ? ' — ' + inSheet.join('; ') : ' clean'}`));
+          if (SHOTS) await page.screenshot({ path: path.join(SHOTS, `web-${vp}-${i}-${size}-day.png`) });
+          await page.keyboard.press('Escape');
+        }
       }
     }
     await setSize(page, 'medium');
@@ -219,8 +302,137 @@ async function setSize(page, size) {
     const bad = '?c=' + encodeURIComponent('Nowhere~abc~1|~10~10|<img src=x onerror=window.pwned=1>~1~1|A~1~1|B~2~2|C~3~3|D~4~4|E~5~5');
     const { context, page } = await fresh(browser, 1280, 900, bad);
     const chips = await page.$$eval('.chip[data-i]', (els) => els.map((e) => e.textContent.trim()));
-    check(chips.length === 5, `malformed link: keeps at most 5 valid cities (${chips.length})`);
+    check(chips.length === 6, `malformed link: keeps the 6 valid cities (${chips.length})`);
     check(!(await page.evaluate(() => window.pwned)) && chips[0].startsWith('<img'), 'malformed link: a city name with HTML is shown as text');
+    await context.close();
+  }
+
+  // A link with more than 20 cities keeps the first 20.
+  {
+    const many = '?c=' + Array.from({ length: 25 }, (_, i) => `C${i}~${i}~${i}`).join('|');
+    const { context, page } = await fresh(browser, 1280, 900, many);
+    check((await page.$$('.chip[data-i]')).length === 20, `a link with 25 cities keeps 20 (${(await page.$$('.chip[data-i]')).length})`);
+    await context.close();
+  }
+
+  // Unit choices: wind, rain and pressure follow the ⋯ menu, show the other system beside them where there is one, and are saved.
+  {
+    const { context, page } = await fresh(browser, 390, 844);
+    const tile = (k) => page.$eval(`.dt[data-tile="${k}"]`, (e) => [e.querySelector('.dv').textContent.trim(), (e.querySelector('.ds') || { textContent: '' }).textContent.trim()].join(' / '));
+    const wind = () => page.$eval('.stat:nth-child(3)', (e) => e.querySelector('.v').textContent.trim() + ' / ' + e.querySelector('.s').textContent.trim());
+    check(/mph \/ /.test(await wind()) && /in \/ .*mm$/.test(await tile('precip')) && /inHg \/ \d+ hPa$/.test(await tile('pressure')), `units: Automatic with °F is mph, in and inHg (${await wind()}; ${await tile('precip')}; ${await tile('pressure')})`);
+    await page.click('#unitC');
+    check(/km\/h \/ /.test(await wind()) && /mm \/ .*in$/.test(await tile('precip')) && /hPa \/ .*inHg$/.test(await tile('pressure')), `units: Automatic with °C is km/h, mm and hPa (${await wind()}; ${await tile('precip')}; ${await tile('pressure')})`);
+    const pick = async (attr) => { await page.click('#moreBtn'); await page.click(`#moreMenu [${attr}]`); };
+    await pick('data-wind-unit="ms"');
+    check(/^\d+ m\/s \/ /.test(await wind()) && / km \/ $/.test(await tile('visibility')), `Wind: m/s stands alone (${await wind()})`);
+    await pick('data-wind-unit="kn"');
+    check(/^\d+ kn \/ /.test(await wind()), `Wind: knots (${await wind()})`);
+    await pick('data-wind-unit="mph"');
+    check(/^\d+ mph \/ (\d+ km\/h|Gusts to \d+\u00A0mph)$/.test(await wind()) && / mi \/ $/.test(await tile('visibility')), `Wind: mph, with km/h beside it, and visibility in miles (${await wind()}; ${await tile('visibility')})`);
+    await pick('data-rain-unit="in"');
+    check(/^(0|\d+\.\d\d) in \/ (0|\d+(\.\d)?) mm$/.test(await tile('precip')), `Rain: in, with mm beside it (${await tile('precip')})`);
+    await pick('data-pressure-unit="mmhg"');
+    check(/^\d{3} mmHg \/ $/.test(await tile('pressure')), `Pressure: mmHg stands alone (${await tile('pressure')})`);
+    await pick('data-pressure-unit="hpa"');
+    check(/^\d{3,4} hPa \/ \d+\.\d\d inHg$/.test(await tile('pressure')), `Pressure: hPa, with inHg beside it (${await tile('pressure')})`);
+    await page.click('#moreBtn');
+    check(await page.getAttribute('#moreMenu [data-wind-unit="mph"]', 'aria-checked') === 'true' && (await page.textContent('#moreMenu')).includes('Severe weather alerts: United States only, from the National Weather Service.'),
+      'the ⋯ menu shows the unit chosen, and where alerts come from');
+    await page.keyboard.press('Escape');
+    const saved = await page.evaluate(() => ['windUnit', 'rainUnit', 'pressureUnit'].map((k) => localStorage.getItem('twodegrees.' + k)).join(','));
+    check(saved === '"mph","in","hpa"', `unit choices are saved as windUnit, rainUnit, pressureUnit (${saved})`);
+    await page.reload();
+    await page.waitForSelector('.temps');
+    check(/^\d+ mph/.test(await wind()) && /hPa \//.test(await tile('pressure')), 'unit choices survive a reload');
+    await context.close();
+  }
+
+  // Next 2 hours: the sample has a shower coming for some places; the card shows 8 steps and a plain line.
+  {
+    const { context, page, errors } = await fresh(browser, 390, 844);
+    let found = null;
+    for (const i of [0, 1, 2]) {
+      await page.click(`.chip[data-i="${i}"]`);
+      if (await page.isVisible('#soon')) { found = (await page.textContent('.place h2')).trim(); break; }
+    }
+    check(!!found, `the Next 2 hours card shows for a city with rain coming (${found})`);
+    if (found) {
+      const line = (await page.textContent('#soonLine')).trim();
+      check(/^((Rain|Snow) (starting|stopping) around \d{1,2}:\d\d [AP]M|(Rain|Snow) for the next two hours|Light (rain|snow) on and off)$/.test(line), `Next 2 hours says what's coming (${line})`);
+      check((await page.$$('#soonBars .b')).length === 8 && (await page.textContent('#soonBars .b .t')).trim() === 'Now', 'Next 2 hours has 8 bars, from Now');
+      check(/^(0|\d+\.\d\d) in · (0|\d+(\.\d)?) mm$/.test((await page.textContent('#soonAside')).trim()), `Next 2 hours totals it in the rain unit (${await page.textContent('#soonAside')})`);
+      check(/Now: /.test(await page.getAttribute('#soonBars', 'aria-label')), 'Next 2 hours is read out step by step');
+    }
+    check(errors.length === 0, `Next 2 hours: no script errors${errors.length ? ': ' + errors.join(' | ') : ''}`);
+    await context.close();
+  }
+
+  // Severe weather alerts: cards above everything, most severe first, coloured by severity; the full text opens.
+  {
+    const { context, page, errors } = await fresh(browser, 390, 844);
+    check(await page.isHidden('#alerts') || (await page.textContent('#alerts')).includes('(sample)'), 'no alerts show unless there are some (or a marked sample)');
+    const soon = new Date(Date.now() + 3 * 36e5).toISOString(), past = new Date(Date.now() - 36e5).toISOString();
+    await page.evaluate(([soon, past]) => __twoDegreesTest.inject('alerts', [
+      { id: 'a', event: 'Frost Advisory', severity: 'Minor', headline: 'Frost Advisory until 9 AM', description: 'Temperatures as low as 30.', instruction: 'Cover plants.', expires: soon, senderName: 'NWS New York NY' },
+      { id: 'b', event: 'Tornado Warning', severity: 'Extreme', headline: 'Tornado Warning until 6:15 PM', description: 'A tornado was seen.', instruction: 'Take cover now.', expires: soon, senderName: 'NWS New York NY' },
+      { id: 'c', event: 'Wind Advisory', severity: 'Moderate', headline: 'Wind Advisory', description: 'Gusty winds.', expires: soon, senderName: 'NWS New York NY' },
+      { id: 'd', event: 'Expired Warning', severity: 'Severe', headline: 'Old', description: 'Over.', expires: past, senderName: 'NWS New York NY' },
+    ]), [soon, past]);
+    const cards = await page.$$eval('.alert', (els) => els.map((e) => [e.querySelector('b').textContent, getComputedStyle(e).getPropertyValue('--sev').trim(), e.querySelector('.m').textContent]));
+    check(cards.map((c) => c[0]).join(',') === 'Tornado Warning,Wind Advisory,Frost Advisory', `alerts: most severe first, expired ones left out (${cards.map((c) => c[0]).join(', ')})`);
+    check(cards.map((c) => c[1].toUpperCase()).join(',') === '#E5484D,#F2A65A,#E9C98A', `alerts: red, orange, yellow by severity (${cards.map((c) => c[1]).join(', ')})`);
+    check(/^Until \d{1,2}:\d\d [AP]M · NWS New York NY$/.test(cards[0][2]), `an alert says until when, and who sent it (${cards[0][2]})`);
+    const order = await page.evaluate(() => { const a = document.querySelector('#alerts').getBoundingClientRect(), n = document.querySelector('#now').getBoundingClientRect(); return a.bottom <= n.top; });
+    check(order, 'alerts sit above the current conditions');
+    check((await page.$$('.chip[data-i="0"] svg.warn')).length === 1 && (await page.$$('.chip[data-i="1"] svg.warn')).length === 0, 'the city with an alert has a warning triangle in the city list');
+    const problems = await layoutProblems(page);
+    check(problems.length === 0, `alerts: layout${problems.length ? ' — ' + problems.join('; ') : ' clean'}`);
+    if (SHOTS) await page.screenshot({ path: path.join(SHOTS, 'web-phone-alerts.png'), fullPage: true });
+    await page.click('.alert[data-alert="0"]');
+    const text = await page.textContent('#sheet');
+    check(await page.isVisible('#sheet[role="dialog"]') && (await page.textContent('#sheetTitle')) === 'Tornado Warning' && text.includes('Tornado Warning until 6:15 PM') && text.includes('Take cover now.'),
+      'an alert opens its full text');
+    check(text.includes('From the US National Weather Service. Alerts can be late or missing: follow official warnings.') && /weather\.gov/.test(await page.getAttribute('#sheet a.al-link', 'href')) && (await page.textContent('#sheet a.al-link')).includes('More at weather.gov'),
+      'the alert links to weather.gov, with the note about official warnings');
+    if (SHOTS) await page.screenshot({ path: path.join(SHOTS, 'web-phone-alert-detail.png') });
+    await page.keyboard.press('Escape');
+    check(await page.isHidden('#sheetBack') && await page.evaluate(() => document.activeElement.dataset.alert) === '0', 'Escape closes the alert, back on its card');
+    await page.evaluate(() => __twoDegreesTest.inject('alerts', []));
+    check(await page.isHidden('#alerts'), 'no alerts: no empty card');
+    check(errors.length === 0, `alerts: no script errors${errors.length ? ': ' + errors.join(' | ') : ''}`);
+    await context.close();
+  }
+
+  // Pollen (Europe, in season) and the air quality scale, from injected readings.
+  {
+    const { context, page } = await fresh(browser, 1280, 900);
+    await page.click('.chip[data-i="1"]');   // London: the European AQI
+    await page.waitForFunction(() => document.querySelector('.place h2').textContent.trim() === 'London' && document.querySelector('.dt[data-tile="aqi"]'));
+    await page.evaluate(() => __twoDegreesTest.inject('aq', { us: 60, eu: 45, usY: null, euY: null, pm25: 30, pm10: 20, o3: 50, no2: 10, pollen: { grass: 120, birch: 30, alder: 2 } }));
+    const aq = await page.textContent('.dt[data-tile="aqi"]'), pollen = await page.textContent('.dt[data-tile="pollen"]');
+    check(/45 Moderate/.test(aq) && /European AQI/.test(aq) && /Mostly PM2\.5/.test(aq), `London's air quality is on the European scale, with the main pollutant (${aq})`);
+    check(/High/.test(pollen) && /Grass pollen/.test(pollen) && /Also Birch \(moderate\)/.test(pollen), `the Pollen tile shows the highest type and others above Low (${pollen})`);
+    await page.evaluate(() => __twoDegreesTest.inject('aq', { us: null, eu: null, pollen: null }));
+    check((await page.$$('.dt[data-tile="aqi"], .dt[data-tile="pollen"]')).length === 0, 'no air quality reading: the tiles hide');
+    const m = await page.evaluate(() => [__twoDegreesTest.moonPhase(new Date(Date.UTC(2000, 0, 6, 18, 14))).name, __twoDegreesTest.moonPhase(new Date(Date.UTC(2000, 0, 21, 4, 40))).name, __twoDegreesTest.moonPhase(new Date(Date.UTC(2026, 9, 26, 4, 12))).lit]);
+    check(m[0] === 'New Moon' && m[1] === 'Full Moon' && m[2] >= 99, `the moon phase is computed from the 2000-01-06 new moon (${m.join(', ')})`);
+    await context.close();
+  }
+
+  // Inside the product page's frame: the day detail takes the panel's place, then gives it back.
+  {
+    const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const page = await context.newPage();
+    await page.goto('file://' + path.resolve(__dirname, '../docs/index.html'));
+    const frame = page.frameLocator('#app');
+    await frame.locator('.temps').waitFor();
+    await frame.locator('#days [data-day="2"]').click();
+    await frame.locator('#sheet svg.chart').first().waitFor();
+    const shown = await frame.locator('body').evaluate(() => [getComputedStyle(document.querySelector('main.panel')).display, document.querySelectorAll('#sheet svg.chart').length, document.querySelector('#sheet').getBoundingClientRect().height]);
+    check(shown[0] === 'none' && shown[1] === 3 && shown[2] > 300, `in the product page, the day detail shows in place of the panel (${shown.join(', ')})`);
+    await frame.locator('#sheetClose').click();
+    check(await frame.locator('main.panel').isVisible() && await frame.locator('#sheetBack').isHidden(), 'in the product page, closing the day detail brings the panel back');
     await context.close();
   }
 
