@@ -13,6 +13,8 @@ enum PhoneSelfTest {
     nonisolated static let showTiles = ProcessInfo.processInfo.arguments.contains("--show-tiles")
     /// Opens the city list at launch, for a screenshot.
     nonisolated static let showList = ProcessInfo.processInfo.arguments.contains("--show-list")
+    /// Opens tomorrow's day detail at launch, for a screenshot.
+    nonisolated static let showDay = ProcessInfo.processInfo.arguments.contains("--show-day")
     /// Checks Use My Location (CI grants the permission and sets the Simulator's location first).
     nonisolated static let locate = ProcessInfo.processInfo.arguments.contains("--locate")
     /// Shows the "Show the weather where you are?" question, for a screenshot.
@@ -43,6 +45,18 @@ enum PhoneSelfTest {
             check(forecast.days.first?.uvIndex != nil && forecast.now.windDirection != nil,
                   "UV index and wind direction arrive (UV \(forecast.days.first?.uvIndex.map { String($0) } ?? "none"), wind from \(forecast.now.windDirection.map(Meteo.compass) ?? "none"))")
         }
+
+        // 0.5's details, with live data for the first city.
+        let first = store.cities[0]
+        if let f = store.forecasts[first.id] {
+            check(f.steps?.count == 8, "\(first.name): the next two hours in 15-minute steps (\(f.steps?.count ?? 0))")
+            check(f.now.pressure != nil && f.now.cloudCover != nil && f.days.first?.precipitation != nil, "\(first.name): pressure, cloud cover and today's precipitation arrive")
+        }
+        for _ in 0..<60 where store.airQuality[first.id] == nil || store.climate[first.id] == nil { try? await Task.sleep(for: .milliseconds(500)) }
+        let reading = store.airQuality[first.id]?.reading(inUS: WeatherAlert.inUS(latitude: first.latitude, longitude: first.longitude))
+        check(reading != nil, "\(first.name): air quality \(reading.map { "\($0.value) \($0.category)" } ?? "missing")")
+        check(store.climate[first.id]?.entry(for: Date())?.normalHigh != nil, "\(first.name): normals and records load")
+        check(WeatherStore.maxCities == 20, "up to 20 cities")
 
         // 2. Unit switch, both ways.
         let unit = store.unit

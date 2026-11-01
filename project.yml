@@ -69,6 +69,8 @@ targets:
       - path: Sources/TwoDegrees/Brand.swift
       - path: Sources/TwoDegrees/Model/LocationService.swift
       - path: Sources/TwoDegrees/Model/TermsSchedule.swift
+      - path: Sources/TwoDegrees/Model/WeatherExtras.swift
+      - path: Sources/TwoDegrees/Model/Notifier.swift
       - path: Sources/TwoDegrees/Model/Weather.swift
       - path: Sources/TwoDegrees/Model/WeatherStore.swift
       - path: Sources/TwoDegrees/Model/WidgetData.swift
@@ -77,6 +79,7 @@ targets:
         buildPhase: resources
       - path: Sources/TwoDegrees/Views/Palette.swift
       - path: Sources/TwoDegrees/Views/PanelParts.swift
+      - path: Sources/TwoDegrees/Views/DayCharts.swift
       - path: Sources/TwoDegrees/Views/WeatherSymbol.swift
       - path: Sources/TwoDegrees/Views/WidgetViews.swift
       - path: Resources/iOS/Assets.xcassets

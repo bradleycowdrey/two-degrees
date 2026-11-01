@@ -74,6 +74,12 @@ jobs:
           for i in $(seq 1 120); do [ -f "$DOCS/report.txt" ] && break; sleep 1; done
           sleep 3; xcrun simctl io "$DEVICE" screenshot "$OUT/phone-3b-tiles.png"
           xcrun simctl terminate "$DEVICE" $ID || true
+          # 3c. Tomorrow in detail: the charts and facts.
+          rm -f "$DOCS/report.txt"
+          xcrun simctl launch "$DEVICE" $ID --selftest --show-day
+          for i in $(seq 1 120); do [ -f "$DOCS/report.txt" ] && break; sleep 1; done
+          sleep 4; xcrun simctl io "$DEVICE" screenshot "$OUT/phone-3c-day.png"
+          xcrun simctl terminate "$DEVICE" $ID || true
           # 4. The city list.
           rm -f "$DOCS/report.txt"
           xcrun simctl launch "$DEVICE" $ID --selftest --show-list

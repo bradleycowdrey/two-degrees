@@ -24,7 +24,7 @@ enum MenuBarStyle: String, CaseIterable, Identifiable {
 /// Saved cities, settings and forecasts. Shared by the menu bar, the window and the Dock tile.
 @MainActor
 final class WeatherStore: ObservableObject {
-    static let maxCities = 5
+    static let maxCities = 20
     static let refreshInterval: TimeInterval = 15 * 60
 
     @Published var cities: [City] { didSet { save(cities, "cities"); shareWithWidgets() } }
@@ -35,6 +35,13 @@ final class WeatherStore: ObservableObject {
     @Published var uiSize: UISize { didSet { defaults.set(uiSize.rawValue, forKey: "uiSize") } }
     @Published var appFont: AppFont { didSet { defaults.set(appFont.rawValue, forKey: "appFont") } }
     @Published var floatOnTop: Bool { didSet { defaults.set(floatOnTop, forKey: "floatOnTop") } }
+    @Published var windUnit: WindUnit { didSet { defaults.set(windUnit.rawValue, forKey: "windUnit") } }
+    @Published var rainUnit: RainUnit { didSet { defaults.set(rainUnit.rawValue, forKey: "rainUnit") } }
+    @Published var pressureUnit: PressureUnit { didSet { defaults.set(pressureUnit.rawValue, forKey: "pressureUnit") } }
+    /// Notifications for where you are (or the first city): new severe weather alerts, and rain
+    /// starting soon. Both off until turned on.
+    @Published var notifySevere: Bool { didSet { defaults.set(notifySevere, forKey: "notifySevere"); if notifySevere { Notifier.shared.requestPermission() } } }
+    @Published var notifyRain: Bool { didSet { defaults.set(notifyRain, forKey: "notifyRain"); if notifyRain { Notifier.shared.requestPermission() } } }
     /// Use My Location: keep a page for where you are, first in the list. On unless turned off.
     @Published var useLocation: Bool {
         didSet {
@@ -60,6 +67,11 @@ final class WeatherStore: ObservableObject {
     var locate: (@MainActor () async -> LocationResult)?
 
     @Published private(set) var forecasts: [String: Forecast] = [:]
+    /// Air quality, active severe weather alerts and normals and records, by city ID. Each loads
+    /// alongside the forecast and never holds it up; a failure just hides its tile.
+    @Published private(set) var airQuality: [String: AirQuality] = [:]
+    @Published private(set) var alerts: [String: [WeatherAlert]] = [:]
+    @Published private(set) var climate: [String: Climate] = [:]
     @Published private(set) var failed: Set<String> = []
     @Published private(set) var loading = false
 
@@ -80,10 +92,17 @@ final class WeatherStore: ObservableObject {
         appFont = defaults.string(forKey: "appFont").flatMap(AppFont.init(rawValue:)) ?? .inter
         floatOnTop = defaults.bool(forKey: "floatOnTop")
         useLocation = defaults.object(forKey: "useLocation") as? Bool ?? true
+        windUnit = defaults.string(forKey: "windUnit").flatMap(WindUnit.init(rawValue:)) ?? .auto
+        rainUnit = defaults.string(forKey: "rainUnit").flatMap(RainUnit.init(rawValue:)) ?? .auto
+        pressureUnit = defaults.string(forKey: "pressureUnit").flatMap(PressureUnit.init(rawValue:)) ?? .auto
+        notifySevere = defaults.bool(forKey: "notifySevere")
+        notifyRain = defaults.bool(forKey: "notifyRain")
         locationAsked = defaults.bool(forKey: "locationAsked")
         hereID = defaults.string(forKey: "hereID").flatMap { id in cities.contains { $0.id == id } ? id : nil }
         lastPlace = Self.load("herePlace", from: defaults)
         if let cached: [String: Forecast] = Self.load("forecasts", from: defaults) { forecasts = cached }
+        if let cached: [String: Climate] = Self.load("climate", from: defaults) { climate = cached }
+        if let cached: [String: AirQuality] = Self.load("airQuality", from: defaults) { airQuality = cached }
         guard autoRefresh else { return }
         shareWithWidgets()
 
@@ -117,7 +136,7 @@ final class WeatherStore: ObservableObject {
 
     var active: City { cities.first { $0.id == activeID } ?? cities[0] }
     var activeForecast: Forecast? { forecasts[active.id] }
-    /// Up to five cities of your own; where you are doesn't count.
+    /// Up to 20 cities of your own; where you are doesn't count.
     var canAdd: Bool { cities.filter { !$0.isCurrent }.count < Self.maxCities }
 
     // MARK: Cities
@@ -141,8 +160,7 @@ final class WeatherStore: ObservableObject {
         guard cities.count > 1 else { return }
         let wasHere = city.id == hereID
         cities.removeAll { $0.id == city.id }
-        forecasts[city.id] = nil
-        failed.remove(city.id)
+        forget(city.id)
         save(forecasts, "forecasts")
         if activeID == city.id { activeID = cities[0].id }
         // It stood in for My Location: bring back the separate card for where you are.
@@ -158,6 +176,7 @@ final class WeatherStore: ObservableObject {
 
     func select(_ city: City) {
         activeID = city.id
+        if climate[city.id] == nil { Task { await loadClimate(city) } }
         if isStale(city) { Task { await load(city) } }
     }
 
@@ -211,8 +230,7 @@ final class WeatherStore: ObservableObject {
             let wasShowingHere = activeID == City.currentID
             if let i = cities.firstIndex(where: \.isCurrent) {
                 cities.remove(at: i)
-                forecasts[City.currentID] = nil
-                failed.remove(City.currentID)
+                forget(City.currentID)
             }
             hereID = match.id
             if firstTime || wasShowingHere { activeID = match.id }
@@ -223,8 +241,7 @@ final class WeatherStore: ObservableObject {
             let old = cities[i]
             guard old != here else { return }
             if old.latitude != here.latitude || old.longitude != here.longitude {
-                forecasts[here.id] = nil   // the old place's weather isn't this one's
-                failed.remove(here.id)
+                forget(here.id)   // the old place's weather isn't this one's
             }
             cities[i] = here
         } else {
@@ -244,8 +261,7 @@ final class WeatherStore: ObservableObject {
             return
         }
         let here = cities.remove(at: i)
-        forecasts[here.id] = nil
-        failed.remove(here.id)
+        forget(here.id)
         save(forecasts, "forecasts")
         if activeID == here.id { activeID = cities[0].id }
     }
@@ -258,7 +274,11 @@ final class WeatherStore: ObservableObject {
             for city in cities { group.addTask { await self.load(city) } }
         }
         loading = false
+        await Notifier.shared.check(self)
     }
+
+    /// The city notifications are about: where you are, or the first city.
+    var notifyCity: City { cities.first(where: isHere) ?? cities[0] }
 
     private func refreshIfDue() async {
         if cities.contains(where: isStale) { await refresh() }
@@ -270,6 +290,7 @@ final class WeatherStore: ObservableObject {
     }
 
     private func load(_ city: City) async {
+        async let extras: Void = loadExtras(city)
         do {
             let forecast = try await OpenMeteo.forecast(for: city)
             // The city may have been removed while its forecast loaded: don't keep (or save) it.
@@ -281,6 +302,38 @@ final class WeatherStore: ObservableObject {
             failed.insert(city.id)
         }
         if city.id == activeID { refreshDock() }
+        await extras
+    }
+
+    /// Air quality and alerts with every forecast; normals and records for the city being viewed.
+    private func loadExtras(_ city: City) async {
+        async let air = try? WeatherServices.airQuality(for: city)
+        async let warnings = try? WeatherServices.alerts(for: city)
+        async let table: Void = city.id == activeID ? loadClimate(city) : ()
+        let (a, w, _) = await (air, warnings, table)
+        guard cities.contains(where: { $0.id == city.id && $0.latitude == city.latitude && $0.longitude == city.longitude }) else { return }
+        if let a { airQuality[city.id] = a; save(airQuality, "airQuality") }
+        if let w { alerts[city.id] = w } else if !WeatherAlert.inUS(latitude: city.latitude, longitude: city.longitude) { alerts[city.id] = [] }
+    }
+
+    /// Normals and records (a big download): once a month per city, and only for cities you look at.
+    func loadClimate(_ city: City) async {
+        guard climate[city.id].map({ Date().timeIntervalSince($0.fetchedAt) > 30 * 86400 }) ?? true,
+              let table = try? await WeatherServices.climate(for: city),
+              cities.contains(where: { $0.id == city.id && $0.latitude == city.latitude }) else { return }
+        climate[city.id] = table
+        save(climate, "climate")
+    }
+
+    /// Drops everything kept for a city (removed, or where you are has moved).
+    private func forget(_ id: String) {
+        forecasts[id] = nil
+        failed.remove(id)
+        airQuality[id] = nil
+        alerts[id] = nil
+        climate[id] = nil
+        save(climate, "climate")
+        save(airQuality, "airQuality")
     }
 
     /// True when the active city's numbers are older than one refresh and the last try failed.

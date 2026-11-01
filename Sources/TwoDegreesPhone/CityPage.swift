@@ -23,9 +23,12 @@ struct CityPage: View {
                         // Where the header is in the scroll view, read on every scroll.
                         .onGeometryChange(for: CGFloat.self) { proxy in proxy.frame(in: .named("page")).minY } action: { offset = $0 }
                     if let forecast {
+                        AlertCards(city: city)
+                        NextHoursCard(forecast: forecast)
                         HourlyCard(forecast: forecast)
-                        DailyCard(forecast: forecast).id("days")
-                        DetailTiles(forecast: forecast).id("tiles")
+                        DailyCard(forecast: forecast, city: city).id("days")
+                        MapCard(city: city)
+                        DetailTiles(forecast: forecast, city: city).id("tiles")
                         footer
                     } else {
                         Card(title: "Forecast", icon: "clock") {
@@ -245,6 +248,9 @@ private struct DailyCard: View {
     @EnvironmentObject private var store: WeatherStore
     @Environment(\.metrics) private var ui
     let forecast: Forecast
+    let city: City
+    /// The day shown in detail (tap a row).
+    @State private var selected: Date?
 
     var body: some View {
         let days = Array(forecast.days.prefix(10))
@@ -254,10 +260,26 @@ private struct DailyCard: View {
             VStack(spacing: 0) {
                 ForEach(Array(days.enumerated()), id: \.element.id) { index, day in
                     Divider().overlay(Color.white.opacity(0.2))
-                    DailyRow(day: index == 0 ? day.including(now) : day, isToday: index == 0,
-                             scaleLow: low, scaleHigh: high, now: index == 0 ? now : nil)
+                    Button { selected = day.date } label: {
+                        DailyRow(day: index == 0 ? day.including(now) : day, isToday: index == 0,
+                                 scaleLow: low, scaleHigh: high, now: index == 0 ? now : nil)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityHint("Shows the day in detail")
                 }
             }
+        }
+        .task {
+            if PhoneSelfTest.showDay && city.id == store.activeID && days.count > 1 {
+                try? await Task.sleep(for: .seconds(2.5))
+                selected = days[1].date
+            }
+        }
+        .sheet(isPresented: Binding(get: { selected != nil }, set: { if !$0 { selected = nil } })) {
+            DayDetailView(city: city, days: days, selection: $selected)
+                .environmentObject(store)
+                .environment(\.metrics, ui)
         }
     }
 }
@@ -341,6 +363,7 @@ private struct DetailTiles: View {
     @EnvironmentObject private var store: WeatherStore
     @Environment(\.metrics) private var ui
     let forecast: Forecast
+    let city: City
 
     var body: some View {
         let now = forecast.now, unit = store.unit, other = unit.other
@@ -352,15 +375,14 @@ private struct DetailTiles: View {
             DetailTile(title: "Humidity", icon: "humidity",
                  value: "\(Int(now.humidity.rounded()))%", sub: nil,
                  note: dewNote(now))
-            DetailTile(title: "Wind", icon: "wind",
-                 value: unit == .fahrenheit ? "\(mph(now.wind)) mph" : "\(Int(now.wind.rounded())) km/h",
-                 sub: unit == .fahrenheit ? "\(Int(now.wind.rounded())) km/h" : "\(mph(now.wind)) mph",
-                 note: windNote(now))
+            let wind = store.windUnit.text(now.wind, temp: unit)
+            DetailTile(title: "Wind", icon: "wind", value: wind.main, sub: wind.other, note: windNote(now))
             DetailTile(title: "Rain", icon: "drop.fill",
                  value: "\(today?.rainChance ?? 0)%", sub: "chance today",
                  note: rainNote)
             sunTile(today)
             uvTile(today)
+            ExtraTiles(forecast: forecast, city: city)
         }
     }
 
@@ -383,7 +405,12 @@ private struct DetailTiles: View {
         case ..<50: strength = "A strong breeze"
         default: strength = "Gale-force wind"
         }
-        return now.windDirection.map { "\(strength) from the \(Meteo.compassName($0))." } ?? "\(strength)."
+        let note = now.windDirection.map { "\(strength) from the \(Meteo.compassName($0))." } ?? "\(strength)."
+        // Gusts, when they're well above the steady wind.
+        if let gusts = now.gusts, gusts - now.wind >= 10 {
+            return note + " Gusts to \(store.windUnit.text(gusts, temp: store.unit).main)."
+        }
+        return note
     }
 
     /// The dew point in both units, as Apple's Weather gives it under humidity.
@@ -425,7 +452,7 @@ private struct DetailTiles: View {
     }
 }
 
-private struct DetailTile: View {
+struct DetailTile: View {
     @Environment(\.metrics) private var ui
     let title: String
     let icon: String

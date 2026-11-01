@@ -372,7 +372,8 @@ struct NowTile: View {
                     Stat(key: "Today", value: "\(unit.value(today.low))–\(unit.value(today.high))\(unit.symbol)",
                          sub: "\(other.value(today.low))–\(other.value(today.high))\(other.symbol)")
                 }
-                Stat(key: "Wind", value: "\(Int((now.wind * 0.621371).rounded())) mph", sub: "\(Int(now.wind.rounded())) km/h")
+                let wind = store.windUnit.text(now.wind, temp: unit)
+                Stat(key: "Wind", value: wind.main, sub: wind.other ?? (now.windDirection.map { "from the " + Meteo.compass($0) } ?? ""))
                 Stat(key: "Rain today", value: "\(today?.rainChance ?? 0)%", sub: "\(Int(now.humidity.rounded()))% humid")
             }
             .padding(.top, ui.m)
@@ -573,6 +574,8 @@ struct DaysTile: View {
     let forecast: Forecast
     @Binding var open: Bool
     @State private var hovering = false
+    /// The day shown in detail (click a row).
+    @State private var detail: Date?
 
     var body: some View {
         // One shared scale for all five bars (including right now), with ticks every 10°F or 5°C.
@@ -628,8 +631,18 @@ struct DaysTile: View {
                 if open {
                     ForEach(Array(days.enumerated()), id: \.element.id) { index, day in
                         if index > 0 { Rectangle().fill(Palette.borderStrong).frame(height: 0.5) }
-                        DayRow(day: index == 0 ? day.including(now) : day, isToday: index == 0, low: low, high: high, ticks: ticks.map(\.celsius),
-                               now: index == 0 ? now : nil)
+                        Button { detail = day.date } label: {
+                            DayRow(day: index == 0 ? day.including(now) : day, isToday: index == 0, low: low, high: high, ticks: ticks.map(\.celsius),
+                                   now: index == 0 ? now : nil)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .help("Show \(index == 0 ? "today" : Forecast.format(day.date, "EEEE")) in detail")
+                        .popover(isPresented: Binding(get: { detail == day.date }, set: { if !$0 { detail = nil } }), arrowEdge: .leading) {
+                            DayDetailPopover(city: store.active, forecast: forecast, day: index == 0 ? day.including(now) : day, isToday: index == 0)
+                                .environmentObject(store)
+                                .environment(\.metrics, ui)
+                        }
                     }
                     .transition(.opacity)
                 }
