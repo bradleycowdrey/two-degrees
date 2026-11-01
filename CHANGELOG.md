@@ -3,6 +3,22 @@
 Two Degrees updates itself: when a new version is out, the app shows a banner with an **Update** button
 (or use **Check for Updates** in the ⋯ menu). Every version is on [Releases](https://github.com/bradleycowdrey/two-degrees/releases).
 
+Version numbers follow [Semantic Versioning](https://semver.org) from 2.0.0 on: **major.minor.patch**.
+A **patch** (2.0.1) fixes things, a **minor** version (2.1.0) adds features, and a **major** version
+(3.0.0) is a big redesign or a change that stops something working the way it did. The build number
+counts every change ever made, so each build is higher than the last.
+
+## [2.0.0] - 2026-11-01
+
+Two Degrees 2.0: everything since 0.4 adds up to a new app, on Mac, iPhone, iPad, Android and the web.
+
+- **The same tiles for every city**: air quality, averages, visibility, precipitation, cloud cover and
+  the moon show for every city, so each city page has the same layout. Pollen, measured only in some
+  places, is a line on the air quality tile, and a reading that isn't in yet shows a dash.
+- **Since 0.4**: severe weather alerts and notifications, a rain map, rain in the next two hours, air
+  quality, averages and records, a full day view, wind and rain units, up to 20 cities, Use My
+  Location without duplicate cards, city search that works offline, and Two Degrees for Android.
+
 ## [0.5.1] - 2026-11-01
 
 - **Rain map fixed**: it now uses a free dark map from OpenFreeMap, so the map shows instead of an
