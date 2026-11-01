@@ -631,23 +631,43 @@ struct DaysTile: View {
                 if open {
                     ForEach(Array(days.enumerated()), id: \.element.id) { index, day in
                         if index > 0 { Rectangle().fill(Palette.borderStrong).frame(height: 0.5) }
-                        Button { detail = day.date } label: {
-                            DayRow(day: index == 0 ? day.including(now) : day, isToday: index == 0, low: low, high: high, ticks: ticks.map(\.celsius),
-                                   now: index == 0 ? now : nil)
-                                .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        .help("Show \(index == 0 ? "today" : Forecast.format(day.date, "EEEE")) in detail")
-                        .popover(isPresented: Binding(get: { detail == day.date }, set: { if !$0 { detail = nil } }), arrowEdge: .leading) {
-                            DayDetailPopover(city: store.active, forecast: forecast, day: index == 0 ? day.including(now) : day, isToday: index == 0)
-                                .environmentObject(store)
-                                .environment(\.metrics, ui)
-                        }
+                        DayRowButton(forecast: forecast, day: index == 0 ? day.including(now) : day, isToday: index == 0,
+                                     low: low, high: high, ticks: ticks.map(\.celsius), now: index == 0 ? now : nil, detail: $detail)
                     }
                     .transition(.opacity)
                 }
             }
         }
+    }
+}
+
+/// A day's row; on the Mac, click it for the day in detail.
+struct DayRowButton: View {
+    @EnvironmentObject private var store: WeatherStore
+    @Environment(\.metrics) private var ui
+    let forecast: Forecast
+    let day: Forecast.Day
+    let isToday: Bool
+    let low: Double
+    let high: Double
+    let ticks: [Double]
+    let now: Double?
+    @Binding var detail: Date?
+
+    var body: some View {
+        let row = DayRow(day: day, isToday: isToday, low: low, high: high, ticks: ticks, now: now)
+        #if os(macOS)
+        Button { detail = day.date } label: { row.contentShape(Rectangle()) }
+            .buttonStyle(.plain)
+            .help("Show \(isToday ? "today" : Forecast.format(day.date, "EEEE")) in detail")
+            .popover(isPresented: Binding(get: { detail == day.date }, set: { if !$0 { detail = nil } }), arrowEdge: .leading) {
+                DayDetailPopover(city: store.active, forecast: forecast, day: day, isToday: isToday)
+                    .environmentObject(store)
+                    .environment(\.metrics, ui)
+            }
+        #else
+        row
+        #endif
     }
 }
 

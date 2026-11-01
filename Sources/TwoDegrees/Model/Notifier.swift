@@ -45,7 +45,7 @@ final class Notifier {
     }
 
     /// When rain is due within about 30 minutes while it's dry now: the start of the first wet step.
-    static func rainSoon(_ forecast: Forecast) -> Date? {
+    nonisolated static func rainSoon(_ forecast: Forecast) -> Date? {
         guard let steps = forecast.steps, steps.count >= 3, steps[0].precipitation < NextHours.wetStep,
               (forecast.now.precipitation ?? 0) < 0.1 else { return nil }
         return steps[1...2].first { $0.precipitation >= 0.2 }?.time
