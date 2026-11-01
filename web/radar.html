@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Rain Map · Two Degrees</title>
+<link rel="icon" href="https://raw.githubusercontent.com/bradleycowdrey/two-degrees/main/docs/icon.png">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+  /* The rain map every Two Degrees app opens: radar from RainViewer on a dark CARTO map, the past two
+     hours and the next half hour, with play and a time slider. ?lat=..&lon=..&z=7 */
+  :root { color-scheme: dark; --bg: #1A1816; --tile: #23201D; --text: #FFFFFF; --muted: #B0A898; --cream: #FFF1E5; --rain: #8DB4E2; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
+    font: 500 15px/1.3 -apple-system, BlinkMacSystemFont, Inter, system-ui, sans-serif; }
+  #map { position: fixed; inset: 0; background: var(--bg); }
+  .bar { position: fixed; left: 12px; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); z-index: 500;
+    display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 16px;
+    background: rgba(35,32,29,.88); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+  .bar button { flex: none; width: 36px; height: 36px; border: 0; border-radius: 50%; background: var(--cream); color: var(--bg); cursor: pointer; display: grid; place-items: center; }
+  .bar button svg { width: 16px; height: 16px; }
+  .bar input { flex: 1; accent-color: var(--rain); min-width: 0; }
+  .bar .t { flex: none; min-width: 74px; text-align: right; font-variant-numeric: tabular-nums; }
+  .bar .t small { display: block; color: var(--muted); font-size: 11px; font-weight: 500; }
+  .credit { position: fixed; right: 12px; top: calc(10px + env(safe-area-inset-top, 0px)); z-index: 500; font-size: 11px; color: var(--muted);
+    background: rgba(26,24,22,.7); padding: 4px 8px; border-radius: 8px; }
+  .credit a { color: inherit; }
+  .msg { position: fixed; inset: 0; display: grid; place-items: center; text-align: center; padding: 24px; color: var(--muted); z-index: 600; }
+  .msg[hidden] { display: none; }
+  .here { width: 14px; height: 14px; border-radius: 50%; background: var(--cream); border: 3px solid #E04A7A; box-shadow: 0 0 0 3px rgba(0,0,0,.35); }
+  .leaflet-control-attribution { display: none; }
+  .leaflet-control-zoom { margin-top: calc(10px + env(safe-area-inset-top, 0px)) !important; }
+</style>
+</head>
+<body>
+<div id="map" role="img" aria-label="Rain map"></div>
+<div class="credit">Radar © <a href="https://www.rainviewer.com" target="_blank" rel="noopener">RainViewer</a> · Map © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors © <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a></div>
+<div class="bar" id="bar" hidden>
+  <button type="button" id="play" aria-label="Play"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15l13-7.5z"/></svg></button>
+  <input type="range" id="slider" min="0" max="0" value="0" aria-label="Time">
+  <div class="t" id="time"></div>
+</div>
+<div class="msg" id="msg">Loading the rain map…</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+(() => {
+  'use strict';
+  const q = new URLSearchParams(location.search);
+  const num = (k, d) => { const v = parseFloat(q.get(k)); return Number.isFinite(v) ? v : d; };
+  const lat = num('lat', 39.74), lon = num('lon', -104.98), zoom = Math.min(10, Math.max(3, num('z', 7)));
+  const msg = document.getElementById('msg');
+  const say = (text) => { msg.textContent = text; msg.hidden = false; };
+  if (typeof L === 'undefined') { say('The map needs an internet connection.'); return; }
+
+  const map = L.map('map', { zoomControl: true, attributionControl: true, minZoom: 3, maxZoom: 10 }).setView([lat, lon], zoom);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    subdomains: 'abcd', maxZoom: 19,
+    attribution: '© OpenStreetMap contributors © CARTO',
+  }).addTo(map);
+  L.marker([lat, lon], { icon: L.divIcon({ className: '', html: '<div class="here"></div>', iconSize: [20, 20], iconAnchor: [10, 10] }), interactive: false }).addTo(map);
+
+  const timeFmt = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' });
+  let frames = [], layers = [], index = 0, timer = null, host = '';
+  const nowIndex = () => Math.max(0, frames.findIndex((f) => f.nowcast) - 1);
+
+  function show(i) {
+    index = (i + frames.length) % frames.length;
+    layers.forEach((layer, j) => layer.setOpacity(j === index ? 0.75 : 0));
+    const f = frames[index];
+    const mins = Math.round((f.time * 1000 - Date.now()) / 60000);
+    const when = Math.abs(mins) < 5 ? 'Now' : mins < 0 ? `${-mins} min ago` : `In ${mins} min`;
+    document.getElementById('time').innerHTML = `${timeFmt.format(new Date(f.time * 1000))}<small>${when}${f.nowcast ? ' · forecast' : ''}</small>`;
+    document.getElementById('slider').value = index;
+  }
+  function setPlaying(on) {
+    clearInterval(timer); timer = null;
+    const btn = document.getElementById('play');
+    btn.setAttribute('aria-label', on ? 'Pause' : 'Play');
+    btn.innerHTML = on ? '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg>'
+                       : '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15l13-7.5z"/></svg>';
+    if (on) timer = setInterval(() => show(index + 1), 600);
+  }
+
+  fetch('https://api.rainviewer.com/public/weather-maps.json', { signal: AbortSignal.timeout(10000) })
+    .then((r) => r.json())
+    .then((data) => {
+      host = data.host;
+      frames = [...(data.radar.past || []), ...(data.radar.nowcast || []).map((f) => ({ ...f, nowcast: true }))];
+      if (!frames.length) throw new Error('no frames');
+      layers = frames.map((f) => L.tileLayer(`${host}${f.path}/256/{z}/{x}/{y}/2/1_1.png`, { opacity: 0, maxNativeZoom: 7, maxZoom: 10, zIndex: 10 }).addTo(map));
+      const slider = document.getElementById('slider');
+      slider.max = frames.length - 1;
+      slider.addEventListener('input', () => { setPlaying(false); show(+slider.value); });
+      document.getElementById('play').addEventListener('click', () => setPlaying(timer == null));
+      document.getElementById('bar').hidden = false;
+      msg.hidden = true;
+      show(nowIndex());
+    })
+    .catch(() => say('The rain map isn’t available right now. It needs an internet connection.'));
+})();
+</script>
+</body>
+</html>
