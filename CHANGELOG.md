@@ -3,6 +3,12 @@
 Two Degrees updates itself: when a new version is out, the app shows a banner with an **Update** button
 (or use **Check for Updates** in the ⋯ menu). Every version is on [Releases](https://github.com/bradleycowdrey/two-degrees/releases).
 
+## [0.5.1] - 2026-11-01
+
+- **Rain map fixed**: it now uses a free dark map from OpenFreeMap, so the map shows instead of an
+  "API key required" notice. The zoom buttons moved to the top right, clear of the close button.
+- **Pressure removed**: the pressure tile and its unit setting are gone, for a cleaner city page.
+
 ## [0.5.0] - 2026-11-01
 
 - **Severe weather alerts**: warnings, watches and advisories from the US National Weather Service show
