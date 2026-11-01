@@ -9,6 +9,7 @@ import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
+import com.bradcowdrey.twodegrees.Notifier
 import com.bradcowdrey.twodegrees.WeatherStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -16,7 +17,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import java.util.concurrent.TimeUnit
 
-/** Keeps the widgets current: a refresh every 30 minutes while online, and a redraw whenever the app's cities change. */
+/** Keeps the widgets current: a refresh every 30 minutes while online (which also checks for notifications), and a redraw whenever the app's cities change. */
 object WidgetUpdates {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
@@ -34,7 +35,10 @@ object WidgetUpdates {
 
     class RefreshWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
         override suspend fun doWork(): Result {
-            WeatherStore.get(applicationContext).refreshNow()
+            val store = WeatherStore.get(applicationContext)
+            store.refreshNow()
+            // Severe Weather and Rain Starting Soon, when turned on.
+            Notifier.check(applicationContext, store)
             TwoDegreesWidget().updateAll(applicationContext)
             return Result.success()
         }

@@ -7,6 +7,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -42,14 +45,31 @@ class WeatherStore private constructor(context: Context) {
         val loading: Boolean = false,
         /** The saved city that's where you are, standing in for a separate My Location card. */
         val hereID: String? = null,
+        val windUnit: WindUnit = WindUnit.AUTO,
+        val rainUnit: RainUnit = RainUnit.AUTO,
+        val pressureUnit: PressureUnit = PressureUnit.AUTO,
+        /** Notifications, both off until turned on. */
+        val notifySevere: Boolean = false,
+        val notifyRain: Boolean = false,
+        /** By city ID: air quality, and active alerts (US only); by place (normalsKey): normals and records. */
+        val air: Map<String, AirQuality> = emptyMap(),
+        val alerts: Map<String, List<Alert>> = emptyMap(),
+        val normals: Map<String, Normals> = emptyMap(),
     ) {
         /** Where you are: the separate My Location card, or the saved city standing in for it. */
         fun isHere(city: City): Boolean = city.isCurrent || (hereID != null && city.id == hereID)
 
         val active: City get() = cities.firstOrNull { it.id == activeID } ?: cities[0]
         val activeForecast: Forecast? get() = forecasts[active.id]
-        /** Up to five cities of your own; where you are doesn't count. */
+        /** Up to twenty cities of your own; where you are doesn't count. */
         val canAdd: Boolean get() = cities.count { !it.isCurrent } < MAX_CITIES
+
+        val units: Units get() = Units(unit, windUnit, rainUnit, pressureUnit)
+
+        fun normals(city: City): Normals? = normals[normalsKey(city)]
+
+        /** Notifications are for where you are, or the first city when Use My Location is off. */
+        val notifyCity: City get() = cities.firstOrNull { isHere(it) } ?: cities[0]
     }
 
     private val app = context.applicationContext
@@ -78,8 +98,22 @@ class WeatherStore private constructor(context: Context) {
             hereID = prefs.getString("hereID", null)?.takeIf { id -> cities.any { it.id == id } },
             locationAsked = prefs.getBoolean("locationAsked", false),
             forecasts = Codec.forecasts(prefs.getString("forecasts", null)),
+            windUnit = WindUnit.of(prefs.getString("windUnit", null)),
+            rainUnit = RainUnit.of(prefs.getString("rainUnit", null)),
+            pressureUnit = PressureUnit.of(prefs.getString("pressureUnit", null)),
+            notifySevere = prefs.getBoolean("notifySevere", false),
+            notifyRain = prefs.getBoolean("notifyRain", false),
         ))
+        // The normals tables (one per place, cached 30 days) load off the main thread.
+        scope.launch {
+            val saved = withContext(Dispatchers.IO) {
+                normalsPrefs.all.mapNotNull { (k, v) -> Normals.decode(v as? String)?.let { k to it } }.toMap()
+            }
+            _state.update { it.copy(normals = saved + it.normals) }
+        }
     }
+
+    private val normalsPrefs: SharedPreferences get() = app.getSharedPreferences("two-degrees.normals", Context.MODE_PRIVATE)
 
     // Cities
 
@@ -156,6 +190,31 @@ class WeatherStore private constructor(context: Context) {
     }
 
     fun toggleUnit() = setUnit(current.unit.other)
+
+    fun setWindUnit(unit: WindUnit) {
+        _state.update { it.copy(windUnit = unit) }
+        prefs.edit().putString("windUnit", unit.key).apply()
+    }
+
+    fun setRainUnit(unit: RainUnit) {
+        _state.update { it.copy(rainUnit = unit) }
+        prefs.edit().putString("rainUnit", unit.key).apply()
+    }
+
+    fun setPressureUnit(unit: PressureUnit) {
+        _state.update { it.copy(pressureUnit = unit) }
+        prefs.edit().putString("pressureUnit", unit.key).apply()
+    }
+
+    fun setNotifySevere(on: Boolean) {
+        _state.update { it.copy(notifySevere = on) }
+        prefs.edit().putBoolean("notifySevere", on).apply()
+    }
+
+    fun setNotifyRain(on: Boolean) {
+        _state.update { it.copy(notifyRain = on) }
+        prefs.edit().putBoolean("notifyRain", on).apply()
+    }
 
     fun setTextSize(size: TextSize) {
         _state.update { it.copy(textSize = size) }
@@ -266,12 +325,14 @@ class WeatherStore private constructor(context: Context) {
 
     suspend fun refreshNow() {
         _state.update { it.copy(loading = true) }
-        current.cities.map { city -> scope.async { load(city) } }.awaitAll()
+        current.cities.map { city -> scope.async { load(city)?.let { loadExtras(city) } } }.awaitAll()
         _state.update { it.copy(loading = false) }
     }
 
     fun refreshIfDue() {
-        if (current.cities.any(::isStale)) refresh()
+        if (current.cities.any(::isStale)) { refresh(); return }
+        // Air quality and alerts aren't saved: a fresh start with saved forecasts still fetches them, once.
+        current.cities.filter { it.id !in extrasLoaded }.forEach { city -> scope.launch { loadExtras(city) } }
     }
 
     private fun isStale(city: City): Boolean {
@@ -279,7 +340,48 @@ class WeatherStore private constructor(context: Context) {
         return System.currentTimeMillis() - f.fetchedAt > REFRESH_INTERVAL_MS
     }
 
-    private fun launchLoad(city: City) { scope.launch { load(city) } }
+    private fun launchLoad(city: City) { scope.launch { load(city)?.let { loadExtras(city) } } }
+
+    /** Cities whose extras this process has asked for. */
+    private val extrasLoaded: MutableSet<String> = java.util.Collections.synchronizedSet(mutableSetOf())
+
+    /** One big archive request at a time. */
+    private val normalsLock = Mutex()
+
+    /**
+     * With the forecast: air quality and (in the US) alerts, and the normals table when it's missing or
+     * a month old. A failure hides air quality, keeps the last alerts that haven't expired, and never
+     * touches the forecast.
+     */
+    suspend fun loadExtras(city: City) = coroutineScope {
+        extrasLoaded += city.id
+        fun kept() = current.cities.any { it.id == city.id }
+        // Each one shows as soon as it arrives: the NWS can be slow, and shouldn't hold up air quality.
+        launch {
+            val a = withContext(Dispatchers.IO) { Extras.air(city) }
+            if (kept()) _state.update { s -> s.copy(air = if (a != null) s.air + (city.id to a) else s.air - city.id) }
+        }
+        val alerts = async(Dispatchers.IO) { Extras.alerts(city) }
+        val key = normalsKey(city)
+        val normals = async {
+            normalsLock.withLock {
+                if (current.normals[key]?.isStale == false) return@withLock null
+                withContext(Dispatchers.IO) { Extras.normals(city) }
+            }
+        }
+        val list = alerts.await()
+        if (kept()) {
+            val now = java.time.Instant.now()
+            _state.update { s ->
+                s.copy(alerts = s.alerts + (city.id to (list ?: s.alerts[city.id].orEmpty()).filter { it.expires == null || it.expires.toInstant().isAfter(now) }))
+            }
+        }
+        normals.await()?.let { n ->
+            _state.update { it.copy(normals = it.normals + (key to n)) }
+            withContext(Dispatchers.IO) { normalsPrefs.edit().putString(key, Normals.encode(n)).commit() }
+        }
+        list != null
+    }
 
     /** Fetches one city's forecast; on failure, keeps the last one and marks the city offline. */
     suspend fun load(city: City): Forecast? {
@@ -321,7 +423,7 @@ class WeatherStore private constructor(context: Context) {
     }
 
     companion object {
-        const val MAX_CITIES = 5
+        const val MAX_CITIES = 20
         const val REFRESH_INTERVAL_MS = 15 * 60 * 1000L
         private const val TERMS_KEY = "terms.accepted"
 
