@@ -37,8 +37,8 @@ tracking, nothing sent to us.
 - Refresh with the forecast. Keep only alerts whose `expires` is in the future.
 
 **Rain map**: one hosted page, `https://bradleycowdrey.github.io/two-degrees/radar.html?lat=..&lon=..&z=7&units=F|C`
-(source `web/radar.html`). Leaflet, CARTO dark base map (© OpenStreetMap contributors © CARTO),
-RainViewer radar frames (past two hours and the forecast "nowcast"), with play/pause and a time slider.
+(source `web/radar.html`). MapLibre GL with OpenFreeMap's dark map (free, no key, no limits; © OpenMapTiles, data © OpenStreetMap
+contributors), RainViewer radar frames (past two hours, plus the "nowcast" forecast when RainViewer offers one), with play/pause and a time slider.
 Apps show it in a web view; the web app links to it.
 
 ## 1. Severe weather alerts and notifications
@@ -66,9 +66,9 @@ Apps show it in a web view; the web app links to it.
 ## 2. Rain map
 
 - A **Map** card on each city page (and a map button on the Mac panel and in the web app): opens the
-  map at that city. Full screen on phones, a sheet/window elsewhere. Close button top left. Needs the
+  map at that city. Full screen on phones, a sheet/window elsewhere. Close button top left (the page keeps its zoom buttons top right). Needs the
   internet; offline it says "The map needs an internet connection."
-- Credit line on the map: "Radar © RainViewer · Map © OpenStreetMap contributors © CARTO".
+- Credit line on the map: "Radar © RainViewer · Map OpenFreeMap © OpenMapTiles · Data © OpenStreetMap contributors".
 
 ## 3. Next hour (15-minute rain)
 
@@ -146,6 +146,6 @@ Settings (Mac Settings › General; iPhone ⋯ menu › Units; Android ⋮ menu;
 ## Terms and credits (bradcowdrey.com/legal)
 
 New services: the US National Weather Service (alerts; receives a city's rounded coordinates),
-RainViewer (radar images), CARTO and OpenStreetMap (map tiles), Leaflet (open source), and Open-Meteo's
+RainViewer (radar images), OpenFreeMap, OpenMapTiles and OpenStreetMap (map tiles), MapLibre GL (open source), and Open-Meteo's
 air-quality and historical-weather services. Two Degrees is still not a safety tool; alerts are copies
 of official warnings and can be late or missing.

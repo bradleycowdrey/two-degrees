@@ -154,7 +154,7 @@ fun MapCard(city: City, onOpen: (Overlay) -> Unit) {
     Box(Modifier.clickable { onOpen(Overlay.RainMap(city)) }.semantics(mergeDescendants = true) {}) {
         Card("Map", Icons.Filled.Map) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Rain radar around ${city.name}: the past two hours and the next half hour.", style = ui.text(15f), modifier = Modifier.weight(1f))
+                Text("Rain radar around ${city.name}: the past two hours.", style = ui.text(15f), modifier = Modifier.weight(1f))
                 Icon(Icons.Filled.ChevronRight, "Open the map", tint = Color.White.copy(alpha = 0.7f))
             }
         }
@@ -217,7 +217,7 @@ fun AlertPage(overlay: Overlay.AlertText, onClose: () -> Unit) {
     }
 }
 
-/** The rain map: the shared web page (RainViewer radar on a CARTO map), full screen. */
+/** The rain map: the shared web page (RainViewer radar on an OpenFreeMap map), full screen. */
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
 fun RainMapPage(city: City, unit: TempUnit, onClose: () -> Unit) {

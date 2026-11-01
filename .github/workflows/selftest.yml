@@ -112,3 +112,13 @@ jobs:
           # One retry for the occasional flaky run; any failing check is listed as an annotation.
           node tests/web.test.js > web.txt 2>&1 || { grep -E '^FAIL' web.txt | sed 's/^/::warning::retrying after: /'; node tests/web.test.js > web.txt 2>&1; } || { grep -E '^FAIL' web.txt | sed 's/^/::error::/'; tail -5 web.txt; exit 1; }
           tail -1 web.txt
+      - name: Rain map, live (OpenFreeMap map and RainViewer radar)
+        if: always()
+        run: |
+          node tests/radar.test.js > radar.txt 2>&1 || { grep -E '^FAIL' radar.txt | sed 's/^/::error::/'; cat radar.txt; exit 1; }
+          cat radar.txt; echo "::notice::Rain map: $(tail -1 radar.txt)"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: radar-shots
+          path: radar-*.png

@@ -501,9 +501,9 @@
 
   <section class="tile mapcard" id="mapCard" aria-labelledby="mapTitle">
     <h3 class="eyebrow" id="mapTitle">Rain map</h3>
-    <p id="mapText">Radar for the past two hours and the next half hour.</p>
+    <p id="mapText">Radar for the past two hours.</p>
     <a class="pill" id="mapLink" href="https://bradleycowdrey.github.io/two-degrees/radar.html" target="_blank" rel="noopener">Open Rain Map <span aria-hidden="true">↗</span></a>
-    <span class="credit">Radar © RainViewer · Map © OpenStreetMap contributors © CARTO</span>
+    <span class="credit">Radar © RainViewer · Map OpenFreeMap © OpenMapTiles · Data © OpenStreetMap contributors</span>
   </section>
 
 
@@ -1201,7 +1201,7 @@
   function renderMap(city) {
     $('#mapLink').href = `${RADAR_URL}?lat=${city.lat.toFixed(3)}&lon=${city.lon.toFixed(3)}&z=7&units=${state.unit}`;
     $('#mapLink').setAttribute('aria-label', `Open the rain map for ${city.name}, in a new tab`);
-    $('#mapText').textContent = navigator.onLine === false ? 'The map needs an internet connection.' : `Radar for the past two hours and the next half hour, around ${city.name}.`;
+    $('#mapText').textContent = navigator.onLine === false ? 'The map needs an internet connection.' : `Radar for the past two hours, around ${city.name}.`;
   }
 
   function render() {

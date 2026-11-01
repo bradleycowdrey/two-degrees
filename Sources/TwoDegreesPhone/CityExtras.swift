@@ -126,7 +126,7 @@ struct MapCard: View {
                 Image(systemName: "map.fill").font(ui.font(20)).foregroundStyle(Palette.rain)
                 VStack(alignment: .leading, spacing: ui.pt(2)) {
                     Text("Rain Map").font(ui.font(17, .semibold))
-                    Text("Radar for the last two hours and the next half hour").font(ui.font(13)).opacity(0.7)
+                    Text("Radar for the last two hours").font(ui.font(13)).opacity(0.7)
                 }
                 Spacer()
                 Image(systemName: "chevron.right").font(ui.font(13, .semibold)).opacity(0.5)
