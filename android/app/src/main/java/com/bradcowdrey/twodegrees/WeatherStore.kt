@@ -47,7 +47,6 @@ class WeatherStore private constructor(context: Context) {
         val hereID: String? = null,
         val windUnit: WindUnit = WindUnit.AUTO,
         val rainUnit: RainUnit = RainUnit.AUTO,
-        val pressureUnit: PressureUnit = PressureUnit.AUTO,
         /** Notifications, both off until turned on. */
         val notifySevere: Boolean = false,
         val notifyRain: Boolean = false,
@@ -64,7 +63,7 @@ class WeatherStore private constructor(context: Context) {
         /** Up to twenty cities of your own; where you are doesn't count. */
         val canAdd: Boolean get() = cities.count { !it.isCurrent } < MAX_CITIES
 
-        val units: Units get() = Units(unit, windUnit, rainUnit, pressureUnit)
+        val units: Units get() = Units(unit, windUnit, rainUnit)
 
         fun normals(city: City): Normals? = normals[normalsKey(city)]
 
@@ -100,7 +99,6 @@ class WeatherStore private constructor(context: Context) {
             forecasts = Codec.forecasts(prefs.getString("forecasts", null)),
             windUnit = WindUnit.of(prefs.getString("windUnit", null)),
             rainUnit = RainUnit.of(prefs.getString("rainUnit", null)),
-            pressureUnit = PressureUnit.of(prefs.getString("pressureUnit", null)),
             notifySevere = prefs.getBoolean("notifySevere", false),
             notifyRain = prefs.getBoolean("notifyRain", false),
         ))
@@ -199,11 +197,6 @@ class WeatherStore private constructor(context: Context) {
     fun setRainUnit(unit: RainUnit) {
         _state.update { it.copy(rainUnit = unit) }
         prefs.edit().putString("rainUnit", unit.key).apply()
-    }
-
-    fun setPressureUnit(unit: PressureUnit) {
-        _state.update { it.copy(pressureUnit = unit) }
-        prefs.edit().putString("pressureUnit", unit.key).apply()
     }
 
     fun setNotifySevere(on: Boolean) {

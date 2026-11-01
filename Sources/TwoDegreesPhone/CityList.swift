@@ -133,8 +133,7 @@ struct CityList: View {
             Menu {
                 Picker("Wind", selection: $store.windUnit) { ForEach(WindUnit.allCases) { Text($0.label).tag($0) } }
                 Picker("Rain", selection: $store.rainUnit) { ForEach(RainUnit.allCases) { Text($0.label).tag($0) } }
-                Picker("Pressure", selection: $store.pressureUnit) { ForEach(PressureUnit.allCases) { Text($0.label).tag($0) } }
-            } label: { Label("Wind, Rain & Pressure", systemImage: "ruler") }
+            } label: { Label("Wind & Rain", systemImage: "ruler") }
             Menu {
                 Toggle(isOn: $store.notifySevere) { Label("Severe Weather", systemImage: "exclamationmark.triangle") }
                 Toggle(isOn: $store.notifyRain) { Label("Rain Starting Soon", systemImage: "cloud.rain") }

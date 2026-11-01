@@ -71,7 +71,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.bradcowdrey.twodegrees.Alerts
 import com.bradcowdrey.twodegrees.AppFont
 import com.bradcowdrey.twodegrees.Notifier
-import com.bradcowdrey.twodegrees.PressureUnit
 import com.bradcowdrey.twodegrees.RainUnit
 import com.bradcowdrey.twodegrees.WindUnit
 import com.bradcowdrey.twodegrees.Brand
@@ -244,13 +243,6 @@ private fun SettingsMenu(store: WeatherStore, state: WeatherStore.State, onEdit:
                             DropdownMenuItem(text = { Text(label) }, onClick = { store.setRainUnit(unit) },
                                 trailingIcon = { if (state.rainUnit == unit) Icon(Icons.Filled.Check, "Selected") })
                         }
-                        HorizontalDivider()
-                        MenuLabel("Pressure")
-                        for (unit in PressureUnit.entries) {
-                            val label = if (unit == PressureUnit.AUTO) "Automatic (${unit.resolved(state.unit).label})" else unit.label
-                            DropdownMenuItem(text = { Text(label) }, onClick = { store.setPressureUnit(unit) },
-                                trailingIcon = { if (state.pressureUnit == unit) Icon(Icons.Filled.Check, "Selected") })
-                        }
                     }
                     "notifications" -> {
                         DropdownMenuItem(text = { Text("Notifications") }, leadingIcon = { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }, onClick = { page = "main" })
@@ -303,7 +295,7 @@ private fun SettingsMenu(store: WeatherStore, state: WeatherStore.State, onEdit:
                                 trailingIcon = { if (state.unit == unit) Icon(Icons.Filled.Check, "Selected") })
                         }
                         DropdownMenuItem(
-                            text = { Text("Wind, Rain and Pressure") },
+                            text = { Text("Wind and Rain") },
                             onClick = { page = "units" },
                             trailingIcon = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null) },
                         )

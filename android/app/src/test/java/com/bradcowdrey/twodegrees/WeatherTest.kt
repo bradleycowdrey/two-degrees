@@ -104,14 +104,6 @@ class WeatherTest {
         )
     }
 
-    @Test fun pressureTrendOverThreeHours() {
-        fun at(eleven: Double, two: Double) = forecast(pressures = List(48) { h -> if (h == 11) eleven else if (h == 14) two else 1010.0 })
-        assertEquals("Rising", Detail.pressureTrend(at(1010.0, 1011.0)))
-        assertEquals("Falling", Detail.pressureTrend(at(1012.0, 1010.5)))
-        assertEquals("Steady", Detail.pressureTrend(at(1010.0, 1010.9)))
-        assertNull(Detail.pressureTrend(forecast()))
-    }
-
     @Test fun nextTwoHoursSentence() {
         val clock = { t: LocalDateTime -> "%d:%02d".format(t.hour, t.minute) }
         assertEquals("", NextHours.sentence(forecast(steps = List(8) { 0.0 }), clock))
@@ -224,15 +216,11 @@ class WeatherTest {
         assertEquals("2.5 mm" to "0.10 in", c.rain(2.5))
         assertEquals("12 mm", c.rain.text(12.3))
         assertEquals("0 mm", c.rain.text(0.0))
-        assertEquals("29.92 inHg" to "1013 hPa", f.pressure(1013.25))
-        assertEquals("1013 hPa" to "29.92 inHg", c.pressure(1013.25))
-        assertEquals("760 mmHg" to null, c.copy(pressureChoice = PressureUnit.MMHG).pressure(1013.25))
         assertEquals("16 km", c.visibility(16_000.0))
         assertEquals("9.9 mi", f.visibility(16_000.0))
         assertEquals("1.5 km", c.visibility(1_500.0))
         assertEquals(WindUnit.KN, WindUnit.of("kn"))
         assertEquals(RainUnit.AUTO, RainUnit.of(null))
-        assertEquals(PressureUnit.INHG, PressureUnit.of("inhg"))
     }
 
     @Test fun detailWords() {

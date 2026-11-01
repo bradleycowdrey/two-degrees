@@ -4,8 +4,8 @@ import java.util.Locale
 import kotlin.math.abs
 
 /**
- * Wind, rain and pressure units, as on the Mac, iPhone and web: Automatic follows the larger
- * temperature unit. Saved under `windUnit`, `rainUnit` and `pressureUnit` with these keys.
+ * Wind and rain units, as on the Mac, iPhone and web: Automatic follows the larger
+ * temperature unit. Saved under `windUnit` and `rainUnit` with these keys.
  * A reading shows its other-system counterpart beside it only for mph↔km/h, mm↔in and hPa↔inHg.
  */
 enum class WindUnit(val key: String, val label: String, val symbol: String) {
@@ -54,36 +54,14 @@ enum class RainUnit(val key: String, val label: String) {
     }
 }
 
-enum class PressureUnit(val key: String, val label: String) {
-    AUTO("auto", "Automatic"), HPA("hpa", "hPa"), INHG("inhg", "inHg"), MMHG("mmhg", "mmHg");
-
-    /** inHg with °F, hPa with °C. */
-    fun resolved(unit: TempUnit): PressureUnit = if (this != AUTO) this else if (unit == TempUnit.FAHRENHEIT) INHG else HPA
-
-    /** "1013 hPa", "29.92 inHg", "760 mmHg" (a resolved unit), from hPa. */
-    fun text(hpa: Double): String = when (this) {
-        INHG -> "${fixed(hpa * 0.0295300, 2)} inHg"
-        MMHG -> "${(hpa * 0.750062).roundHalfUp()} mmHg"
-        else -> "${hpa.roundHalfUp()} hPa"
-    }
-
-    val counterpart: PressureUnit? get() = when (this) { HPA -> INHG; INHG -> HPA; else -> null }
-
-    companion object {
-        fun of(key: String?) = entries.firstOrNull { it.key == key } ?: AUTO
-    }
-}
-
-/** The three choices together, with the temperature unit that Automatic follows. */
-data class Units(val temperature: TempUnit, val windChoice: WindUnit = WindUnit.AUTO, val rainChoice: RainUnit = RainUnit.AUTO, val pressureChoice: PressureUnit = PressureUnit.AUTO) {
+/** The two choices together, with the temperature unit that Automatic follows. */
+data class Units(val temperature: TempUnit, val windChoice: WindUnit = WindUnit.AUTO, val rainChoice: RainUnit = RainUnit.AUTO) {
     val wind: WindUnit get() = windChoice.resolved(temperature)
     val rain: RainUnit get() = rainChoice.resolved(temperature)
-    val pressure: PressureUnit get() = pressureChoice.resolved(temperature)
 
     /** A wind reading and its counterpart (or null): "12 mph" to "19 km/h". */
     fun wind(kmh: Double): Pair<String, String?> = wind.text(kmh) to wind.counterpart?.text(kmh)
     fun rain(mm: Double): Pair<String, String?> = rain.text(mm) to rain.counterpart.text(mm)
-    fun pressure(hpa: Double): Pair<String, String?> = pressure.text(hpa) to pressure.counterpart?.text(hpa)
 
     /** "16 km" or "9.9 mi", from metres. */
     fun visibility(metres: Double): String {

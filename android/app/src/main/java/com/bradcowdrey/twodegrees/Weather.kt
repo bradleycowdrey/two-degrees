@@ -50,19 +50,6 @@ object Detail {
         else -> "Fog"
     }
 
-    /** "Rising", "Falling" or "Steady": the change over the last 3 hours, 1 hPa or more. Null without the readings. */
-    fun pressureTrend(forecast: Forecast): String? {
-        val i = forecast.nowIndex
-        if (i < 3) return null
-        val now = forecast.now.pressure ?: forecast.hours[i].pressure ?: return null
-        val before = forecast.hours[i - 3].pressure ?: return null
-        val change = now - before
-        return when {
-            change >= 1 -> "Rising"
-            change <= -1 -> "Falling"
-            else -> "Steady"
-        }
-    }
 
     /** "Gusts to 35 mph", when gusts are 10 km/h or more above the wind. */
     fun gustNote(now: Forecast.Now, units: Units): String? {

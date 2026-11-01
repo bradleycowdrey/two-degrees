@@ -117,8 +117,11 @@ jobs:
         run: |
           node tests/radar.test.js > radar.txt 2>&1 || { grep -E '^FAIL' radar.txt | sed 's/^/::error::/'; cat radar.txt; exit 1; }
           cat radar.txt; echo "::notice::Rain map: $(tail -1 radar.txt)"
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: radar-shots
-          path: radar-*.png
+      - name: Publish the rain map photos to ci-shots-radar
+        if: always() && github.event_name != 'pull_request'
+        run: |
+          mkdir -p "$RUNNER_TEMP/radar" && cp radar-*.png radar.txt "$RUNNER_TEMP/radar/" 2>/dev/null || true
+          cd "$RUNNER_TEMP/radar" && git init -q && git checkout -q -b ci-shots-radar
+          git -c user.name=ci -c user.email=ci@users.noreply.github.com add -A
+          git -c user.name=ci -c user.email=ci@users.noreply.github.com commit -qm "Rain map photos for $GITHUB_SHA"
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/$GITHUB_REPOSITORY" ci-shots-radar

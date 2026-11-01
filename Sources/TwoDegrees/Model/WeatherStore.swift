@@ -37,7 +37,6 @@ final class WeatherStore: ObservableObject {
     @Published var floatOnTop: Bool { didSet { defaults.set(floatOnTop, forKey: "floatOnTop") } }
     @Published var windUnit: WindUnit { didSet { defaults.set(windUnit.rawValue, forKey: "windUnit") } }
     @Published var rainUnit: RainUnit { didSet { defaults.set(rainUnit.rawValue, forKey: "rainUnit") } }
-    @Published var pressureUnit: PressureUnit { didSet { defaults.set(pressureUnit.rawValue, forKey: "pressureUnit") } }
     /// Notifications for where you are (or the first city): new severe weather alerts, and rain
     /// starting soon. Both off until turned on.
     @Published var notifySevere: Bool { didSet { defaults.set(notifySevere, forKey: "notifySevere"); if notifySevere { Notifier.shared.requestPermission() } } }
@@ -94,7 +93,6 @@ final class WeatherStore: ObservableObject {
         useLocation = defaults.object(forKey: "useLocation") as? Bool ?? true
         windUnit = defaults.string(forKey: "windUnit").flatMap(WindUnit.init(rawValue:)) ?? .auto
         rainUnit = defaults.string(forKey: "rainUnit").flatMap(RainUnit.init(rawValue:)) ?? .auto
-        pressureUnit = defaults.string(forKey: "pressureUnit").flatMap(PressureUnit.init(rawValue:)) ?? .auto
         notifySevere = defaults.bool(forKey: "notifySevere")
         notifyRain = defaults.bool(forKey: "notifyRain")
         locationAsked = defaults.bool(forKey: "locationAsked")

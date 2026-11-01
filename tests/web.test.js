@@ -152,7 +152,7 @@ async function setSize(page, size) {
     await page.waitForSelector('.dt[data-tile="normal"]', { timeout: 30000 }).catch(() => {});
     const tiles = await page.$$eval('.dt', (els) => Object.fromEntries(els.map((e) => [e.dataset.tile, e.querySelector('.dv').textContent.trim() + ' | ' + (e.querySelector('.dn') || { textContent: '' }).textContent.trim()])));
     const expect = {
-      pressure: /^\d+\.\d\d inHg \| (Rising|Falling|Steady)$/, visibility: /^\d+(\.\d)? mi \| (Clear view|Haze|Fog)$/, cloud: /^\d+% \| (Clear|Mostly clear|Partly cloudy|Mostly cloudy|Overcast)$/,
+      visibility: /^\d+(\.\d)? mi \| (Clear view|Haze|Fog)$/, cloud: /^\d+% \| (Clear|Mostly clear|Partly cloudy|Mostly cloudy|Overcast)$/,
       precip: /^(0|\d+\.\d\d) in \| (None expected|Expected in the next 24 hours: .+ in)$/,
       moon: /^(New Moon|Waxing Crescent|First Quarter|Waxing Gibbous|Full Moon|Waning Gibbous|Last Quarter|Waning Crescent) · \d+% \| $/,
       aqi: /^\d+ (Good|Moderate|Unhealthy for Sensitive Groups|Unhealthy|Very Unhealthy|Hazardous) \| (Better than yesterday|Worse than yesterday|About the same as yesterday|Mostly .+)$/,
@@ -326,14 +326,14 @@ async function setSize(page, size) {
     await context.close();
   }
 
-  // Unit choices: wind, rain and pressure follow the ⋯ menu, show the other system beside them where there is one, and are saved.
+  // Unit choices: wind and rain follow the ⋯ menu, show the other system beside them where there is one, and are saved.
   {
     const { context, page } = await fresh(browser, 390, 844);
     const tile = (k) => page.$eval(`.dt[data-tile="${k}"]`, (e) => [e.querySelector('.dv').textContent.trim(), (e.querySelector('.ds') || { textContent: '' }).textContent.trim()].join(' / '));
     const wind = () => page.$eval('.stat:nth-child(3)', (e) => e.querySelector('.v').textContent.trim() + ' / ' + e.querySelector('.s').textContent.trim());
-    check(/mph \/ /.test(await wind()) && /in \/ .*mm$/.test(await tile('precip')) && /inHg \/ \d+ hPa$/.test(await tile('pressure')), `units: Automatic with °F is mph, in and inHg (${await wind()}; ${await tile('precip')}; ${await tile('pressure')})`);
+    check(/mph \/ /.test(await wind()) && /in \/ .*mm$/.test(await tile('precip')), `units: Automatic with °F is mph and in (${await wind()}; ${await tile('precip')})`);
     await page.click('#unitC');
-    check(/km\/h \/ /.test(await wind()) && /mm \/ .*in$/.test(await tile('precip')) && /hPa \/ .*inHg$/.test(await tile('pressure')), `units: Automatic with °C is km/h, mm and hPa (${await wind()}; ${await tile('precip')}; ${await tile('pressure')})`);
+    check(/km\/h \/ /.test(await wind()) && /mm \/ .*in$/.test(await tile('precip')), `units: Automatic with °C is km/h and mm (${await wind()}; ${await tile('precip')})`);
     const pick = async (attr) => { await page.click('#moreBtn'); await page.click(`#moreMenu [${attr}]`); };
     await pick('data-wind-unit="ms"');
     check(/^\d+ m\/s \/ /.test(await wind()) && / km \/ $/.test(await tile('visibility')), `Wind: m/s stands alone (${await wind()})`);
@@ -343,19 +343,15 @@ async function setSize(page, size) {
     check(/^\d+ mph \/ (\d+ km\/h|Gusts to \d+\u00A0mph)$/.test(await wind()) && / mi \/ $/.test(await tile('visibility')), `Wind: mph, with km/h beside it, and visibility in miles (${await wind()}; ${await tile('visibility')})`);
     await pick('data-rain-unit="in"');
     check(/^(0|\d+\.\d\d) in \/ (0|\d+(\.\d)?) mm$/.test(await tile('precip')), `Rain: in, with mm beside it (${await tile('precip')})`);
-    await pick('data-pressure-unit="mmhg"');
-    check(/^\d{3} mmHg \/ $/.test(await tile('pressure')), `Pressure: mmHg stands alone (${await tile('pressure')})`);
-    await pick('data-pressure-unit="hpa"');
-    check(/^\d{3,4} hPa \/ \d+\.\d\d inHg$/.test(await tile('pressure')), `Pressure: hPa, with inHg beside it (${await tile('pressure')})`);
     await page.click('#moreBtn');
     check(await page.getAttribute('#moreMenu [data-wind-unit="mph"]', 'aria-checked') === 'true' && (await page.textContent('#moreMenu')).includes('Severe weather alerts: United States only, from the National Weather Service.'),
       'the ⋯ menu shows the unit chosen, and where alerts come from');
     await page.keyboard.press('Escape');
-    const saved = await page.evaluate(() => ['windUnit', 'rainUnit', 'pressureUnit'].map((k) => localStorage.getItem('twodegrees.' + k)).join(','));
-    check(saved === '"mph","in","hpa"', `unit choices are saved as windUnit, rainUnit, pressureUnit (${saved})`);
+    const saved = await page.evaluate(() => ['windUnit', 'rainUnit'].map((k) => localStorage.getItem('twodegrees.' + k)).join(','));
+    check(saved === '"mph","in"', `unit choices are saved as windUnit and rainUnit (${saved})`);
     await page.reload();
     await page.waitForSelector('.temps');
-    check(/^\d+ mph/.test(await wind()) && /hPa \//.test(await tile('pressure')), 'unit choices survive a reload');
+    check(/^\d+ mph/.test(await wind()) && /^(0|\d+\.\d\d) in \//.test(await tile('precip')), 'unit choices survive a reload');
     await context.close();
   }
 
@@ -449,7 +445,7 @@ async function setSize(page, size) {
     const { context, page, errors } = await fresh(browser, 390, 844, '', { fail: ['aq', 'archive', 'alerts'] });
     await page.waitForTimeout(3500);   // every answer (and failure) is in
     const shown = await page.$$eval('.dt', (els) => els.map((e) => e.dataset.tile).join(','));
-    check(!/aqi|pollen|normal/.test(shown) && /pressure/.test(shown) && await page.isHidden('#alerts'), `live: failed air quality, archive and NWS hide just their tiles (${shown})`);
+    check(!/aqi|pollen|normal/.test(shown) && /visibility/.test(shown) && !/pressure/.test(shown) && await page.isHidden('#alerts'), `live: failed air quality, archive and NWS hide just their tiles (${shown})`);
     check(/Updated/.test(await page.textContent('#statusText')), 'live: the forecast itself still shows as live');
     await page.click('#daysToggle');
     await page.click('#days [data-day="0"]');
@@ -464,7 +460,7 @@ async function setSize(page, size) {
   {
     const { context, page, errors } = await fresh(browser, 390, 844, '', { offline: true });
     const shown = await page.$$eval('.dt', (els) => els.map((e) => e.dataset.tile).join(','));
-    check(/aqi/.test(shown) && /normal/.test(shown) && /pressure/.test(shown) && /moon/.test(shown) && (await page.textContent('#statusText')) === 'Sample forecast', `sample: the tiles come with sample data, labelled Sample forecast (${shown})`);
+    check(/aqi/.test(shown) && /normal/.test(shown) && !/pressure/.test(shown) && /moon/.test(shown) && (await page.textContent('#statusText')) === 'Sample forecast', `sample: the tiles come with sample data, labelled Sample forecast (${shown})`);
     check(errors.length === 0, `sample: no script errors${errors.length ? ': ' + errors.join(' | ') : ''}`);
     await context.close();
   }

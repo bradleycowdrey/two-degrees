@@ -596,24 +596,20 @@
     return /-(US|LR|MM|BS|BZ|KY|PW|FM|MH)\b/.test(lang) ? 'F' : 'C';
   };
 
-  // Wind, rain and pressure: the chosen unit, and its other-system counterpart (only mph↔km/h, mm↔in and
-  // hPa↔inHg have one; m/s, knots and mmHg stand alone). Automatic: mph, in and inHg with °F; km/h, mm and hPa with °C.
+  // Wind and rain: the chosen unit, and its other-system counterpart (only mph↔km/h and mm↔in have one;
+  // m/s and knots stand alone). Automatic: mph and in with °F; km/h and mm with °C.
   const UNIT_CHOICES = {
     wind: [['auto', 'Automatic'], ['kmh', 'km/h'], ['mph', 'mph'], ['ms', 'm/s'], ['kn', 'knots']],
     rain: [['auto', 'Automatic'], ['mm', 'mm'], ['in', 'in']],
-    pressure: [['auto', 'Automatic'], ['hpa', 'hPa'], ['inhg', 'inHg'], ['mmhg', 'mmHg']],
   };
   const windUnit = () => (state.windUnit !== 'auto' ? state.windUnit : state.unit === 'F' ? 'mph' : 'kmh');
   const rainUnit = () => (state.rainUnit !== 'auto' ? state.rainUnit : state.unit === 'F' ? 'in' : 'mm');
-  const pressureUnit = () => (state.pressureUnit !== 'auto' ? state.pressureUnit : state.unit === 'F' ? 'inhg' : 'hpa');
   const WIND = { kmh: [1, 'km/h'], mph: [0.621371, 'mph'], ms: [1 / 3.6, 'm/s'], kn: [0.539957, 'kn'] };
   const windIn = (kmh, unit) => `${Math.round(kmh * WIND[unit][0])} ${WIND[unit][1]}`;
   // [main, counterpart or ''] for a speed in km/h.
   const fmtWind = (kmh) => { const w = windUnit(); return [windIn(kmh, w), w === 'mph' ? windIn(kmh, 'kmh') : w === 'kmh' ? windIn(kmh, 'mph') : '']; };
   const rainIn = (mm, unit) => (mm === 0 ? `0 ${unit}` : unit === 'in' ? `${(mm / 25.4).toFixed(2)} in` : `${mm < 10 ? mm.toFixed(1) : Math.round(mm)} mm`);
   const fmtRain = (mm) => { const r = rainUnit(); return [rainIn(mm, r), rainIn(mm, r === 'in' ? 'mm' : 'in')]; };
-  const presIn = (hpa, unit) => (unit === 'inhg' ? `${(hpa * 0.0295300).toFixed(2)} inHg` : unit === 'mmhg' ? `${Math.round(hpa * 0.750062)} mmHg` : `${Math.round(hpa)} hPa`);
-  const fmtPres = (hpa) => { const p = pressureUnit(); return [presIn(hpa, p), p === 'hpa' ? presIn(hpa, 'inhg') : p === 'inhg' ? presIn(hpa, 'hpa') : '']; };
   // Visibility follows the wind unit's system: miles with mph, kilometres otherwise.
   const fmtVis = (m) => { const mi = windUnit() === 'mph', v = mi ? m / 1609.344 : m / 1000; return `${v >= 10 ? Math.round(v) : v.toFixed(1)} ${mi ? 'mi' : 'km'}`; };
 
@@ -638,7 +634,6 @@
     // Units for everything that isn't a temperature: Automatic follows the larger temperature unit.
     windUnit: store.get('windUnit', 'auto'),       // auto | kmh | mph | ms | kn
     rainUnit: store.get('rainUnit', 'auto'),       // auto | mm | in
-    pressureUnit: store.get('pressureUnit', 'auto'),   // auto | hpa | inhg | mmhg
     // Extras beside the forecast, by city key: air quality, the normals-and-records table, NWS alerts.
     aq: {}, normals: {}, alerts: {},
     sheet: null,   // what the open sheet shows: { kind: 'day', i } or { kind: 'alert', id }
@@ -1174,14 +1169,6 @@
     const n = normalsFor(city, data.daily[0].date);
     const nw = (t) => `<span style="white-space:nowrap">${both(t)}</span>`;
     if (n) tile('normal', 'Averages', vsNormal(today.max, n[0]), '', `Normal high ${nw(n[0])}, low ${nw(n[1])}`);
-    if (cur.pres != null) {
-      // The change over the last 3 hours; just after midnight (the hours start then), over the next 3.
-      const i = nowIndex(data), h = data.hourly, [from, to] = i >= 3 ? [h[i - 3], h[i]] : [h[i], h[i + 3]];
-      const a = to && to.pres, b = from && from.pres;
-      const trend = a != null && b != null ? (a - b >= 1 ? 'Rising' : b - a >= 1 ? 'Falling' : 'Steady') : '';
-      const [v, s] = fmtPres(cur.pres);
-      tile('pressure', 'Pressure', v, s, trend);
-    }
     if (cur.vis != null) tile('visibility', 'Visibility', fmtVis(cur.vis), '', visLabel(cur.vis));
     if (data.daily[0].psum != null) {
       const [v, s] = fmtRain(data.daily[0].psum);
@@ -1686,8 +1673,8 @@
       const item = (attr, label, on, key = '') => `<button type="button" role="menuitemradio" aria-checked="${on}" ${attr}><span class="ck">${on ? '✓' : ''}</span><span>${label}</span>${key ? `<span class="k">${key}</span>` : ''}</button>`;
       menu.innerHTML = `<div class="sec">Size</div>` + SIZES.map(([id, label]) => item(`data-size="${id}"`, label, state.size === id)).join('') +
         `<hr><div class="sec">Font</div>` + item('data-font="system"', 'System (SF Pro)', state.font === 'system') + item('data-font="inter"', 'Inter (bradcowdrey.com)', state.font === 'inter') +
-        `<hr>` + [['wind', 'Wind'], ['rain', 'Rain'], ['pressure', 'Pressure']].map(([kind, title]) => `<div class="sec" id="sec-${kind}">${title}</div><div class="opts" role="group" aria-labelledby="sec-${kind}">` +
-          UNIT_CHOICES[kind].map(([id, label]) => `<button type="button" role="menuitemradio" aria-checked="${state[kind + 'Unit'] === id}" data-${kind}-unit="${id}"${id === 'auto' ? ` title="${{ wind: 'mph with °F, km/h with °C', rain: 'in with °F, mm with °C', pressure: 'inHg with °F, hPa with °C' }[kind]}"` : ''}>${label}</button>`).join('') + '</div>').join('') +
+        `<hr>` + [['wind', 'Wind'], ['rain', 'Rain']].map(([kind, title]) => `<div class="sec" id="sec-${kind}">${title}</div><div class="opts" role="group" aria-labelledby="sec-${kind}">` +
+          UNIT_CHOICES[kind].map(([id, label]) => `<button type="button" role="menuitemradio" aria-checked="${state[kind + 'Unit'] === id}" data-${kind}-unit="${id}"${id === 'auto' ? ` title="${{ wind: 'mph with °F, km/h with °C', rain: 'in with °F, mm with °C'}[kind]}"` : ''}>${label}</button>`).join('') + '</div>').join('') +
         `<p>Severe weather alerts: United States only, from the National Weather Service.</p>` +
         `<hr>` + (canLocate() ? `<button type="button" role="menuitemcheckbox" aria-checked="${state.useLocation}" data-act="locate"><span class="ck">${state.useLocation ? '✓' : ''}</span><span>Use My Location</span></button>` : '') +
         `<button type="button" role="menuitem" data-act="copy"><span class="ck"></span><span>Copy Current Reading</span></button>` +
@@ -1814,7 +1801,7 @@
     toggleMore(false);
     if (b.dataset.size) { state.size = b.dataset.size; store.set('size', state.size); applyLook(); }
     if (b.dataset.font) { state.font = b.dataset.font; store.set('font', state.font); applyLook(); }
-    for (const kind of ['wind', 'rain', 'pressure']) {
+    for (const kind of ['wind', 'rain']) {
       const v = b.dataset[kind + 'Unit'];
       if (v) { state[kind + 'Unit'] = v; store.set(kind + 'Unit', v); render(); }
     }

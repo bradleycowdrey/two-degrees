@@ -83,7 +83,7 @@ struct NextHoursTile: View {
     }
 }
 
-/// Air quality, pollen, averages, pressure, visibility, precipitation, clouds and the moon, four across.
+/// Air quality, pollen, averages, visibility, precipitation, clouds and the moon, four across.
 struct DetailsTile: View {
     @EnvironmentObject private var store: WeatherStore
     @Environment(\.metrics) private var ui
@@ -119,10 +119,6 @@ struct DetailsTile: View {
             list.append(Item(key: "Averages", value: Climate.comparison(high: today.high, normal: normalHigh, unit: unit),
                              sub: "\(unit.value(normalLow))–\(unit.value(normalHigh))\(unit.symbol) normal",
                              help: "Normal high \(unit.other.spaced(unit.other.value(normalHigh))), low \(unit.other.spaced(unit.other.value(normalLow)))"))
-        }
-        if let hpa = now.pressure {
-            let text = store.pressureUnit.text(hpa, temp: unit)
-            list.append(Item(key: "Pressure", value: text.main, sub: Details.pressureTrend(forecast) ?? "Steady", help: text.other ?? ""))
         }
         if let metres = now.visibility {
             let v = Details.visibility(metres, miles: store.windUnit.usesMiles(unit))

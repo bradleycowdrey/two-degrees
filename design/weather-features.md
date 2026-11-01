@@ -92,9 +92,8 @@ Apps show it in a web view; the web app links to it.
 
 ## 6. More detail tiles
 
-Two across, same card style as the existing tiles. Order after the existing six:
-- **Pressure**: value in the pressure unit, with the other system beside it (hPa ↔ inHg). Note:
-  "Rising" / "Falling" / "Steady" (change over the last 3 hours ≥ 1 hPa).
+Two across, same card style as the existing tiles. Order after the existing six (no pressure: removed in
+0.5.1 at the owner's request; the forecast still carries `pressure_msl`, unused):
 - **Visibility**: km or mi (follows the wind unit's system), "Clear view" (≥ 10 km) / "Haze" (2–10 km) /
   "Fog" (< 2 km).
 - **Wind gusts**: add to the Wind tile's note: "Gusts to 35 mph" when gusts exceed wind by ≥ 10 km/h.
@@ -125,11 +124,9 @@ Two across, same card style as the existing tiles. Order after the existing six:
 Settings (Mac Settings › General; iPhone ⋯ menu › Units; Android ⋮ menu; web ⋯ menu):
 - **Wind**: Automatic (mph when °F is larger, km/h when °C), km/h, mph, m/s, knots.
 - **Rain**: Automatic (in with °F, mm with °C), mm, in.
-- **Pressure**: Automatic (inHg with °F, hPa with °C), hPa, inHg, mmHg.
 - Display: the chosen unit, and its other-system counterpart beside it, smaller, only for
-  mph↔km/h, mm↔in and hPa↔inHg (m/s, knots and mmHg stand alone).
-- Saved keys: `windUnit`, `rainUnit`, `pressureUnit` (values `auto|kmh|mph|ms|kn`, `auto|mm|in`,
-  `auto|hpa|inhg|mmhg`).
+  mph↔km/h and mm↔in (m/s and knots stand alone).
+- Saved keys: `windUnit`, `rainUnit` (values `auto|kmh|mph|ms|kn`, `auto|mm|in`).
 
 ## 13. Averages and records
 

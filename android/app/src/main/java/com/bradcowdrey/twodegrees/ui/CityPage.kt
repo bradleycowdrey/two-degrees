@@ -389,7 +389,7 @@ private fun TileGrid(tiles: List<@Composable (Modifier) -> Unit>) {
 }
 
 /**
- * The tiles after the first six: pressure, visibility, precipitation, cloud cover and the moon, then
+ * The tiles after the first six: visibility, precipitation, cloud cover and the moon, then
  * air quality, pollen and how today compares with normal. Each one only when its data is there.
  */
 @Composable
@@ -399,10 +399,6 @@ private fun MoreTiles(city: City, forecast: Forecast, state: WeatherStore.State)
     val now = forecast.now
     val today = forecast.days.firstOrNull()
     val tiles = mutableListOf<@Composable (Modifier) -> Unit>()
-    now.pressure?.let { hpa ->
-        val (main, other) = units.pressure(hpa)
-        tiles.add { DetailTile("Pressure", main, other, Detail.pressureTrend(forecast), it) }
-    }
     now.visibility?.let { m -> tiles.add { DetailTile("Visibility", units.visibility(m), null, Detail.visibilityWord(m), it) } }
     today?.precipitationSum?.let { mm ->
         val (main, other) = units.rain(mm)

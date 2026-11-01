@@ -1,6 +1,6 @@
 import Foundation
 
-// 0.5's weather details, shared by the Mac and iPhone apps: units for wind, rain and pressure; the
+// 0.5's weather details, shared by the Mac and iPhone apps: units for wind and rain; the
 // moon; air quality and pollen; normals and records; severe weather alerts; and the words for each.
 // Rules and wording follow design/weather-features.md, so the Android and web apps say the same.
 
@@ -59,43 +59,9 @@ enum RainUnit: String, CaseIterable, Identifiable {
     }
 }
 
-enum PressureUnit: String, CaseIterable, Identifiable {
-    case auto, hpa, inhg, mmhg
-    var id: String { rawValue }
-    var label: String { ["auto": "Automatic", "hpa": "hPa", "inhg": "inHg", "mmhg": "mmHg"][rawValue]! }
-
-    func resolved(_ temp: TempUnit) -> PressureUnit { self == .auto ? (temp == .fahrenheit ? .inhg : .hpa) : self }
-
-    static func format(_ hpa: Double, _ unit: PressureUnit) -> String {
-        switch unit {
-        case .inhg: return String(format: "%.2f inHg", hpa * 0.0295300)
-        case .mmhg: return "\(Int((hpa * 0.750062).rounded())) mmHg"
-        default: return "\(Int(hpa.rounded())) hPa"
-        }
-    }
-
-    func text(_ hpa: Double, temp: TempUnit) -> (main: String, other: String?) {
-        let unit = resolved(temp)
-        switch unit {
-        case .hpa: return (Self.format(hpa, .hpa), Self.format(hpa, .inhg))
-        case .inhg: return (Self.format(hpa, .inhg), Self.format(hpa, .hpa))
-        default: return (Self.format(hpa, unit), nil)
-        }
-    }
-}
-
 // MARK: - Words for the detail tiles
 
 enum Details {
-    /// "Rising", "Falling" or "Steady": the change over the last three hours.
-    static func pressureTrend(_ forecast: Forecast) -> String? {
-        guard let now = forecast.now.pressure else { return nil }
-        let earlier = forecast.now.time.addingTimeInterval(-3 * 3600)
-        guard let past = forecast.hours.last(where: { $0.time <= earlier })?.pressure else { return "Steady" }
-        let change = now - past
-        return change >= 1 ? "Rising" : (change <= -1 ? "Falling" : "Steady")
-    }
-
     static func visibility(_ metres: Double, miles: Bool) -> (value: String, note: String) {
         let km = metres / 1000
         let value = miles ? (km / 1.609 >= 10 ? "10+ mi" : String(format: "%.0f mi", km / 1.609))

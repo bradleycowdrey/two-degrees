@@ -727,9 +727,6 @@ final class WeatherExtrasTests: XCTestCase {
         XCTAssertEqual(RainUnit.auto.text(12.7, temp: .fahrenheit).main, "0.50 in")
         XCTAssertEqual(RainUnit.auto.text(2.54, temp: .celsius).main, "2.5 mm")
         XCTAssertEqual(RainUnit.format(0.05, .mm), "<0.1 mm")
-        XCTAssertEqual(PressureUnit.auto.text(1013.25, temp: .fahrenheit).main, "29.92 inHg")
-        XCTAssertEqual(PressureUnit.auto.text(1013.25, temp: .celsius).other, "29.92 inHg")
-        XCTAssertEqual(PressureUnit.mmhg.text(1013.25, temp: .celsius).main, "760 mmHg")
     }
 
     func testWords() {
@@ -737,10 +734,6 @@ final class WeatherExtrasTests: XCTestCase {
         XCTAssertEqual(Details.clouds(75), "Mostly cloudy")
         XCTAssertEqual(Details.visibility(24_000, miles: false).value, "16+ km")
         XCTAssertEqual(Details.visibility(1_000, miles: true).note, "Fog is cutting the view.")
-        let rising = forecast(steps: [], hours: [("2026-11-01T11:00", 1010), ("2026-11-01T12:00", 1011)], pressure: 1014)
-        XCTAssertEqual(Details.pressureTrend(rising), "Rising")
-        let steady = forecast(steps: [], hours: [("2026-11-01T12:00", 1013.5)], pressure: 1014)
-        XCTAssertEqual(Details.pressureTrend(steady), "Steady")
     }
 
     func testNextTwoHours() {

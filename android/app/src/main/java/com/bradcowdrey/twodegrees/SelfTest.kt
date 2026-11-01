@@ -38,8 +38,8 @@ object SelfTest {
         // 1b. 0.5's additions, live: the newer tiles' data, 15-minute rain, air quality, normals, alerts, the moon.
         active?.let { f ->
             val today = f.days.firstOrNull()
-            check(f.now.pressure != null && f.now.visibility != null && f.now.cloudCover != null && today?.precipitationSum != null,
-                "new tiles' data: pressure ${f.now.pressure?.let { PressureUnit.HPA.text(it) }}, visibility ${f.now.visibility?.let { Units(TempUnit.CELSIUS).visibility(it) }}, " +
+            check(f.now.visibility != null && f.now.cloudCover != null && today?.precipitationSum != null,
+                "new tiles' data: visibility ${f.now.visibility?.let { Units(TempUnit.CELSIUS).visibility(it) }}, " +
                     "cloud cover ${f.now.cloudCover?.roundHalfUp()}%, today's precipitation ${today?.precipitationSum?.let { RainUnit.MM.text(it) }}")
             check(f.steps.size == 8, "15-minute precipitation decoded (${f.steps.size} steps from ${f.steps.firstOrNull()?.time?.toLocalTime()})")
         }
@@ -102,13 +102,8 @@ object SelfTest {
                 if (airAfter < 0 && City.CURRENT_ID in store.current.air) airAfter = System.currentTimeMillis() - waitStart
                 if (City.CURRENT_ID !in store.current.air || store.current.cities.firstOrNull()?.let { store.current.normals(it) } == null) delay(500)
             }
-            val hereNow = store.current.forecasts[City.CURRENT_ID]
             val hereAir = store.current.air[City.CURRENT_ID]
             check(hereAir != null, "where you are: air quality loads (${hereAir?.usAqi?.roundHalfUp()?.let { "US AQI $it" } ?: "none"}, after ${airAfter} ms)")
-            // The hourly series starts at midnight: before 3 AM there is no trend yet, and the tile shows none.
-            check(hereNow != null && (Detail.pressureTrend(hereNow) != null || hereNow.nowIndex in 0..2),
-                "where you are: pressure trend ${hereNow?.let { f -> "${Detail.pressureTrend(f) ?: "none yet"} (hour ${f.nowIndex} of ${f.hours.size}, " +
-                    "${f.hours.getOrNull(f.nowIndex - 3)?.let { "${it.time.toLocalTime()} ${it.pressure}" }} → ${f.now.pressure})" }}")
             store.setUseLocation(false)
             repeat(20) { if (store.current.cities.any { it.isCurrent }) delay(100) }
             check(store.current.cities.none { it.isCurrent }, "turning Use My Location off removes it")

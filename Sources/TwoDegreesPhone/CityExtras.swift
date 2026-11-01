@@ -183,7 +183,7 @@ private struct WebPage: UIViewRepresentable {
 
 // MARK: - More detail tiles
 
-/// Air quality, pollen, averages, pressure, visibility, precipitation, clouds and the moon, after the
+/// Air quality, pollen, averages, visibility, precipitation, clouds and the moon, after the
 /// first six tiles. Each hides itself when its data isn't there.
 struct ExtraTiles: View {
     @EnvironmentObject private var store: WeatherStore
@@ -206,11 +206,6 @@ struct ExtraTiles: View {
             DetailTile(title: "Averages", icon: "chart.line.uptrend.xyaxis",
                        value: Climate.comparison(high: today.high, normal: normalHigh, unit: unit), sub: nil,
                        note: "Normal high \(unit.spaced(unit.value(normalHigh))) · \(unit.other.spaced(unit.other.value(normalHigh))), low \(unit.spaced(unit.value(normalLow))) · \(unit.other.spaced(unit.other.value(normalLow))).")
-        }
-        if let hpa = now.pressure {
-            let text = store.pressureUnit.text(hpa, temp: unit)
-            DetailTile(title: "Pressure", icon: "gauge.with.dots.needle.33percent", value: text.main, sub: text.other,
-                       note: (Details.pressureTrend(forecast) ?? "Steady") + ".")
         }
         if let metres = now.visibility {
             let v = Details.visibility(metres, miles: store.windUnit.usesMiles(unit))

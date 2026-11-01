@@ -33,7 +33,6 @@ private struct GeneralSettings: View {
             LocationSetting()
             Picker("Wind", selection: $store.windUnit) { ForEach(WindUnit.allCases) { Text($0.label).tag($0) } }
             Picker("Rain", selection: $store.rainUnit) { ForEach(RainUnit.allCases) { Text($0.label).tag($0) } }
-            Picker("Pressure", selection: $store.pressureUnit) { ForEach(PressureUnit.allCases) { Text($0.label).tag($0) } }
             NotificationSettings()
             Toggle("Keep window on top", isOn: $store.floatOnTop)
             Toggle("Open at login", isOn: Binding(get: { store.opensAtLogin }, set: { store.opensAtLogin = $0 }))
