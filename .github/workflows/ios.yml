@@ -30,6 +30,8 @@ jobs:
             || { echo "::error::The iPhone widget isn't declared as a WidgetKit extension"; exit 1; }
           find "$W" -name Metadata.appintents | grep -q . || { echo "::error::The iPhone widget has no App Intents metadata; its city setting won't show"; exit 1; }
           test -f dist/ios/TwoDegrees.app/Assets.car || { echo "::error::The iPhone app has no asset catalog (icon)"; exit 1; }
+          test -f dist/ios/TwoDegrees.app/PrivacyInfo.xcprivacy || { echo "::error::The iPhone app has no privacy manifest (PrivacyInfo.xcprivacy)"; exit 1; }
+          find dist/ios/TwoDegrees.app/PlugIns -name PrivacyInfo.xcprivacy | grep -q . || { echo "::error::The iPhone widget has no privacy manifest"; exit 1; }
       - name: Run in the Simulator
         run: |
           OUT="$RUNNER_TEMP/shots"; mkdir -p "$OUT"

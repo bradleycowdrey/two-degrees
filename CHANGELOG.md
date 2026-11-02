@@ -8,6 +8,15 @@ A **patch** (2.0.1) fixes things, a **minor** version (2.1.0) adds features, and
 (3.0.0) is a big redesign or a change that stops something working the way it did. The build number
 counts every change ever made, so each build is higher than the last.
 
+## [2.1.1] - 2026-11-02
+
+- **Use My Location, asked the way Apple prefers**: after the terms, one screen explains it, then iOS
+  asks; choose Allow or Don't Allow there. Turn it on or off anytime in the ⋯ menu.
+- **Clearer privacy wording**: the location request and the terms now say your location goes to the
+  weather services for the weather and alerts where you are, rounded to about a kilometre. The
+  updated terms are asked for once, no more than once a month.
+- **Privacy manifest** for the iPhone and iPad app and its widgets.
+
 ## [2.1.0] - 2026-11-02
 
 - **Sunrise and sunset colour**: a forecast of how good the next sunrise and sunset will look, from

@@ -440,10 +440,10 @@ object Brand {
     const val AUTHOR = "Bradley Cowdrey"
     const val WEBSITE = "https://bradcowdrey.com"
     const val LEGAL = "https://bradcowdrey.com/legal"
-    const val TERMS_VERSION = "2026-11-01"
+    const val TERMS_VERSION = "2026-11-02"
     const val PRODUCT_PAGE = "https://bradcowdrey.com/two-degrees"
     const val ISSUES = "https://github.com/bradleycowdrey/two-degrees/issues"
     const val DATA_CREDIT = "https://open-meteo.com/"
     const val SHARE_MESSAGE = "Two Degrees: the weather in °F and °C at once, on your Android phone and its Home Screen. Free and open source, by Bradley Cowdrey."
-    const val TERMS_SUMMARY = "Two Degrees is free and provided as is, without warranty. It is not a safety tool: for severe weather, follow official warnings. Your cities stay on your phone; only their locations go to Open-Meteo to get the weather. If you allow it, your location is used only to show the weather where you are."
+    const val TERMS_SUMMARY = "Two Degrees is free and provided as is, without warranty. It is not a safety tool: for severe weather, follow official warnings. Your cities stay on your phone; only their locations go to the weather services, to get the weather and alerts. If you allow it, your location is used only to show the weather where you are."
 }

@@ -101,8 +101,8 @@ def main():
 
     step("Content rights")
     call("PATCH", f"/apps/{app['id']}", {"data": {"type": "apps", "id": app["id"],
-         "attributes": {"contentRightsDeclaration": "DOES_NOT_USE_THIRD_PARTY_CONTENT"}}})
-    print("does not use third-party content")
+         "attributes": {"contentRightsDeclaration": "USES_THIRD_PARTY_CONTENT"}}})
+    print("uses third-party content (weather data, alerts, radar and map tiles under their free licences, credited in the app)")
 
     step("Copyright")
     call("PATCH", f"/appStoreVersions/{version['id']}",
