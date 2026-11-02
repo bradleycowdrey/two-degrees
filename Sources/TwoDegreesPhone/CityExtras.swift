@@ -254,16 +254,23 @@ struct DayDetailView: View {
         let forecast = store.forecasts[city.id]
         let index = days.firstIndex { $0.date == selection } ?? 0
         NavigationStack {
-            ScrollView {
-                if let forecast, days.indices.contains(index) {
-                    DayDetailContent(forecast: forecast, day: index == 0 ? days[0].including(forecast.now.temperature) : days[index],
-                                     isToday: index == 0, city: city)
-                        .padding(.horizontal, 16)
-                        .padding(.bottom, 32)
-                        .frame(maxWidth: ui.pt(600))
-                        .frame(maxWidth: .infinity)
+            // Swipe left and right between days, as well as the arrows.
+            TabView(selection: Binding(get: { selection ?? days.first?.date ?? Date() }, set: { selection = $0 })) {
+                ForEach(Array(days.enumerated()), id: \.element.date) { i, day in
+                    ScrollView {
+                        if let forecast {
+                            DayDetailContent(forecast: forecast, day: i == 0 ? day.including(forecast.now.temperature) : day,
+                                             isToday: i == 0, city: city)
+                                .padding(.horizontal, 16)
+                                .padding(.bottom, 32)
+                                .frame(maxWidth: ui.pt(600))
+                                .frame(maxWidth: .infinity)
+                        }
+                    }
+                    .tag(day.date)
                 }
             }
+            .tabViewStyle(.page(indexDisplayMode: .never))
             .background(Palette.bg.ignoresSafeArea())
             .navigationTitle(days.indices.contains(index) ? Forecast.format(days[index].date, "EEEEMMMd") : "")
             .navigationBarTitleDisplayMode(.inline)

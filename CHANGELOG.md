@@ -15,6 +15,8 @@ counts every change ever made, so each build is higher than the last.
   mid-level clouds to catch the colour", "Low cloud will likely block it"). On the sun tile, as Sunrise
   and Sunset tiles on the Mac and web, and beside the times in every day.
 - **Back to the top**: swipe to another city and back, and the page starts at the top again.
+- **Swipe between days**: in a day's detail, swipe left and right to move between days, as well as
+  the arrows.
 - **Better tiles**: UV and air quality scales, the moon's shape and when the next full or new moon
   is, and which heights the clouds are at.
 - **A touch of colour**: each tile has its own accent on its icon and title, with a faint glow at

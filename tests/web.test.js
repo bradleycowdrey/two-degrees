@@ -180,6 +180,16 @@ async function setSize(page, size) {
     check(!/^Today/.test(await page.textContent('#sheetTitle')) && !(await page.isDisabled('#sheetPrev')), t(`next goes to the next day (${await page.textContent('#sheetTitle')})`));
     await page.keyboard.press('ArrowLeft');
     check(/^Today/.test(await page.textContent('#sheetTitle')), t('the left arrow key goes back a day'));
+    const swipeBy = (dx) => page.evaluate((dx) => {
+      const el = document.getElementById('sheet');
+      const touch = (x) => new Touch({ identifier: 1, target: el, clientX: x, clientY: 300 });
+      el.dispatchEvent(new TouchEvent('touchstart', { touches: [touch(200)], changedTouches: [touch(200)], bubbles: true }));
+      el.dispatchEvent(new TouchEvent('touchend', { touches: [], changedTouches: [touch(200 + dx)], bubbles: true }));
+    }, dx);
+    await swipeBy(-120);
+    const swiped = await page.textContent('#sheetTitle');
+    await swipeBy(120);
+    check(!/^Today/.test(swiped) && /^Today/.test(await page.textContent('#sheetTitle')), t(`swiping left goes to the next day and right comes back (${swiped})`));
     await page.keyboard.press('Escape');
     await page.waitForSelector('#sheetBack', { state: 'hidden', timeout: 3000 }).catch(() => {});   // it closes with a short animation
     await page.waitForFunction(() => document.activeElement && document.activeElement.dataset.day === '0', null, { timeout: 2000 }).catch(() => {});

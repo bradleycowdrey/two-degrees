@@ -1926,6 +1926,18 @@
     else if (e.target.closest('#sheetPrev')) stepDay(-1);
     else if (e.target.closest('#sheetNext')) stepDay(1);
   });
+  // Swipe left and right between days on a touch screen, as well as the arrows: a mostly sideways swipe
+  // of 50px or more (an up-and-down scroll or a swipe on a chart's own scroller is left alone).
+  let swipe = null;
+  $('#sheet').addEventListener('touchstart', (e) => {
+    swipe = e.touches.length === 1 && state.sheet && state.sheet.kind === 'day' ? { x: e.touches[0].clientX, y: e.touches[0].clientY } : null;
+  }, { passive: true });
+  $('#sheet').addEventListener('touchend', (e) => {
+    if (!swipe) return;
+    const t = e.changedTouches[0], dx = t.clientX - swipe.x, dy = t.clientY - swipe.y;
+    swipe = null;
+    if (Math.abs(dx) >= 50 && Math.abs(dx) > Math.abs(dy) * 1.5) stepDay(dx < 0 ? 1 : -1);
+  }, { passive: true });
   $('#sheet').addEventListener('keydown', (e) => {
     if (e.key === 'Tab') {   // keep focus inside the sheet
       const items = [...$('#sheet').querySelectorAll('button:not([disabled]), a[href]')];
@@ -1971,7 +1983,7 @@
   }
   // Read by tests/web.test.js. inject: put sample alerts or air quality on the city showing, as if they'd loaded.
   window.__twoDegreesTest = {
-    deg, moonPhase, moonNext, skyRule,
+    deg, moonPhase, moonNext, skyRule, stepDay,
     inject(kind, value) { state[kind][keyOf(state.cities[state.active])] = value; render(); },
   };
   applyLook();
