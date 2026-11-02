@@ -82,6 +82,14 @@ def main():
     step("App and version")
     app = call("GET", f"/apps?filter[bundleId]={BUNDLE_ID}")["data"][0]
     if os.environ.get("REPLACE_WAITING") == "1":
+        # Only take a version out of review once the build that replaces it is ready, so it is never left
+        # out of review with nothing to submit.
+        number = os.environ.get("BUILD", "").strip()
+        ready = call("GET", f"/builds?filter[app]={app['id']}&filter[preReleaseVersion.platform]=IOS&filter[processingState]=VALID"
+                            + (f"&filter[version]={number}" if number else "") + "&limit=1")["data"]
+        if not ready:
+            print(f"::error::Build {number or '(newest)'} isn't processed yet, so the waiting version was left in review. Try again in a few minutes.")
+            raise SystemExit(1)
         step("Taking the waiting version out of review")
         take_out_of_review(app)
     versions = call("GET", f"/apps/{app['id']}/appStoreVersions?filter[platform]=IOS&filter[appStoreState]={EDITABLE}")["data"]
