@@ -18,6 +18,7 @@ struct CityPage: View {
             ScrollView(.vertical) {
                 VStack(spacing: ui.pt(10)) {
                     header(forecast)
+                        .id("top")
                         .padding(.top, ui.pt(36))
                         .padding(.bottom, ui.pt(26))
                         // Where the header is in the scroll view, read on every scroll.
@@ -62,6 +63,10 @@ struct CityPage: View {
                 }
             }
             .overlay(alignment: .top) { compactHeader(forecast) }
+            // Swiping to another city puts this one back at the top, so it starts there when you return.
+            .onChange(of: store.activeID) { old, new in
+                if old == city.id && new != city.id { reader.scrollTo("top", anchor: .top) }
+            }
             .task {
                 if PhoneSelfTest.showDays && city.id == store.activeID {
                     try? await Task.sleep(for: .seconds(2.5))

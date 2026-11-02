@@ -112,6 +112,12 @@ fun CityPage(city: City, state: WeatherStore.State, store: WeatherStore, scrollT
         }
     }
 
+    // Swiping to another city puts this one back at the top, so it starts there when you return.
+    val showing = city.id == state.activeID
+    LaunchedEffect(showing) {
+        if (!showing && (list.firstVisibleItemIndex > 0 || list.firstVisibleItemScrollOffset > 0)) list.scrollToItem(0)
+    }
+
     // The spinner shows only for a pull, not for the app's own refreshes.
     var pulled by remember { mutableStateOf(false) }
     LaunchedEffect(state.loading) { if (!state.loading) pulled = false }
