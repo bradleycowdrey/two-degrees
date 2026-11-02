@@ -282,7 +282,7 @@ enum SelfTest {
             alert.buttons.first?.performClick(nil)
         }
         check(termsButtons == ["I Agree", "Read the Terms", "Quit"], "terms: the dialog offers I Agree, Read the Terms and Quit (\(termsButtons.joined(separator: ", ")))")
-        check(termsText.contains("bradcowdrey.com/legal") && termsText.contains("Open-Meteo"), "terms: the dialog names the terms page and where locations go")
+        check(termsText.contains("bradcowdrey.com/legal") && termsText.contains("weather services"), "terms: the dialog names the terms page and where locations go")
         check(agreed && Terms.accepted(in: termsDefaults), "terms: I Agree is remembered, so it isn't asked again")
         termsDefaults.set("an-older-version", forKey: Terms.key)
         check(Terms.accepted(in: termsDefaults), "terms: a change within a month of agreeing waits (at most one ask a month)")
