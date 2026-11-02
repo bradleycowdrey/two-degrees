@@ -109,6 +109,10 @@ data class Forecast(
         val gusts: Double? = null,
         val pressure: Double? = null,
         val visibility: Double? = null,
+        /** Low (up to ~2 km), mid (~2–6 km) and high (above ~6 km) cloud, % of the sky. */
+        val cloudLow: Double? = null,
+        val cloudMid: Double? = null,
+        val cloudHigh: Double? = null,
     )
 
     /** One 15-minute step: its start and the precipitation in it (mm). */

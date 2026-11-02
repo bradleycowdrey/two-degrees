@@ -61,6 +61,60 @@ enum RainUnit: String, CaseIterable, Identifiable {
 
 // MARK: - Words for the detail tiles
 
+// MARK: - Sunrise and sunset colour
+
+/// How colourful a sunrise or sunset is likely to be, from the clouds forecast for that hour. Colour
+/// comes from high and mid-level cloud catching the low sun; thick low cloud near the horizon blocks
+/// it, rain and fog hide it, and a clear sky gives a clean but plain glow. Same rule on every platform
+/// (design/weather-features.md, "Sky colour").
+enum SkyColour {
+    enum Rating: Int, Comparable { case poor, fair, good, great
+        static func < (a: Rating, b: Rating) -> Bool { a.rawValue < b.rawValue }
+        var word: String { ["Poor", "Fair", "Good", "Great"][rawValue] }
+        /// "Great colour likely", "Good colour likely", "Some colour possible", "Little colour expected".
+        var line: String { ["Little colour expected", "Some colour possible", "Good colour likely", "Great colour likely"][rawValue] }
+    }
+    struct Outlook: Equatable { let rating: Rating; let reason: String }
+
+    static func outlook(low: Double, mid: Double, high: Double, precipitation: Double, code: Int, visibility: Double?) -> Outlook {
+        if precipitation >= 0.2 || [45, 48].contains(code) || code >= 51 {
+            return Outlook(rating: .poor, reason: [45, 48].contains(code) ? "Fog will likely hide it." : "Rain or snow will likely hide it.")
+        }
+        if low >= 70 { return Outlook(rating: .poor, reason: "Low cloud will likely block it.") }
+        let canvas = max(mid, high)
+        var score = 30.0, reason: String
+        switch canvas {
+        case ..<5: score += 15; reason = "Clear sky: a clean, simple glow."
+        case ..<20: score += 22; reason = "A few high clouds may catch some colour."
+        case ...80: score += 42; reason = "High and mid-level clouds to catch the colour."
+        default: score += 12; reason = "A thick cloud layer may mute it."
+        }
+        score -= low * 0.5
+        if low >= 40 { reason = "Low cloud may block some of it." }
+        if let visibility, visibility < 5000 { score -= 15; reason = "Haze may dull it." }
+        let rating: Rating = score >= 65 ? .great : score >= 50 ? .good : score >= 35 ? .fair : .poor
+        return Outlook(rating: rating, reason: reason)
+    }
+
+    /// The outlook for a sunrise or sunset, from the forecast hour nearest it (within 90 minutes).
+    static func outlook(_ forecast: Forecast, at time: Date) -> Outlook? {
+        guard let hour = forecast.hours.min(by: { abs($0.time.timeIntervalSince(time)) < abs($1.time.timeIntervalSince(time)) }),
+              abs(hour.time.timeIntervalSince(time)) <= 90 * 60,
+              let low = hour.cloudLow, let mid = hour.cloudMid, let high = hour.cloudHigh else { return nil }
+        return outlook(low: low, mid: mid, high: high, precipitation: hour.precipitation ?? 0, code: hour.code, visibility: hour.visibility)
+    }
+
+    /// The next sunrise or sunset after `now`: (is it sunset, its time).
+    static func next(_ forecast: Forecast) -> (isSunset: Bool, time: Date)? {
+        let now = forecast.now.time
+        for day in forecast.days {
+            if let rise = day.sunrise, rise > now { return (false, rise) }
+            if let set = day.sunset, set > now { return (true, set) }
+        }
+        return nil
+    }
+}
+
 enum Details {
     static func visibility(_ metres: Double, miles: Bool) -> (value: String, note: String) {
         let km = metres / 1000

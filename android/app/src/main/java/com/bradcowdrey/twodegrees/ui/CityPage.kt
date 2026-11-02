@@ -83,6 +83,7 @@ import com.bradcowdrey.twodegrees.Normals
 import com.bradcowdrey.twodegrees.Pollen
 import com.bradcowdrey.twodegrees.Units
 import com.bradcowdrey.twodegrees.Speech
+import com.bradcowdrey.twodegrees.SkyColour
 import com.bradcowdrey.twodegrees.Summary
 import com.bradcowdrey.twodegrees.TempUnit
 import com.bradcowdrey.twodegrees.WeatherStore
@@ -362,12 +363,17 @@ private fun DetailTiles(forecast: Forecast, units: Units) {
         { DetailTile("Wind", wind, windOther, listOfNotNull(windNote(forecast), Detail.gustNote(now, units)?.let { "$it." }).joinToString(" "), it) },
         { DetailTile("Rain", "${today?.rainChance ?: 0}%", "chance today", Summary.rainNote(forecast), it) },
         { mod ->
-            val sunset = today?.sunset
-            if (sunset != null && now.time < sunset) {
-                DetailTile("Sunset", Forecast.clock(sunset), null, "Sunrise: ${today?.sunrise?.let(Forecast::clock) ?: "–"}", mod)
+            // The next sunrise or sunset, how colourful it's likely to be, and the other one's time.
+            val next = SkyColour.next(forecast)
+            if (next != null) {
+                val (isSunset, time) = next
+                val outlook = SkyColour.outlook(forecast, time)
+                val other = if (isSunset) forecast.days.mapNotNull { it.sunrise }.firstOrNull { it > time }
+                            else forecast.days.firstOrNull { it.date == time.toLocalDate() }?.sunset
+                DetailTile(if (isSunset) "Sunset" else "Sunrise", Forecast.clock(time), outlook?.rating?.line,
+                    listOfNotNull(outlook?.reason, "${if (isSunset) "Sunrise" else "Sunset"} ${other?.let(Forecast::clock) ?: "–"}.").joinToString(" "), mod)
             } else {
-                val tomorrow = forecast.days.getOrNull(1)
-                DetailTile("Sunrise", tomorrow?.sunrise?.let(Forecast::clock) ?: "–", null, "Sunset: ${tomorrow?.sunset?.let(Forecast::clock) ?: "–"}", mod)
+                DetailTile("Sunset", today?.sunset?.let(Forecast::clock) ?: "–", null, "Sunrise ${today?.sunrise?.let(Forecast::clock) ?: "–"}.", mod)
             }
         },
         { mod ->

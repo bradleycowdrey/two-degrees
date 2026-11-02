@@ -27,7 +27,7 @@ const doyOf = (d) => (Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate
 function forecast(lat, lon) {
   const now = new Date(), start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
   const wobble = Math.sin(lat * 3 + lon), codes = [1, 2, 61, 3, 0, 80];
-  const h = { time: [], temperature_2m: [], weather_code: [], precipitation_probability: [], is_day: [], precipitation: [], wind_speed_10m: [], wind_gusts_10m: [], pressure_msl: [], visibility: [] };
+  const h = { time: [], temperature_2m: [], weather_code: [], precipitation_probability: [], is_day: [], precipitation: [], wind_speed_10m: [], wind_gusts_10m: [], pressure_msl: [], visibility: [], cloud_cover_low: [], cloud_cover_mid: [], cloud_cover_high: [] };
   const d = { time: [], weather_code: [], temperature_2m_max: [], temperature_2m_min: [], precipitation_probability_max: [], sunrise: [], sunset: [], precipitation_sum: [], rain_sum: [], snowfall_sum: [],
     wind_speed_10m_max: [], wind_gusts_10m_max: [], wind_direction_10m_dominant: [], uv_index_max: [] };
   for (let i = 0; i < 6; i++) {
@@ -41,6 +41,7 @@ function forecast(lat, lon) {
       h.precipitation_probability.push(rain ? 70 : (hr * 7) % 15); h.is_day.push(hr >= 7 && hr < 18 ? 1 : 0);
       h.precipitation.push(rain ? 0.8 : 0); h.wind_speed_10m.push(wind); h.wind_gusts_10m.push(+(wind * 1.7 + 3).toFixed(1));
       h.pressure_msl.push(+(1013 + 6 * Math.sin((i * 24 + hr) / 30) + wobble * 4).toFixed(1)); h.visibility.push(rain ? 8000 : 24140);
+      h.cloud_cover_low.push(rain ? 90 : 10); h.cloud_cover_mid.push(rain ? 60 : 35); h.cloud_cover_high.push(rain ? 40 : 45);
       temps.push(temp); winds.push(wind); gusts.push(+(wind * 1.7 + 3).toFixed(1)); if (rain) wet += 0.8;
     }
     d.time.push(day(date)); d.weather_code.push(code); d.temperature_2m_max.push(Math.max(...temps)); d.temperature_2m_min.push(Math.min(...temps));

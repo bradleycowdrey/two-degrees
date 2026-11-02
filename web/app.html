@@ -728,7 +728,7 @@
     const url = 'https://api.open-meteo.com/v1/forecast?' + new URLSearchParams({
       latitude: city.lat.toFixed(4), longitude: city.lon.toFixed(4), timezone: 'auto', forecast_days: '6', wind_speed_unit: 'kmh',
       current: 'temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,is_day,pressure_msl,cloud_cover,wind_gusts_10m,visibility,precipitation',
-      hourly: 'temperature_2m,weather_code,precipitation_probability,is_day,precipitation,wind_speed_10m,wind_gusts_10m,pressure_msl,visibility',
+      hourly: 'temperature_2m,weather_code,precipitation_probability,is_day,precipitation,wind_speed_10m,wind_gusts_10m,cloud_cover_low,cloud_cover_mid,cloud_cover_high,visibility',
       daily: 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset,precipitation_sum,rain_sum,snowfall_sum,wind_speed_10m_max,wind_gusts_10m_max,wind_direction_10m_dominant,uv_index_max',
       minutely_15: 'precipitation', forecast_minutely_15: '8',
     });
@@ -741,7 +741,8 @@
       current: { time: c.time, t: c.temperature_2m, feels: c.apparent_temperature, hum: c.relative_humidity_2m, wind: c.wind_speed_10m, code: c.weather_code, isDay: !!c.is_day,
         pres: val(c, 'pressure_msl'), cloud: val(c, 'cloud_cover'), gust: val(c, 'wind_gusts_10m'), vis: val(c, 'visibility'), precip: val(c, 'precipitation') },
       hourly: h.time.map((time, i) => ({ time, t: h.temperature_2m[i], code: h.weather_code[i], pop: h.precipitation_probability[i] ?? 0, isDay: !!h.is_day[i],
-        precip: at(h, 'precipitation', i), wind: at(h, 'wind_speed_10m', i), gust: at(h, 'wind_gusts_10m', i), pres: at(h, 'pressure_msl', i), vis: at(h, 'visibility', i) })),
+        precip: at(h, 'precipitation', i), wind: at(h, 'wind_speed_10m', i), gust: at(h, 'wind_gusts_10m', i), vis: at(h, 'visibility', i),
+        lo: at(h, 'cloud_cover_low', i), mi: at(h, 'cloud_cover_mid', i), hi: at(h, 'cloud_cover_high', i) })),
       daily: d.time.map((date, i) => ({ date, code: d.weather_code[i], max: d.temperature_2m_max[i], min: d.temperature_2m_min[i], pop: d.precipitation_probability_max[i] ?? 0, sunrise: d.sunrise[i], sunset: d.sunset[i],
         psum: at(d, 'precipitation_sum', i), rain: at(d, 'rain_sum', i), snow: at(d, 'snowfall_sum', i), wmax: at(d, 'wind_speed_10m_max', i), gmax: at(d, 'wind_gusts_10m_max', i),
         wdir: at(d, 'wind_direction_10m_dominant', i), uv: at(d, 'uv_index_max', i) })),
@@ -793,7 +794,8 @@
       const wind = Math.max(2, day._wind * (0.75 + 0.4 * Math.sin((hr - 8) / 24 * 2 * Math.PI)) + (r2() - 0.5) * 4);
       hourly.push({ time: isoLocal(t), t: temp, code: wet ? day.code : (day.code >= 51 ? 3 : day.code), pop: wet ? day.pop : Math.round(rnd() * 12), isDay: hr >= day._rise && hr < day._set,
         precip: wet ? Math.round((0.2 + r2() * 1.6) * 10) / 10 : 0, wind, gust: wind * 1.45 + 4 + r2() * 10,
-        pres: p0 + slope * i + 1.2 * Math.sin(i / 7), vis: wet ? 6000 + r2() * 6000 : 24140 });
+        pres: p0 + slope * i + 1.2 * Math.sin(i / 7), vis: wet ? 6000 + r2() * 6000 : 24140,
+        lo: wet ? 85 : day.code >= 3 ? 40 + r2() * 30 : r2() * 15, mi: day.code >= 2 ? 20 + r2() * 40 : r2() * 10, hi: day.code >= 1 ? 25 + r2() * 45 : r2() * 8 });
     }
     for (const [i, d] of daily.entries()) {
       const hrs = hourly.slice(i * 24, i * 24 + 24), sum = hrs.reduce((a, h) => a + h.precip, 0);
@@ -1152,12 +1154,42 @@
     }).join('');
   }
 
+  // How colourful a sunrise or sunset is likely to be, from the clouds forecast for that hour: high and
+  // mid-level cloud catches the colour; thick low cloud blocks it; rain and fog hide it; a clear sky
+  // gives a clean, plain glow. The same rule as the apps (design/weather-features.md, "Sky colour").
+  const SKY = [['Poor', 'Little colour expected'], ['Fair', 'Some colour possible'], ['Good', 'Good colour likely'], ['Great', 'Great colour likely']];
+  function skyRule(low, mid, high, precip, code, vis) {
+    const fog = code === 45 || code === 48;
+    if (precip >= 0.2 || fog || code >= 51) return { r: 0, why: fog ? 'Fog will likely hide it.' : 'Rain or snow will likely hide it.' };
+    if (low >= 70) return { r: 0, why: 'Low cloud will likely block it.' };
+    const canvas = Math.max(mid, high);
+    let score = 30, why;
+    if (canvas < 5) { score += 15; why = 'Clear sky: a clean, simple glow.'; }
+    else if (canvas < 20) { score += 22; why = 'A few high clouds may catch some colour.'; }
+    else if (canvas <= 80) { score += 42; why = 'High and mid-level clouds to catch the colour.'; }
+    else { score += 12; why = 'A thick cloud layer may mute it.'; }
+    score -= low * 0.5;
+    if (low >= 40) why = 'Low cloud may block some of it.';
+    if (vis != null && vis < 5000) { score -= 15; why = 'Haze may dull it.'; }
+    return { r: score >= 65 ? 3 : score >= 50 ? 2 : score >= 35 ? 1 : 0, why };
+  }
+  // The outlook at a sunrise or sunset ("2026-11-02T06:29"), from the forecast hour nearest it.
+  function skyAt(data, when) {
+    if (!when) return null;
+    const t = parseLocal(when);
+    let best = null, gap = Infinity;
+    for (const h of data.hourly) { const g = Math.abs(parseLocal(h.time) - t); if (g < gap) { gap = g; best = h; } }
+    if (!best || gap > 90 * 6e4 || best.lo == null || best.mi == null || best.hi == null) return null;
+    const o = skyRule(best.lo, best.mi, best.hi, best.precip ?? 0, best.code, best.vis);
+    return { word: SKY[o.r][0], line: SKY[o.r][1], why: o.why, r: o.r };
+  }
+
   /* ---------- More detail tiles ---------- */
   function renderDetails(city, data, today) {
     const cur = data.current, tiles = [];
     const tile = (id, title, value, sub, note, extra = '', aside = '') => tiles.push(`<div class="tile dt" data-tile="${id}"><h3 class="eyebrow">${title}${aside}</h3>` +
       `<div class="dv">${value}</div>${sub ? `<div class="ds">${sub}</div>` : ''}${extra}${note ? `<div class="dn">${note}</div>` : ''}</div>`);
-    // Every city shows the same six tiles; one whose data isn't there yet shows a dash. Pollen, measured
+    // Every city shows the same eight tiles; one whose data isn't there yet shows a dash. Pollen, measured
     // only in some places, is a line on the air quality tile.
     const missing = (id, title) => tile(id, title, '–', '', 'Not available right now.');
     const aq = state.aq[keyOf(city)], aqr = aq && aqReading(city, aq);
@@ -1183,6 +1215,14 @@
     } else missing('precip', 'Precipitation');
     if (cur.cloud != null) tile('cloud', 'Cloud Cover', `${Math.round(cur.cloud)}%`, '', cloudLabel(cur.cloud));
     else missing('cloud', 'Cloud Cover');
+    // The next sunrise and the next sunset, and how colourful each is likely to be.
+    const nowT = parseLocal(data.current.time);
+    for (const [id, title, key] of [['sunrise', 'Sunrise', 'sunrise'], ['sunset', 'Sunset', 'sunset']]) {
+      const when = data.daily.map((d) => d[key]).find((x) => x && parseLocal(x) > nowT);
+      const sky = skyAt(data, when);
+      if (when) tile(id, title, clock(when), sky ? sky.line : '', sky ? sky.why : '');
+      else missing(id, title);
+    }
     const moon = moonPhase();
     tile('moon', 'Moon', `${moon.name} · ${moon.lit}%`, '', '', '', moonGlyph(moon.f));
     $('#dgrid').innerHTML = tiles.join('');
@@ -1416,7 +1456,8 @@
     const nowPos = isToday ? (parseLocal(data.current.time) - parseLocal(d.date + 'T00:00')) / 864e5 : null;
     const fact = (k, v) => `<dt>${k}</dt><dd>${v}</dd>`;
     const [cond] = codeInfo(d.code);
-    let facts = fact('Sunrise', clock(d.sunrise)) + fact('Sunset', clock(d.sunset));
+    const sunFact = (when) => { const sky = skyAt(data, when); return when ? clock(when) + (sky ? ` · ${sky.word} colour` : '') : '–'; };
+    let facts = fact('Sunrise', sunFact(d.sunrise)) + fact('Sunset', sunFact(d.sunset));
     if (d.uv != null) facts += fact('UV max', `${Math.round(d.uv)} · ${uvLevel(Math.round(d.uv))}`);
     if (d.gmax != null) { const [g, go] = fmtWind(d.gmax); facts += fact('Max gust', `${g}${go ? ` <small>${go}</small>` : ''}`); }
     const n = normalsFor(city, d.date);
@@ -1913,7 +1954,7 @@
   }
   // Read by tests/web.test.js. inject: put sample alerts or air quality on the city showing, as if they'd loaded.
   window.__twoDegreesTest = {
-    deg, moonPhase,
+    deg, moonPhase, skyRule,
     inject(kind, value) { state[kind][keyOf(state.cities[state.active])] = value; render(); },
   };
   applyLook();

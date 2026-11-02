@@ -51,6 +51,7 @@ import androidx.compose.ui.unit.dp
 import com.bradcowdrey.twodegrees.City
 import com.bradcowdrey.twodegrees.Condition
 import com.bradcowdrey.twodegrees.Forecast
+import com.bradcowdrey.twodegrees.SkyColour
 import com.bradcowdrey.twodegrees.Meteo
 import com.bradcowdrey.twodegrees.Normals
 import com.bradcowdrey.twodegrees.Units
@@ -141,8 +142,9 @@ private fun DayPage(city: City, forecast: Forecast, day: Forecast.Day, isToday: 
             // 5. Facts.
             Card("Details", Icons.Filled.Info) {
                 val rows = mutableListOf<Pair<String, String>>()
-                day.sunrise?.let { rows += "Sunrise" to Forecast.clock(it) }
-                day.sunset?.let { rows += "Sunset" to Forecast.clock(it) }
+                fun sky(t: java.time.LocalDateTime) = Forecast.clock(t) + (SkyColour.outlook(forecast, t)?.let { " · ${it.rating.word} colour" } ?: "")
+                day.sunrise?.let { rows += "Sunrise" to sky(it) }
+                day.sunset?.let { rows += "Sunset" to sky(it) }
                 day.uvIndex?.let { rows += "UV index" to "${it.roundHalfUp()} · ${Meteo.uvLevel(it)}" }
                 day.gustMax?.let { rows += "Max gust" to units.wind(it).let { (a, b) -> a + (b?.let { o -> " · $o" } ?: "") } }
                 state.normals(city)?.of(day.date)?.let { e ->

@@ -83,8 +83,9 @@ struct NextHoursTile: View {
     }
 }
 
-/// Air quality (with pollen where it's measured), averages, visibility, precipitation, clouds and the
-/// moon, three across. Every city shows all six; one whose data isn't there yet shows a dash.
+/// Air quality (with pollen where it's measured), averages, visibility, precipitation, clouds, the next
+/// sunrise and sunset with how colourful they'll be, and the moon, four across. Every city shows all
+/// eight; one whose data isn't there yet shows a dash.
 struct DetailsTile: View {
     @EnvironmentObject private var store: WeatherStore
     @Environment(\.metrics) private var ui
@@ -96,7 +97,7 @@ struct DetailsTile: View {
         Tile {
             VStack(alignment: .leading, spacing: ui.s) {
                 Eyebrow(title: "Details", aside: "")
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: ui.s), count: 3), spacing: ui.s) {
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: ui.s), count: 4), spacing: ui.s) {
                     ForEach(stats, id: \.key) { Stat(key: $0.key, value: $0.value, sub: $0.sub).help($0.help) }
                 }
             }
@@ -143,6 +144,18 @@ struct DetailsTile: View {
         } else {
             list.append(missing("Cloud cover"))
         }
+        let time = { (date: Date) in Forecast.format(date, "jmm") }
+        let now = forecast.now.time
+        for (key, next) in [("Sunrise", forecast.days.compactMap(\.sunrise).first { $0 > now }),
+                            ("Sunset", forecast.days.compactMap(\.sunset).first { $0 > now })] {
+            if let next {
+                let outlook = SkyColour.outlook(forecast, at: next)
+                list.append(Item(key: key, value: time(next), sub: outlook.map { "\($0.rating.word) colour" } ?? "",
+                                 help: outlook.map { "\($0.rating.line). \($0.reason)" } ?? ""))
+            } else {
+                list.append(missing(key))
+            }
+        }
         let moon = Moon.phase(at: Date())
         list.append(Item(key: "Moon", value: "\(moon.illumination)% lit", sub: moon.name, help: moon.name))
         return list
@@ -162,6 +175,10 @@ struct DayDetailPopover: View {
         let unit = store.unit, other = unit.other
         let hours = forecast.hours(on: day)
         let time = { (date: Date?) in date.map { Forecast.format($0, "jmm") } ?? "–" }
+        let sky = { (date: Date?) -> String in
+            guard let date else { return "–" }
+            return time(date) + (SkyColour.outlook(forecast, at: date).map { " · \($0.rating.word) colour" } ?? "")
+        }
         ScrollView {
             VStack(alignment: .leading, spacing: ui.m) {
                 HStack(spacing: ui.m) {
@@ -183,8 +200,8 @@ struct DayDetailPopover: View {
                     }
                 }
                 VStack(alignment: .leading, spacing: ui.xs) {
-                    fact("Sunrise", time(day.sunrise))
-                    fact("Sunset", time(day.sunset))
+                    fact("Sunrise", sky(day.sunrise))
+                    fact("Sunset", sky(day.sunset))
                     if let uv = day.uvIndex { fact("UV index", "\(Int(uv.rounded())) · \(Meteo.uvLevel(uv))") }
                     if let gust = day.gustMax { fact("Strongest gust", store.windUnit.text(gust, temp: unit).main) }
                     if let entry = store.climate[city.id]?.entry(for: day.date) {

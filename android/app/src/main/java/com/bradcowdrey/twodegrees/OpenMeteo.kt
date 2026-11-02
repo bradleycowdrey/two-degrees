@@ -21,7 +21,7 @@ object OpenMeteo {
             "&timezone=auto&forecast_days=11" +
             "&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,wind_direction_10m,is_day," +
             "pressure_msl,cloud_cover,wind_gusts_10m,visibility,precipitation" +
-            "&hourly=temperature_2m,weather_code,precipitation_probability,is_day,precipitation,wind_speed_10m,wind_gusts_10m,pressure_msl,visibility" +
+            "&hourly=temperature_2m,weather_code,precipitation_probability,is_day,precipitation,wind_speed_10m,wind_gusts_10m,cloud_cover_low,cloud_cover_mid,cloud_cover_high,visibility" +
             "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset,uv_index_max," +
             "precipitation_sum,rain_sum,snowfall_sum,wind_speed_10m_max,wind_gusts_10m_max,wind_direction_10m_dominant" +
             "&minutely_15=precipitation&forecast_minutely_15=8"
@@ -88,6 +88,9 @@ object OpenMeteo {
                 gusts = hourly.optJSONArray("wind_gusts_10m")?.doubleOrNull(i),
                 pressure = hourly.optJSONArray("pressure_msl")?.doubleOrNull(i),
                 visibility = hourly.optJSONArray("visibility")?.doubleOrNull(i),
+                cloudLow = hourly.optJSONArray("cloud_cover_low")?.doubleOrNull(i),
+                cloudMid = hourly.optJSONArray("cloud_cover_mid")?.doubleOrNull(i),
+                cloudHigh = hourly.optJSONArray("cloud_cover_high")?.doubleOrNull(i),
             )
         }
         // The next two hours in 15-minute steps; a step with no value is left out.
@@ -183,6 +186,7 @@ object Codec {
                 .put("rainChance", it.rainChance).put("isDay", it.isDay)
                 .putOpt("precipitation", it.precipitation).putOpt("wind", it.wind).putOpt("gusts", it.gusts)
                 .putOpt("pressure", it.pressure).putOpt("visibility", it.visibility)
+                .putOpt("cloudLow", it.cloudLow).putOpt("cloudMid", it.cloudMid).putOpt("cloudHigh", it.cloudHigh)
         }))
         .put("days", JSONArray(f.days.map {
             JSONObject().put("date", it.date.toString()).put("code", it.code).put("high", it.high).put("low", it.low)
@@ -212,6 +216,7 @@ object Codec {
                     LocalDateTime.parse(h.getString("time")), h.getDouble("temperature"), h.getInt("code"), h.getInt("rainChance"), h.getBoolean("isDay"),
                     precipitation = h.optDoubleOrNull("precipitation"), wind = h.optDoubleOrNull("wind"), gusts = h.optDoubleOrNull("gusts"),
                     pressure = h.optDoubleOrNull("pressure"), visibility = h.optDoubleOrNull("visibility"),
+                    cloudLow = h.optDoubleOrNull("cloudLow"), cloudMid = h.optDoubleOrNull("cloudMid"), cloudHigh = h.optDoubleOrNull("cloudHigh"),
                 )
             },
             days = (0 until days.length()).map { i ->

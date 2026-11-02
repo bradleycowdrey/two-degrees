@@ -446,7 +446,7 @@ async function setSize(page, size) {
     await page.waitForTimeout(3500);   // every answer (and failure) is in
     const shown = await page.$$eval('.dt', (els) => els.map((e) => e.dataset.tile).join(','));
     const dashes = await page.$$eval('.dt[data-tile="aqi"] .dv, .dt[data-tile="normal"] .dv', (els) => els.map((e) => e.textContent.trim()).join(','));
-    check(shown === 'aqi,normal,visibility,precip,cloud,moon' && dashes === '–,–' && await page.isHidden('#alerts'), `live: failed air quality and archive keep their tiles with a dash, and NWS shows no alerts (${shown}; ${dashes})`);
+    check(shown === 'aqi,normal,visibility,precip,cloud,sunrise,sunset,moon' && dashes === '–,–' && await page.isHidden('#alerts'), `live: failed air quality and archive keep their tiles with a dash, and NWS shows no alerts (${shown}; ${dashes})`);
     check(/Updated/.test(await page.textContent('#statusText')), 'live: the forecast itself still shows as live');
     await page.click('#daysToggle');
     await page.click('#days [data-day="0"]');
@@ -475,9 +475,13 @@ async function setSize(page, size) {
     const aq = await page.textContent('.dt[data-tile="aqi"]');
     check(/45 Moderate/.test(aq) && /European AQI/.test(aq) && /Mostly PM2\.5/.test(aq), `London's air quality is on the European scale, with the main pollutant (${aq})`);
     check(/Pollen: grass high\./.test(aq) && (await page.$$('.dt[data-tile="pollen"]')).length === 0, `pollen is a line on the air quality tile, not a tile of its own (${aq})`);
-    check(await page.$$eval('.dt', (els) => els.length) === 6, 'London has the same six tiles as New York');
+    check(await page.$$eval('.dt', (els) => els.length) === 8, 'London has the same eight tiles as New York');
+    const sun = await page.textContent('.dt[data-tile="sunset"]').catch(() => '');
+    check(/\d:\d\d [AP]M/.test(sun) && /(Great|Good) colour likely|Some colour possible|Little colour expected/.test(sun), `the sunset tile gives the time and how colourful it'll be (${sun.replace(/\s+/g, ' ')})`);
+    const rules = await page.evaluate(() => [[0, 20, 50], [20, 0, 50], [0, 0, 0], [0, 95, 95], [80, 30, 30]].map(([l, m, h]) => __twoDegreesTest.skyRule(l, m, h, 0, 2, 24000).r).join(','));
+    check(rules === '3,2,1,1,0', `sky colour: high cloud great, some low cloud good, clear or overcast fair, low cloud poor (${rules})`);
     await page.evaluate(() => __twoDegreesTest.inject('aq', { us: null, eu: null, pollen: null }));
-    check(await page.$eval('.dt[data-tile="aqi"] .dv', (e) => e.textContent.trim()) === '–' && await page.$$eval('.dt', (els) => els.length) === 6, 'no air quality reading: its tile shows a dash and the count stays six');
+    check(await page.$eval('.dt[data-tile="aqi"] .dv', (e) => e.textContent.trim()) === '–' && await page.$$eval('.dt', (els) => els.length) === 8, 'no air quality reading: its tile shows a dash and the count stays eight');
     const m = await page.evaluate(() => [__twoDegreesTest.moonPhase(new Date(Date.UTC(2000, 0, 6, 18, 14))).name, __twoDegreesTest.moonPhase(new Date(Date.UTC(2000, 0, 21, 4, 40))).name, __twoDegreesTest.moonPhase(new Date(Date.UTC(2026, 9, 26, 4, 12))).lit]);
     check(m[0] === 'New Moon' && m[1] === 'Full Moon' && m[2] >= 99, `the moon phase is computed from the 2000-01-06 new moon (${m.join(', ')})`);
     await context.close();

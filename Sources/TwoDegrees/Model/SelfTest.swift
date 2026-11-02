@@ -66,6 +66,8 @@ enum SelfTest {
             check(f.steps?.count == 8, "\(first.name): the next two hours in 15-minute steps (\(f.steps?.count ?? 0))")
             check(f.now.pressure != nil && f.now.cloudCover != nil && f.now.visibility != nil && f.days.first?.precipitation != nil,
                   "\(first.name): pressure, cloud cover, visibility and today's precipitation arrive")
+            let sky = SkyColour.next(f).flatMap { SkyColour.outlook(f, at: $0.time) }
+            check(sky != nil, "\(first.name): the next sunrise or sunset has a colour outlook (\(sky.map { "\($0.rating.word): \($0.reason)" } ?? "none"))")
             check(f.hours(on: f.days[1]).count == 24 && f.hours(on: f.days[1]).allSatisfy { $0.wind != nil }, "\(first.name): a day's 24 hours, with wind, for the day detail")
         }
         for _ in 0..<60 where store.airQuality[first.id] == nil || store.climate[first.id] == nil { try? await Task.sleep(for: .milliseconds(500)) }

@@ -736,6 +736,18 @@ final class WeatherExtrasTests: XCTestCase {
         XCTAssertEqual(Details.visibility(1_000, miles: true).note, "Fog is cutting the view.")
     }
 
+    func testSkyColour() {
+        let o = { (low: Double, mid: Double, high: Double) in SkyColour.outlook(low: low, mid: mid, high: high, precipitation: 0, code: 2, visibility: 24_000) }
+        XCTAssertEqual(o(0, 20, 50).rating, .great, "high and mid cloud to catch the light")
+        XCTAssertEqual(o(20, 0, 50).rating, .good)
+        XCTAssertEqual(o(0, 0, 0).rating, .fair, "clear: a clean, plain glow")
+        XCTAssertEqual(o(0, 95, 95).rating, .fair, "a thick layer mutes it")
+        XCTAssertEqual(o(80, 30, 30).rating, .poor, "low cloud blocks the horizon")
+        XCTAssertEqual(SkyColour.outlook(low: 0, mid: 40, high: 40, precipitation: 1.2, code: 61, visibility: nil).rating, .poor)
+        XCTAssertEqual(SkyColour.outlook(low: 0, mid: 40, high: 40, precipitation: 0, code: 45, visibility: 400).reason, "Fog will likely hide it.")
+        XCTAssertEqual(SkyColour.outlook(low: 0, mid: 40, high: 40, precipitation: 0, code: 2, visibility: 3000).rating, .good, "haze dulls it a step")
+    }
+
     func testNextTwoHours() {
         XCTAssertNil(NextHours.sentence(forecast(steps: [0, 0, 0, 0, 0, 0, 0, 0])), "dry: no card")
         XCTAssertEqual(plain(NextHours.sentence(forecast(steps: [0, 0, 0.4, 0.6, 0.6, 0.6, 0.6, 0.6]))), "Rain starting around 3:30 PM")

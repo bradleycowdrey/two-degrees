@@ -445,14 +445,19 @@ private struct DetailTiles: View {
         return "None expected in the next 12 hours."
     }
 
+    /// The next sunrise or sunset, how colourful it's likely to be, and the other one's time.
     @ViewBuilder
     private func sunTile(_ today: Forecast.Day?) -> some View {
         let time = { (date: Date?) in date.map { Forecast.format($0, "jmm") } ?? "–" }
-        if let sunset = today?.sunset, forecast.now.time < sunset {
-            DetailTile(title: "Sunset", icon: "sunset.fill", value: time(sunset), sub: nil, note: "Sunrise: \(time(today?.sunrise))")
+        if let next = SkyColour.next(forecast) {
+            let outlook = SkyColour.outlook(forecast, at: next.time)
+            let day = forecast.days.first { Calendar.current.isDate($0.date, inSameDayAs: next.time) }
+            let other = next.isSunset ? forecast.days.first { ($0.sunrise ?? .distantPast) > next.time }?.sunrise : day?.sunset
+            DetailTile(title: next.isSunset ? "Sunset" : "Sunrise", icon: next.isSunset ? "sunset.fill" : "sunrise.fill",
+                       value: time(next.time), sub: outlook?.rating.line,
+                       note: [outlook?.reason, "\(next.isSunset ? "Sunrise" : "Sunset") \(time(other))."].compactMap { $0 }.joined(separator: " "))
         } else {
-            let tomorrow = forecast.days.dropFirst().first
-            DetailTile(title: "Sunrise", icon: "sunrise.fill", value: time(tomorrow?.sunrise), sub: nil, note: "Sunset: \(time(tomorrow?.sunset))")
+            DetailTile(title: "Sunset", icon: "sunset.fill", value: time(today?.sunset), sub: nil, note: "Sunrise \(time(today?.sunrise)).")
         }
     }
 }
@@ -479,7 +484,7 @@ struct DetailTile: View {
                 .fixedSize(horizontal: false, vertical: words)
                 .padding(.top, ui.pt(4))
             if let sub {
-                Text(sub).font(ui.font(15)).opacity(0.7).lineLimit(1)
+                Text(sub).font(ui.font(15)).opacity(0.7).lineLimit(1).minimumScaleFactor(0.8)
             }
             Spacer(minLength: ui.pt(4))
             Text(note)

@@ -33,6 +33,66 @@ object Moon {
 }
 
 /** The words for the newer detail tiles, as on the Mac, iPhone and web. */
+/**
+ * How colourful a sunrise or sunset is likely to be, from the clouds forecast for that hour. Colour
+ * comes from high and mid-level cloud catching the low sun; thick low cloud near the horizon blocks
+ * it, rain and fog hide it, and a clear sky gives a clean but plain glow. The same rule as the Mac,
+ * iPhone and web (design/weather-features.md, "Sky colour").
+ */
+object SkyColour {
+    enum class Rating(val word: String, val line: String) {
+        POOR("Poor", "Little colour expected"), FAIR("Fair", "Some colour possible"),
+        GOOD("Good", "Good colour likely"), GREAT("Great", "Great colour likely"),
+    }
+    data class Outlook(val rating: Rating, val reason: String)
+
+    fun outlook(low: Double, mid: Double, high: Double, precipitation: Double, code: Int, visibility: Double?): Outlook {
+        val fog = code == 45 || code == 48
+        if (precipitation >= 0.2 || fog || code >= 51) {
+            return Outlook(Rating.POOR, if (fog) "Fog will likely hide it." else "Rain or snow will likely hide it.")
+        }
+        if (low >= 70) return Outlook(Rating.POOR, "Low cloud will likely block it.")
+        val canvas = maxOf(mid, high)
+        var score = 30.0
+        var reason = when {
+            canvas < 5 -> { score += 15; "Clear sky: a clean, simple glow." }
+            canvas < 20 -> { score += 22; "A few high clouds may catch some colour." }
+            canvas <= 80 -> { score += 42; "High and mid-level clouds to catch the colour." }
+            else -> { score += 12; "A thick cloud layer may mute it." }
+        }
+        score -= low * 0.5
+        if (low >= 40) reason = "Low cloud may block some of it."
+        if (visibility != null && visibility < 5000) { score -= 15; reason = "Haze may dull it." }
+        val rating = when {
+            score >= 65 -> Rating.GREAT
+            score >= 50 -> Rating.GOOD
+            score >= 35 -> Rating.FAIR
+            else -> Rating.POOR
+        }
+        return Outlook(rating, reason)
+    }
+
+    /** The outlook for a sunrise or sunset, from the forecast hour nearest it (within 90 minutes). */
+    fun outlook(forecast: Forecast, time: java.time.LocalDateTime): Outlook? {
+        val hour = forecast.hours.minByOrNull { kotlin.math.abs(java.time.Duration.between(it.time, time).toMinutes()) } ?: return null
+        if (kotlin.math.abs(java.time.Duration.between(hour.time, time).toMinutes()) > 90) return null
+        val low = hour.cloudLow ?: return null
+        val mid = hour.cloudMid ?: return null
+        val high = hour.cloudHigh ?: return null
+        return outlook(low, mid, high, hour.precipitation ?: 0.0, hour.code, hour.visibility)
+    }
+
+    /** The next sunrise or sunset after now: (is it sunset, its time). */
+    fun next(forecast: Forecast): Pair<Boolean, java.time.LocalDateTime>? {
+        val now = forecast.now.time
+        for (day in forecast.days) {
+            day.sunrise?.let { if (it > now) return false to it }
+            day.sunset?.let { if (it > now) return true to it }
+        }
+        return null
+    }
+}
+
 object Detail {
     /** 0–10 Clear, to 30 Mostly clear, to 60 Partly cloudy, to 90 Mostly cloudy, else Overcast. */
     fun cloudWord(percent: Double) = when {

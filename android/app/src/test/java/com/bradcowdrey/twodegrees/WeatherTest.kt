@@ -104,6 +104,18 @@ class WeatherTest {
         )
     }
 
+    @Test fun skyColour() {
+        fun o(low: Double, mid: Double, high: Double) = SkyColour.outlook(low, mid, high, 0.0, 2, 24_000.0).rating
+        assertEquals(SkyColour.Rating.GREAT, o(0.0, 20.0, 50.0))
+        assertEquals(SkyColour.Rating.GOOD, o(20.0, 0.0, 50.0))
+        assertEquals(SkyColour.Rating.FAIR, o(0.0, 0.0, 0.0))
+        assertEquals(SkyColour.Rating.FAIR, o(0.0, 95.0, 95.0))
+        assertEquals(SkyColour.Rating.POOR, o(80.0, 30.0, 30.0))
+        assertEquals(SkyColour.Rating.POOR, SkyColour.outlook(0.0, 40.0, 40.0, 1.2, 61, null).rating)
+        assertEquals("Fog will likely hide it.", SkyColour.outlook(0.0, 40.0, 40.0, 0.0, 45, 400.0).reason)
+        assertEquals(SkyColour.Rating.GOOD, SkyColour.outlook(0.0, 40.0, 40.0, 0.0, 2, 3000.0).rating)
+    }
+
     @Test fun nextTwoHoursSentence() {
         val clock = { t: LocalDateTime -> "%d:%02d".format(t.hour, t.minute) }
         assertEquals("", NextHours.sentence(forecast(steps = List(8) { 0.0 }), clock))

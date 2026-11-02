@@ -335,9 +335,13 @@ private struct DayDetailContent: View {
     private var facts: some View {
         let unit = store.unit, other = unit.other
         let time = { (date: Date?) in date.map { Forecast.format($0, "jmm") } ?? "–" }
+        let sky = { (date: Date?) -> String in
+            guard let date else { return "–" }
+            return time(date) + (SkyColour.outlook(forecast, at: date).map { " · \($0.rating.word) colour" } ?? "")
+        }
         VStack(spacing: ui.pt(8)) {
-            fact("Sunrise", time(day.sunrise))
-            fact("Sunset", time(day.sunset))
+            fact("Sunrise", sky(day.sunrise))
+            fact("Sunset", sky(day.sunset))
             if let uv = day.uvIndex { fact("UV index", "\(Int(uv.rounded())) · \(Meteo.uvLevel(uv))") }
             if let gust = day.gustMax { fact("Strongest gust", store.windUnit.text(gust, temp: unit).main) }
             if let entry = store.climate[city.id]?.entry(for: day.date) {

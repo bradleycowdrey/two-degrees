@@ -146,3 +146,22 @@ New services: the US National Weather Service (alerts; receives a city's rounded
 RainViewer (radar images), OpenFreeMap, OpenMapTiles and OpenStreetMap (map tiles), MapLibre GL (open source), and Open-Meteo's
 air-quality and historical-weather services. Two Degrees is still not a safety tool; alerts are copies
 of official warnings and can be late or missing.
+
+## Sky colour (sunrise and sunset)
+
+How colourful the next sunrise and sunset are likely to be, from Open-Meteo's hourly
+`cloud_cover_low`, `cloud_cover_mid`, `cloud_cover_high`, `visibility`, `precipitation` and
+`weather_code`, at the forecast hour nearest the event (within 90 minutes; otherwise no rating).
+
+- Rain or snow (code ≥ 51, or ≥ 0.2 mm) or fog (45, 48): **Poor**, "Rain or snow / Fog will likely hide it."
+- Low cloud ≥ 70%: **Poor**, "Low cloud will likely block it."
+- Otherwise score = 30, plus by the canvas (the larger of mid and high cloud): < 5% +15 "Clear sky: a
+  clean, simple glow."; < 20% +22 "A few high clouds may catch some colour."; ≤ 80% +42 "High and
+  mid-level clouds to catch the colour."; above +12 "A thick cloud layer may mute it." Minus half the
+  low cloud % (≥ 40%: "Low cloud may block some of it."); visibility < 5 km −15 ("Haze may dull it.").
+- ≥ 65 **Great** ("Great colour likely"), ≥ 50 **Good** ("Good colour likely"), ≥ 35 **Fair** ("Some
+  colour possible"), else **Poor** ("Little colour expected").
+
+Shown on the iPhone and Android sun tile (the next sunrise or sunset, its outlook and reason, and the
+other's time), as Sunrise and Sunset tiles on the Mac (four across, eight tiles) and the web (eight
+tiles), and as "· Good colour" beside the times in every day detail.

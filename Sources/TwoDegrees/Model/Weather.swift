@@ -99,6 +99,10 @@ struct Forecast: Codable {
         var wind: Double? = nil            // km/h
         var gusts: Double? = nil           // km/h
         var pressure: Double? = nil        // hPa
+        var cloudLow: Double? = nil        // % of the sky, low cloud (up to ~2 km)
+        var cloudMid: Double? = nil        // %, mid-level cloud (~2–6 km)
+        var cloudHigh: Double? = nil       // %, high cloud (above ~6 km)
+        var visibility: Double? = nil      // metres
         var id: Date { time }
     }
 
@@ -240,7 +244,7 @@ enum OpenMeteo {
             .init(name: "timezone", value: "auto"),
             .init(name: "forecast_days", value: "11"),   // the iPhone shows 10 days; the Mac and widgets 5
             .init(name: "current", value: "temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,wind_direction_10m,is_day,pressure_msl,cloud_cover,wind_gusts_10m,visibility,precipitation"),
-            .init(name: "hourly", value: "temperature_2m,weather_code,precipitation_probability,is_day,precipitation,wind_speed_10m,wind_gusts_10m,pressure_msl"),
+            .init(name: "hourly", value: "temperature_2m,weather_code,precipitation_probability,is_day,precipitation,wind_speed_10m,wind_gusts_10m,cloud_cover_low,cloud_cover_mid,cloud_cover_high,visibility"),
             .init(name: "daily", value: "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset,uv_index_max,precipitation_sum,snowfall_sum,wind_speed_10m_max,wind_gusts_10m_max,wind_direction_10m_dominant"),
             .init(name: "minutely_15", value: "precipitation"),
             .init(name: "forecast_minutely_15", value: "8"),
@@ -314,6 +318,10 @@ enum OpenMeteo {
             let wind_speed_10m: [Double?]?
             let wind_gusts_10m: [Double?]?
             let pressure_msl: [Double?]?
+            let cloud_cover_low: [Double?]?
+            let cloud_cover_mid: [Double?]?
+            let cloud_cover_high: [Double?]?
+            let visibility: [Double?]?
         }
         struct Minutely: Decodable {
             let time: [String]
@@ -354,7 +362,9 @@ enum OpenMeteo {
                 return .init(time: time, temperature: t, code: hourly.weather_code[i] ?? 3,
                              rainChance: hourly.precipitation_probability[i] ?? 0, isDay: (hourly.is_day[i] ?? 1) == 1,
                              precipitation: at(hourly.precipitation, i), wind: at(hourly.wind_speed_10m, i),
-                             gusts: at(hourly.wind_gusts_10m, i), pressure: at(hourly.pressure_msl, i))
+                             gusts: at(hourly.wind_gusts_10m, i), pressure: at(hourly.pressure_msl, i),
+                             cloudLow: at(hourly.cloud_cover_low, i), cloudMid: at(hourly.cloud_cover_mid, i),
+                             cloudHigh: at(hourly.cloud_cover_high, i), visibility: at(hourly.visibility, i))
             }
             let days: [Forecast.Day] = daily.time.indices.compactMap { i in
                 guard let date = OpenMeteo.date(daily.time[i]), let hi = daily.temperature_2m_max[i], let lo = daily.temperature_2m_min[i] else { return nil }
