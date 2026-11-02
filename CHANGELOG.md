@@ -17,6 +17,9 @@ counts every change ever made, so each build is higher than the last.
 - **Back to the top**: swipe to another city and back, and the page starts at the top again.
 - **Better tiles**: UV and air quality scales, the moon's shape and when the next full or new moon
   is, and which heights the clouds are at.
+- **A touch of colour**: each tile has its own accent on its icon and title, with a faint glow at
+  the top. Some follow the reading: Feels like goes from blue to coral with the warmth, UV and air
+  quality take their level's colour, and Averages is warm above normal and cool below.
 - **Cleaner widgets**: the reading sits right under the city, with the sky and the day's range below.
 - **One footer**: the city list ends like a city page, with where the weather comes from and when it
   was updated.
