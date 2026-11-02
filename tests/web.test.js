@@ -193,7 +193,8 @@ async function setSize(page, size) {
     await page.keyboard.press('Escape');
     await page.waitForSelector('#sheetBack', { state: 'hidden', timeout: 3000 }).catch(() => {});   // it closes with a short animation
     await page.waitForFunction(() => document.activeElement && document.activeElement.dataset.day === '0', null, { timeout: 2000 }).catch(() => {});
-    check(await page.isHidden('#sheetBack') && await page.evaluate(() => document.activeElement.dataset.day) === '0', t('Escape closes the day detail, back on its row'));
+    const closed = await page.isHidden('#sheetBack'), onRow = await page.evaluate(() => { const a = document.activeElement; return a ? (a.dataset.day ?? a.tagName + (a.id ? '#' + a.id : '')) : 'none'; });
+    check(closed && onRow === '0', t(`Escape closes the day detail, back on its row (closed ${closed}, focus ${onRow})`));
     await page.click('#daysToggle');
     await page.evaluate(() => scrollTo(0, 0));
 

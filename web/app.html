@@ -1339,6 +1339,10 @@
       if (at > 5 && at < 95) ticks.push([v, at]);
     }
     const tickMarks = ticks.map(([, at]) => `<s style="left:${at}%"></s>`).join('');
+    // A re-draw (late data) replaces the rows: keep keyboard focus on the same day.
+    const focusedDay = document.activeElement && document.activeElement.closest && document.activeElement.closest('#days [data-day]');
+    const keepDay = focusedDay ? focusedDay.dataset.day : null;
+    queueMicrotask(() => { if (keepDay != null && (!document.activeElement || document.activeElement === document.body)) { const el = document.querySelector(`#days [data-day="${keepDay}"]`); if (el) el.focus({ preventScroll: true }); } });
     $('#days').innerHTML = days.map((d0, i) => {
       // Today's range always includes the reading right now, so no two numbers disagree.
       const d = i === 0 ? { ...d0, min: Math.min(d0.min, cur.t), max: Math.max(d0.max, cur.t) } : d0;
