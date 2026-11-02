@@ -232,7 +232,7 @@ struct ExtraTiles: View {
             DetailTile(title: "Cloud cover", icon: "cloud.fill", value: "–", sub: nil, note: Self.missing)
         }
         let moon = Moon.phase(at: Date())
-        DetailTile(title: "Moon", icon: "moon.fill", value: "\(moon.illumination)%", sub: "lit", note: moon.name + ".")
+        DetailTile(title: "Moon", icon: "moon.fill", value: moon.name, sub: "\(moon.illumination)% lit", note: "")
     }
 }
 
