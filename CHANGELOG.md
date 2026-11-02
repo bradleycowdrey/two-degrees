@@ -8,6 +8,21 @@ A **patch** (2.0.1) fixes things, a **minor** version (2.1.0) adds features, and
 (3.0.0) is a big redesign or a change that stops something working the way it did. The build number
 counts every change ever made, so each build is higher than the last.
 
+## [2.1.0] - 2026-11-02
+
+- **Sunrise and sunset colour**: a forecast of how good the next sunrise and sunset will look, from
+  the clouds at each height: Great, Good, Some colour or Little colour, with the reason ("High and
+  mid-level clouds to catch the colour", "Low cloud will likely block it"). On the sun tile, as Sunrise
+  and Sunset tiles on the Mac and web, and beside the times in every day.
+- **Back to the top**: swipe to another city and back, and the page starts at the top again.
+- **Better tiles**: UV and air quality scales, the moon's shape and when the next full or new moon
+  is, and which heights the clouds are at.
+- **Cleaner widgets**: the reading sits right under the city, with the sky and the day's range below.
+- **One footer**: the city list ends like a city page, with where the weather comes from and when it
+  was updated.
+- **Polish**: the wind chart's legend no longer overlaps its numbers, rounder chart steps on Android,
+  and tidier wrapping in the footers and the rain map's credits.
+
 ## [2.0.0] - 2026-11-01
 
 Two Degrees 2.0: everything since 0.4 adds up to a new app, on Mac, iPhone, iPad, Android and the web.

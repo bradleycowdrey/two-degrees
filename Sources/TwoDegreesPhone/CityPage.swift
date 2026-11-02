@@ -64,9 +64,12 @@ struct CityPage: View {
             }
             .overlay(alignment: .top) { compactHeader(forecast) }
             // Swiping to another city puts this one back at the top, so it starts there when you return.
+            // (And again on the way back, in case the page wasn't drawn when it was left.)
             .onChange(of: store.activeID) { old, new in
                 if old == city.id && new != city.id { reader.scrollTo("top", anchor: .top) }
+                if new == city.id && old != city.id && offset < -1 { reader.scrollTo("top", anchor: .top) }
             }
+            .onDisappear { reader.scrollTo("top", anchor: .top) }
             .task {
                 if PhoneSelfTest.showDays && city.id == store.activeID {
                     try? await Task.sleep(for: .seconds(2.5))
