@@ -181,6 +181,8 @@ async function setSize(page, size) {
     await page.keyboard.press('ArrowLeft');
     check(/^Today/.test(await page.textContent('#sheetTitle')), t('the left arrow key goes back a day'));
     await page.keyboard.press('Escape');
+    await page.waitForSelector('#sheetBack', { state: 'hidden', timeout: 3000 }).catch(() => {});   // it closes with a short animation
+    await page.waitForFunction(() => document.activeElement && document.activeElement.dataset.day === '0', null, { timeout: 2000 }).catch(() => {});
     check(await page.isHidden('#sheetBack') && await page.evaluate(() => document.activeElement.dataset.day) === '0', t('Escape closes the day detail, back on its row'));
     await page.click('#daysToggle');
     await page.evaluate(() => scrollTo(0, 0));

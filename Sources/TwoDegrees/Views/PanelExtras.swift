@@ -145,9 +145,9 @@ struct DetailsTile: View {
             list.append(missing("Cloud cover"))
         }
         let time = { (date: Date) in Forecast.format(date, "jmm") }
-        let now = forecast.now.time
-        for (key, next) in [("Sunrise", forecast.days.compactMap(\.sunrise).first { $0 > now }),
-                            ("Sunset", forecast.days.compactMap(\.sunset).first { $0 > now })] {
+        let nowTime = forecast.now.time
+        for (key, next) in [("Sunrise", forecast.days.compactMap(\.sunrise).first { $0 > nowTime }),
+                            ("Sunset", forecast.days.compactMap(\.sunset).first { $0 > nowTime })] {
             if let next {
                 let outlook = SkyColour.outlook(forecast, at: next)
                 list.append(Item(key: key, value: time(next), sub: outlook.map { "\($0.rating.word) colour" } ?? "",
