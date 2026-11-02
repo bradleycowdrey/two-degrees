@@ -15,6 +15,11 @@ def main():
     for s in call("GET", f"/reviewSubmissions?filter[app]={app['id']}&filter[platform]=IOS&limit=3")["data"]:
         a = s["attributes"]
         print(f"::notice::Review submission {a.get('submittedDate') or 'not submitted'}: {a['state']}")
+    # Signing certificates (name, type, expiry), to see when the account is near Apple's limit.
+    certs = call("GET", "/certificates?limit=200&fields[certificates]=name,certificateType,displayName,expirationDate")["data"]
+    for c in certs:
+        a = c["attributes"]
+        print(f"::notice::Certificate {a.get('certificateType')}: {a.get('name') or a.get('displayName')} (expires {str(a.get('expirationDate'))[:10]})")
 
 
 if __name__ == "__main__":
