@@ -201,40 +201,40 @@ struct ExtraTiles: View {
             let pollen = air?.pollenSummary.map { " Pollen: \($0.top.lowercased()) \($0.level.lowercased())." } ?? ""
             DetailTile(title: "Air quality", icon: "aqi.medium", value: "\(reading.value)", sub: reading.category,
                        note: "\(reading.scale). \(reading.note)" + pollen,
-                       accessory: AnyView(ScaleBar(colors: inUS ? ScaleBar.usAQI : ScaleBar.europeanAQI, position: reading.position)))
+                       accessory: AnyView(ScaleBar(colors: inUS ? ScaleBar.usAQI : ScaleBar.europeanAQI, position: reading.position))).accent(TileAccent.air(reading.position))
         } else {
-            DetailTile(title: "Air quality", icon: "aqi.medium", value: "–", sub: nil, note: Self.missing)
+            DetailTile(title: "Air quality", icon: "aqi.medium", value: "–", sub: nil, note: Self.missing).accent(TileAccent.neutral)
         }
         if let today = forecast.days.first?.including(now.temperature), let entry = store.climate[city.id]?.entry(for: today.date),
            let normalHigh = entry.normalHigh, let normalLow = entry.normalLow {
             DetailTile(title: "Averages", icon: "chart.line.uptrend.xyaxis",
                        value: Climate.comparison(high: today.high, normal: normalHigh, unit: unit), sub: nil,
-                       note: "Normal high \(unit.spaced(unit.value(normalHigh))) · \(unit.other.spaced(unit.other.value(normalHigh))), low \(unit.spaced(unit.value(normalLow))) · \(unit.other.spaced(unit.other.value(normalLow))).")
+                       note: "Normal high \(unit.spaced(unit.value(normalHigh))) · \(unit.other.spaced(unit.other.value(normalHigh))), low \(unit.spaced(unit.value(normalLow))) · \(unit.other.spaced(unit.other.value(normalLow))).").accent(TileAccent.versusNormal(today.high - normalHigh))
         } else {
-            DetailTile(title: "Averages", icon: "chart.line.uptrend.xyaxis", value: "–", sub: nil, note: Self.missing)
+            DetailTile(title: "Averages", icon: "chart.line.uptrend.xyaxis", value: "–", sub: nil, note: Self.missing).accent(TileAccent.neutral)
         }
         if let metres = now.visibility {
             let v = Details.visibility(metres, miles: store.windUnit.usesMiles(unit))
-            DetailTile(title: "Visibility", icon: "eye.fill", value: v.value, sub: nil, note: v.note)
+            DetailTile(title: "Visibility", icon: "eye.fill", value: v.value, sub: nil, note: v.note).accent(TileAccent.visibility)
         } else {
-            DetailTile(title: "Visibility", icon: "eye.fill", value: "–", sub: nil, note: Self.missing)
+            DetailTile(title: "Visibility", icon: "eye.fill", value: "–", sub: nil, note: Self.missing).accent(TileAccent.visibility)
         }
         if let mm = forecast.days.first?.precipitation {
             let text = store.rainUnit.text(mm, temp: unit)
             let next = Details.next24Hours(forecast)
             DetailTile(title: "Precipitation", icon: "drop.fill", value: text.main, sub: "\(text.other) today",
-                       note: next.map { $0 >= 0.1 ? "Expected in the next 24 hours: \(store.rainUnit.text($0, temp: unit).main)." : "None expected in the next 24 hours." } ?? "")
+                       note: next.map { $0 >= 0.1 ? "Expected in the next 24 hours: \(store.rainUnit.text($0, temp: unit).main)." : "None expected in the next 24 hours." } ?? "").accent(TileAccent.rain)
         } else {
-            DetailTile(title: "Precipitation", icon: "drop.fill", value: "–", sub: nil, note: Self.missing)
+            DetailTile(title: "Precipitation", icon: "drop.fill", value: "–", sub: nil, note: Self.missing).accent(TileAccent.rain)
         }
         if let cover = now.cloudCover {
-            DetailTile(title: "Cloud cover", icon: "cloud.fill", value: "\(Int(cover.rounded()))%", sub: Details.clouds(cover), note: Details.cloudLayers(forecast) ?? "")
+            DetailTile(title: "Cloud cover", icon: "cloud.fill", value: "\(Int(cover.rounded()))%", sub: Details.clouds(cover), note: Details.cloudLayers(forecast) ?? "").accent(TileAccent.cloud)
         } else {
-            DetailTile(title: "Cloud cover", icon: "cloud.fill", value: "–", sub: nil, note: Self.missing)
+            DetailTile(title: "Cloud cover", icon: "cloud.fill", value: "–", sub: nil, note: Self.missing).accent(TileAccent.cloud)
         }
         let moon = Moon.phase(at: Date())
         DetailTile(title: "Moon", icon: "moon.fill", value: moon.name, sub: "\(moon.illumination)% lit", note: Moon.next(at: Date()),
-                   accessory: AnyView(MoonDisc(fraction: Moon.fraction(at: Date()))))
+                   accessory: AnyView(MoonDisc(fraction: Moon.fraction(at: Date())))).accent(TileAccent.moon)
     }
 }
 

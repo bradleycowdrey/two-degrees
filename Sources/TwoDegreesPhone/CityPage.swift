@@ -403,15 +403,15 @@ private struct DetailTiles: View {
         LazyVGrid(columns: [GridItem(.flexible(), spacing: ui.pt(10)), GridItem(.flexible(), spacing: ui.pt(10))], spacing: ui.pt(10)) {
             DetailTile(title: "Feels like", icon: "thermometer.medium",
                  value: "\(unit.value(now.feelsLike))\(unit.symbol)", sub: "\(other.value(now.feelsLike))\(other.symbol)",
-                 note: feelsNote(now))
+                 note: feelsNote(now)).accent(TileAccent.temperature(now.feelsLike))
             DetailTile(title: "Humidity", icon: "humidity",
                  value: "\(Int(now.humidity.rounded()))%", sub: nil,
-                 note: dewNote(now))
+                 note: dewNote(now)).accent(TileAccent.humidity)
             let wind = store.windUnit.text(now.wind, temp: unit)
-            DetailTile(title: "Wind", icon: "wind", value: wind.main, sub: wind.other, note: windNote(now))
+            DetailTile(title: "Wind", icon: "wind", value: wind.main, sub: wind.other, note: windNote(now)).accent(TileAccent.wind)
             DetailTile(title: "Rain", icon: "drop.fill",
                  value: "\(today?.rainChance ?? 0)%", sub: "chance today",
-                 note: rainNote)
+                 note: rainNote).accent(TileAccent.rain)
             sunTile(today)
             uvTile(today)
             ExtraTiles(forecast: forecast, city: city)
@@ -458,9 +458,9 @@ private struct DetailTiles: View {
             DetailTile(title: "UV index", icon: "sun.max.fill",
                        value: "\(Int(uv.rounded()))", sub: Meteo.uvLevel(uv),
                        note: uv >= 3 ? "Use sun protection around midday." : "Low for the rest of the day.",
-                       accessory: AnyView(ScaleBar(colors: ScaleBar.uv, position: min(max(uv / 11, 0), 1))))
+                       accessory: AnyView(ScaleBar(colors: ScaleBar.uv, position: min(max(uv / 11, 0), 1)))).accent(TileAccent.uv(uv))
         } else {
-            DetailTile(title: "UV index", icon: "sun.max.fill", value: "–", sub: nil, note: "Pull down to refresh.")
+            DetailTile(title: "UV index", icon: "sun.max.fill", value: "–", sub: nil, note: "Pull down to refresh.").accent(TileAccent.neutral)
         }
     }
 
@@ -483,9 +483,9 @@ private struct DetailTiles: View {
             let other = next.isSunset ? forecast.days.first { ($0.sunrise ?? .distantPast) > next.time }?.sunrise : day?.sunset
             DetailTile(title: next.isSunset ? "Sunset" : "Sunrise", icon: next.isSunset ? "sunset.fill" : "sunrise.fill",
                        value: time(next.time), sub: outlook?.rating.line,
-                       note: [outlook?.reason, "\(next.isSunset ? "Sunrise" : "Sunset") \(time(other))."].compactMap { $0 }.joined(separator: " "))
+                       note: [outlook?.reason, "\(next.isSunset ? "Sunrise" : "Sunset") \(time(other))."].compactMap { $0 }.joined(separator: " ")).accent(next.isSunset ? TileAccent.sunset : TileAccent.sunrise)
         } else {
-            DetailTile(title: "Sunset", icon: "sunset.fill", value: time(today?.sunset), sub: nil, note: "Sunrise \(time(today?.sunrise)).")
+            DetailTile(title: "Sunset", icon: "sunset.fill", value: time(today?.sunset), sub: nil, note: "Sunrise \(time(today?.sunrise)).").accent(TileAccent.sunset)
         }
     }
 }
@@ -499,12 +499,17 @@ struct DetailTile: View {
     let note: String
     /// A small picture under the reading: a scale bar or the moon.
     var accessory: AnyView? = nil
+    /// The tile's own colour (TileAccent): its icon and title, and a faint glow at the top.
+    var accent: UInt32 = TileAccent.neutral
+
+    func accent(_ colour: UInt32) -> DetailTile { var tile = self; tile.accent = colour; return tile }
 
     var body: some View {
+        let tint = Color(hex: accent)
         VStack(alignment: .leading, spacing: ui.pt(4)) {
             Label(title.uppercased(), systemImage: icon)
                 .font(ui.font(12, .semibold))
-                .foregroundStyle(.white.opacity(0.6))
+                .foregroundStyle(tint.opacity(0.9))
             // A reading in words ("18° above normal") is set smaller, on up to two lines, as on Android.
             let words = value.count > 7
             Text(value)
@@ -527,7 +532,13 @@ struct DetailTile: View {
         .foregroundStyle(.white)
         .padding(ui.pt(14))
         .frame(maxWidth: .infinity, minHeight: ui.pt(160), alignment: .topLeading)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: ui.pt(16), style: .continuous))
+        .background {
+            let shape = RoundedRectangle(cornerRadius: ui.pt(16), style: .continuous)
+            ZStack {
+                shape.fill(.ultraThinMaterial)
+                shape.fill(LinearGradient(colors: [tint.opacity(0.16), tint.opacity(0)], startPoint: .top, endPoint: .center))
+            }
+        }
         .environment(\.colorScheme, .dark)
         .accessibilityElement(children: .combine)
     }

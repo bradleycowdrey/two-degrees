@@ -358,10 +358,10 @@ private fun DetailTiles(forecast: Forecast, units: Units) {
     val dew = Meteo.dewPoint(now.temperature, now.humidity)
     val (wind, windOther) = units.wind(now.wind)
     val tiles = listOf<@Composable (Modifier) -> Unit>(
-        { DetailTile("Feels like", unit.spaced(now.feelsLike), other.spaced(now.feelsLike), feelsNote(forecast), it) },
-        { DetailTile("Humidity", "${now.humidity.roundHalfUp()}%", null, "The dew point is ${unit.spaced(dew)} · ${other.spaced(dew)} right now.", it) },
-        { DetailTile("Wind", wind, windOther, listOfNotNull(windNote(forecast), Detail.gustNote(now, units)?.let { "$it." }).joinToString(" "), it) },
-        { DetailTile("Rain", "${today?.rainChance ?: 0}%", "chance today", Summary.rainNote(forecast), it) },
+        { DetailTile("Feels like", unit.spaced(now.feelsLike), other.spaced(now.feelsLike), feelsNote(forecast), it, accent = TileAccent.temperature(now.feelsLike)) },
+        { DetailTile("Humidity", "${now.humidity.roundHalfUp()}%", null, "The dew point is ${unit.spaced(dew)} · ${other.spaced(dew)} right now.", it, accent = TileAccent.HUMIDITY) },
+        { DetailTile("Wind", wind, windOther, listOfNotNull(windNote(forecast), Detail.gustNote(now, units)?.let { "$it." }).joinToString(" "), it, accent = TileAccent.WIND) },
+        { DetailTile("Rain", "${today?.rainChance ?: 0}%", "chance today", Summary.rainNote(forecast), it, accent = TileAccent.RAIN) },
         { mod ->
             // The next sunrise or sunset, how colourful it's likely to be, and the other one's time.
             val next = SkyColour.next(forecast)
@@ -371,16 +371,16 @@ private fun DetailTiles(forecast: Forecast, units: Units) {
                 val other = if (isSunset) forecast.days.mapNotNull { it.sunrise }.firstOrNull { it > time }
                             else forecast.days.firstOrNull { it.date == time.toLocalDate() }?.sunset
                 DetailTile(if (isSunset) "Sunset" else "Sunrise", Forecast.clock(time), outlook?.rating?.line,
-                    listOfNotNull(outlook?.reason, "${if (isSunset) "Sunrise" else "Sunset"} ${other?.let(Forecast::clock) ?: "–"}.").joinToString(" "), mod)
+                    listOfNotNull(outlook?.reason, "${if (isSunset) "Sunrise" else "Sunset"} ${other?.let(Forecast::clock) ?: "–"}.").joinToString(" "), mod, accent = if (isSunset) TileAccent.SUNSET else TileAccent.SUNRISE)
             } else {
-                DetailTile("Sunset", today?.sunset?.let(Forecast::clock) ?: "–", null, "Sunrise ${today?.sunrise?.let(Forecast::clock) ?: "–"}.", mod)
+                DetailTile("Sunset", today?.sunset?.let(Forecast::clock) ?: "–", null, "Sunrise ${today?.sunrise?.let(Forecast::clock) ?: "–"}.", mod, accent = TileAccent.SUNSET)
             }
         },
         { mod ->
             val uv = today?.uvIndex
             if (uv != null) DetailTile("UV index", "${uv.roundHalfUp()}", Meteo.uvLevel(uv),
-                if (uv >= 3) "Use sun protection around midday." else "Low for the rest of the day.", mod) { UvBar(uv) }
-            else DetailTile("UV index", "–", null, "Pull down to refresh.", mod)
+                if (uv >= 3) "Use sun protection around midday." else "Low for the rest of the day.", mod, accent = TileAccent.uv(uv)) { UvBar(uv) }
+            else DetailTile("UV index", "–", null, "Pull down to refresh.", mod, accent = TileAccent.NEUTRAL)
         },
     )
     TileGrid(tiles)
@@ -420,22 +420,22 @@ private fun MoreTiles(city: City, forecast: Forecast, state: WeatherStore.State)
     if (air != null && aqi != null) {
         val pollen = Pollen.summary(air)?.let { " Pollen: ${it.type.lowercase()} ${it.level.lowercase()}." } ?: ""
         tiles.add {
-            DetailTile("Air quality", "${aqi.roundHalfUp()}", Air.category(aqi, scale), listOfNotNull(Air.note(air, scale)?.let { n -> "$n." }, pollen.trim().ifEmpty { null }).joinToString(" "), it) {
+            DetailTile("Air quality", "${aqi.roundHalfUp()}", Air.category(aqi, scale), listOfNotNull(Air.note(air, scale)?.let { n -> "$n." }, pollen.trim().ifEmpty { null }).joinToString(" "), it, accent = TileAccent.air(Air.position(aqi, scale))) {
                 AirScaleBar(aqi, scale)
                 Text(scale.title, style = LocalMetrics.current.text(11f), modifier = Modifier.alpha(0.6f))
             }
         }
     } else {
-        tiles.add { DetailTile("Air quality", "–", null, missing, it) }
+        tiles.add { DetailTile("Air quality", "–", null, missing, it, accent = TileAccent.NEUTRAL) }
     }
     val normal = today?.let { state.normals(city)?.of(it.date) }
     if (today != null && normal?.normalHigh != null) {
-        tiles.add { DetailTile("Averages", Normals.versus(today.high, normal.normalHigh, unit), null, Normals.normalLine(normal, unit), it) }
+        tiles.add { DetailTile("Averages", Normals.versus(today.high, normal.normalHigh, unit), null, Normals.normalLine(normal, unit), it, accent = TileAccent.versusNormal(today.high - normal.normalHigh)) }
     } else {
-        tiles.add { DetailTile("Averages", "–", null, missing, it) }
+        tiles.add { DetailTile("Averages", "–", null, missing, it, accent = TileAccent.NEUTRAL) }
     }
     val m = now.visibility
-    tiles.add { if (m != null) DetailTile("Visibility", units.visibility(m), null, Detail.visibilityWord(m), it) else DetailTile("Visibility", "–", null, missing, it) }
+    tiles.add { if (m != null) DetailTile("Visibility", units.visibility(m), null, Detail.visibilityWord(m), it, accent = TileAccent.VISIBILITY) else DetailTile("Visibility", "–", null, missing, it, accent = TileAccent.VISIBILITY) }
     val mm = today?.precipitationSum
     if (mm != null) {
         val (main, other) = units.rain(mm)
@@ -445,15 +445,15 @@ private fun MoreTiles(city: City, forecast: Forecast, state: WeatherStore.State)
             next >= 0.05 -> "Expected in the next 24 hours: ${units.rain.text(next)}"
             else -> "None expected"
         }
-        tiles.add { DetailTile("Precipitation", main, other?.let { "$it today" } ?: "today", note, it) }
+        tiles.add { DetailTile("Precipitation", main, other?.let { "$it today" } ?: "today", note, it, accent = TileAccent.RAIN) }
     } else {
-        tiles.add { DetailTile("Precipitation", "–", null, missing, it) }
+        tiles.add { DetailTile("Precipitation", "–", null, missing, it, accent = TileAccent.RAIN) }
     }
     val pct = now.cloudCover
-    tiles.add { if (pct != null) DetailTile("Cloud cover", "${pct.roundHalfUp()}%", Detail.cloudWord(pct), Detail.cloudLayers(forecast), it) else DetailTile("Cloud cover", "–", null, missing, it) }
+    tiles.add { if (pct != null) DetailTile("Cloud cover", "${pct.roundHalfUp()}%", Detail.cloudWord(pct), Detail.cloudLayers(forecast), it, accent = TileAccent.CLOUD) else DetailTile("Cloud cover", "–", null, missing, it, accent = TileAccent.CLOUD) }
     val moon = Moon.phase(java.time.Instant.ofEpochMilli(System.currentTimeMillis()))
     val nextMoon = Moon.next(java.time.Instant.now())
-    tiles.add { DetailTile("Moon", moon.name, "${moon.illumination}% lit", nextMoon, it) { MoonDisc(moon.fraction) } }
+    tiles.add { DetailTile("Moon", moon.name, "${moon.illumination}% lit", nextMoon, it, accent = TileAccent.MOON) { MoonDisc(moon.fraction) } }
     TileGrid(tiles)
 }
 
@@ -546,17 +546,19 @@ private fun windNote(forecast: Forecast): String {
 }
 
 @Composable
-private fun DetailTile(title: String, value: String, sub: String?, note: String?, modifier: Modifier, extra: @Composable () -> Unit = {}) {
+private fun DetailTile(title: String, value: String, sub: String?, note: String?, modifier: Modifier, accent: Long = TileAccent.NEUTRAL, extra: @Composable () -> Unit = {}) {
     val ui = LocalMetrics.current
     // A reading in words ("Waxing Gibbous · 78%", "4° above normal") is set smaller, on up to two lines.
     val words = value.length > 7
     Column(
         modifier.heightIn(min = ui.dp(160f)).clip(RoundedCornerShape(ui.dp(16f))).background(Palette.card)
+            // The tile's own colour (TileAccent), as a faint glow at the top.
+            .background(androidx.compose.ui.graphics.Brush.verticalGradient(0f to Color(accent).copy(alpha = 0.16f), 0.5f to Color(accent).copy(alpha = 0f)))
             .border(1.dp, Palette.cardStroke, RoundedCornerShape(ui.dp(16f))).padding(ui.dp(14f))
             .semantics(mergeDescendants = true) {},
         verticalArrangement = Arrangement.spacedBy(ui.dp(4f)),
     ) {
-        Text(title.uppercase(), style = ui.text(12f, FontWeight.SemiBold), modifier = Modifier.alpha(0.6f))
+        Text(title.uppercase(), style = ui.text(12f, FontWeight.SemiBold).copy(color = Color(accent)), modifier = Modifier.alpha(0.9f))
         Text(value, style = ui.text(if (words) 21f else 30f, FontWeight.Medium), maxLines = if (words) 2 else 1, modifier = Modifier.padding(top = ui.dp(4f)))
         if (sub != null) Text(sub, style = ui.text(15f), modifier = Modifier.alpha(0.7f), maxLines = 2)
         extra()
@@ -596,4 +598,21 @@ fun AppFooter(lead: String?, fetchedAt: Long?, offline: Boolean) {
         }
         Text("Made by ${Brand.AUTHOR}. Free. Forever.", style = ui.text(13f), modifier = Modifier.clickable { uri.openUri(Brand.WEBSITE) })
     }
+}
+
+/**
+ * One quiet accent colour per detail tile, on its title and as a faint glow at the top. Some follow
+ * the reading (how warm it feels, the UV level, the air quality, today against normal); the rest are
+ * fixed. The same colours as the iPhone (TileAccent in Palette.swift) and the web.
+ */
+object TileAccent {
+    const val HUMIDITY = 0xFF6FC8D6; const val WIND = 0xFF9EDCC2; const val RAIN = 0xFF8DB4E2
+    const val SUNRISE = 0xFFF2C66D; const val SUNSET = 0xFFF39A72; const val VISIBILITY = 0xFFB4D2F0
+    const val CLOUD = 0xFFB9C3CF; const val MOON = 0xFFEFE3CC; const val NEUTRAL = 0xFFC9C2B8
+
+    /** Blue when cold, green when mild, gold when warm, coral when hot (°C). */
+    fun temperature(c: Double): Long = if (c < 5) 0xFF8CC0F5 else if (c < 18) 0xFF9AD3A8 else if (c < 27) 0xFFF2C66D else 0xFFF28B62
+    fun uv(uv: Double): Long = if (uv < 3) 0xFF6CC24A else if (uv < 6) 0xFFE8D44D else if (uv < 8) 0xFFF0A04B else if (uv < 11) 0xFFE5604A else 0xFFB57BD0
+    fun air(position: Double): Long = if (position < 0.17) 0xFF6CC24A else if (position < 0.34) 0xFFE8D44D else if (position < 0.5) 0xFFF0A04B else if (position < 0.67) 0xFFE5604A else 0xFFB57BD0
+    fun versusNormal(difference: Double): Long = if (difference >= 1.5) 0xFFF2A65A else if (difference <= -1.5) 0xFF8CC0F5 else NEUTRAL
 }

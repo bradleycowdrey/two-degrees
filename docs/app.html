@@ -330,7 +330,9 @@
   /* More detail: two across, the same card as the other tiles. */
   .details { container-type: inline-size; }
   .dgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-  .dt { display: flex; flex-direction: column; padding: 16px; }
+  .dt { display: flex; flex-direction: column; padding: 16px;
+    background-image: linear-gradient(to bottom, color-mix(in srgb, var(--acc, transparent) 16%, transparent), transparent 50%); }
+  .dt .eyebrow { color: color-mix(in srgb, var(--acc, var(--muted)) 90%, transparent); }
   .dt.wide { grid-column: 1 / -1; }
   .dt .eyebrow { flex-wrap: wrap; margin-bottom: 6px; }
   .dt .eyebrow svg { width: 18px; height: 18px; flex: none; margin-left: auto; }
@@ -1194,7 +1196,9 @@
   /* ---------- More detail tiles ---------- */
   function renderDetails(city, data, today) {
     const cur = data.current, tiles = [];
-    const tile = (id, title, value, sub, note, extra = '', aside = '') => tiles.push(`<div class="tile dt" data-tile="${id}"><h3 class="eyebrow">${title}${aside}</h3>` +
+    // One quiet accent colour per tile, on its title and as a faint glow at the top (as in the apps).
+    const acc = { visibility: '#B4D2F0', precip: '#8DB4E2', cloud: '#B9C3CF', sunrise: '#F2C66D', sunset: '#F39A72', moon: '#EFE3CC', aqi: '#C9C2B8', normal: '#C9C2B8' };
+    const tile = (id, title, value, sub, note, extra = '', aside = '') => tiles.push(`<div class="tile dt" data-tile="${id}" style="--acc:${acc[id] || '#C9C2B8'}"><h3 class="eyebrow">${title}${aside}</h3>` +
       `<div class="dv">${value}</div>${sub ? `<div class="ds">${sub}</div>` : ''}${extra}${note ? `<div class="dn">${note}</div>` : ''}</div>`);
     // Every city shows the same eight tiles; one whose data isn't there yet shows a dash. Pollen, measured
     // only in some places, is a line on the air quality tile.
@@ -1205,11 +1209,13 @@
       const kinds = POLLEN.filter(([k]) => aq.pollen[k] != null).map(([k, name]) => [name, aq.pollen[k]]).sort((a, b) => b[1] - a[1]);
       if (kinds.length) pollen = ` Pollen: ${kinds[0][0].toLowerCase()} ${pollenLevel(kinds[0][1]).toLowerCase()}.`;
     }
+    if (aqr) acc.aqi = aqr.color;   // the category's own colour
     if (aqr) tile('aqi', 'Air Quality', `${aqr.v} <span class="cat" style="color:${aqr.color}">${esc(aqr.cat)}</span>`, aqr.scale, esc(aqr.note + (pollen ? '.' + pollen : '')),
       `<div class="aqbar" style="background:${aqr.bar}" aria-hidden="true"><u style="left:${aqr.at}%"></u></div>`);
     else missing('aqi', 'Air Quality');
     const n = normalsFor(city, data.daily[0].date);
     const nw = (t) => `<span style="white-space:nowrap">${both(t)}</span>`;
+    if (n) { const dlt = today.max - n[0]; acc.normal = dlt >= 1.5 ? '#F2A65A' : dlt <= -1.5 ? '#8CC0F5' : '#C9C2B8'; }
     if (n) tile('normal', 'Averages', vsNormal(today.max, n[0]), '', `Normal high ${nw(n[0])}, low ${nw(n[1])}`);
     else missing('normal', 'Averages');
     if (cur.vis != null) tile('visibility', 'Visibility', fmtVis(cur.vis), '', visLabel(cur.vis));
