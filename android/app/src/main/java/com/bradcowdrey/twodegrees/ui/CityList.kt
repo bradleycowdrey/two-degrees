@@ -186,9 +186,8 @@ fun CityList(store: WeatherStore, onDismiss: () -> Unit, onLocationSetting: () -
                         }
                     }
                     item {
-                        Column(Modifier.fillMaxWidth().padding(vertical = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("The weather in °F and °C at once.\nData: Open\u2011Meteo, GeoNames.", style = ui.text(13f, align = TextAlign.Center).copy(color = Palette.textMuted))
-                            Text("Made by ${Brand.AUTHOR} · bradcowdrey.com", style = ui.text(13f).copy(color = Palette.textMuted))
+                        Box(Modifier.padding(bottom = 8.dp)) {
+                            AppFooter(null, state.forecasts.values.maxOfOrNull { it.fetchedAt }, state.failed.isNotEmpty())
                         }
                     }
                 }

@@ -12,7 +12,7 @@ const PAGE = 'file://' + path.resolve(__dirname, '../docs/app.html');
 const SHOTS = process.argv[2];
 const VIEWPORTS = [['small phone', 320, 640], ['phone', 390, 844], ['tablet', 768, 1024], ['desktop', 1280, 900]];
 const SIZES = ['extraSmall', 'small', 'medium', 'large', 'extraLarge'];
-const FOOTER = 'Made by Bradley Cowdrey. Free. Forever. · bradcowdrey.com ↗';
+const FOOTER = 'Made by Bradley Cowdrey. Free. Forever. ↗';
 
 let passed = 0, failed = 0;
 const results = [];

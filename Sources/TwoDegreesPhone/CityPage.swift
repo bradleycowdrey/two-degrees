@@ -163,20 +163,44 @@ struct CityPage: View {
     }
 
     private var footer: some View {
+        AppFooter(lead: "Weather for \(city.name)", fetched: store.forecasts[city.id]?.fetchedAt, offline: store.failed.contains(city.id))
+    }
+}
+
+/// The footer every screen ends with, in one style: where the weather comes from (linked), when it
+/// was updated (or that it's offline), and the sign-off.
+struct AppFooter: View {
+    @Environment(\.metrics) private var ui
+    /// "Weather for Denver"; nil for the city list, which credits the city search too.
+    let lead: String?
+    let fetched: Date?
+    let offline: Bool
+
+    var body: some View {
         VStack(spacing: ui.pt(6)) {
             HStack(spacing: ui.pt(4)) {
-                Text("Weather for \(city.name)")
-                Text("·")
-                Link("Open-Meteo", destination: Brand.dataCredit).underline()
+                if let lead {
+                    Text(lead)
+                    Text("·")
+                    Link("Open-Meteo", destination: Brand.dataCredit).underline()
+                } else {
+                    Text("Weather by")
+                    Link("Open-Meteo", destination: Brand.dataCredit).underline()
+                    Text("· Places by")
+                    Link("GeoNames", destination: URL(string: "https://www.geonames.org")!).underline()
+                }
             }
-            if let fetched = store.forecasts[city.id]?.fetchedAt {
-                Text(store.failed.contains(city.id) ? "Offline · from \(fetched.formatted(date: .omitted, time: .shortened))"
-                                                    : "Updated \(fetched.formatted(date: .omitted, time: .shortened))")
+            .lineLimit(1)
+            .minimumScaleFactor(0.8)
+            if let fetched {
+                Text(offline ? "Offline · from \(fetched.formatted(date: .omitted, time: .shortened))"
+                             : "Updated \(fetched.formatted(date: .omitted, time: .shortened))")
             }
             Link(destination: Brand.website) { Text("Made by \(Brand.author). Free. Forever.") }
         }
         .font(ui.font(13))
         .foregroundStyle(.white.opacity(0.6))
+        .tint(.white.opacity(0.6))
         .frame(maxWidth: .infinity)
         .padding(.top, ui.pt(8))
     }

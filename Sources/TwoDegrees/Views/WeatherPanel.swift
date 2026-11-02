@@ -233,7 +233,7 @@ private struct WeatherPanelContent: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             Link(destination: Brand.website) {
-                Text("Made by \(Brand.author). Free. Forever. · \(Brand.websiteHost) ↗")
+                Text("Made by \(Brand.author). Free. Forever. ↗")
                     .multilineTextAlignment(.leading)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }

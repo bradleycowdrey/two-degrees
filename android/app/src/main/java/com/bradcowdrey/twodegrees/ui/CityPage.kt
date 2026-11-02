@@ -566,16 +566,34 @@ private fun DetailTile(title: String, value: String, sub: String?, note: String?
 }
 
 @Composable
-private fun Footer(city: City, forecast: Forecast, offline: Boolean) {
+private fun Footer(city: City, forecast: Forecast, offline: Boolean) = AppFooter("Weather for ${city.name}", forecast.fetchedAt, offline)
+
+/**
+ * The footer every screen ends with, in one style: where the weather comes from (linked), when it was
+ * updated (or that it's offline), and the sign-off. [lead] is null on the city list, which credits the
+ * city search too.
+ */
+@Composable
+fun AppFooter(lead: String?, fetchedAt: Long?, offline: Boolean) {
     val ui = LocalMetrics.current
     val uri = LocalUriHandler.current
-    val time = java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT).format(java.util.Date(forecast.fetchedAt))
+    val link = ui.text(13f).copy(textDecoration = TextDecoration.Underline)
     Column(Modifier.fillMaxWidth().padding(top = 8.dp).alpha(0.6f), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Row {
-            Text("Weather for ${city.name} · ", style = ui.text(13f))
-            Text("Open-Meteo", style = ui.text(13f).copy(textDecoration = TextDecoration.Underline), modifier = Modifier.clickable { uri.openUri(Brand.DATA_CREDIT) })
+            if (lead != null) {
+                Text("$lead · ", style = ui.text(13f))
+                Text("Open-Meteo", style = link, modifier = Modifier.clickable { uri.openUri(Brand.DATA_CREDIT) })
+            } else {
+                Text("Weather by ", style = ui.text(13f))
+                Text("Open-Meteo", style = link, modifier = Modifier.clickable { uri.openUri(Brand.DATA_CREDIT) })
+                Text(" · Places by ", style = ui.text(13f))
+                Text("GeoNames", style = link, modifier = Modifier.clickable { uri.openUri("https://www.geonames.org") })
+            }
         }
-        Text(if (offline) "Offline · from $time" else "Updated $time", style = ui.text(13f))
+        if (fetchedAt != null) {
+            val time = java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT).format(java.util.Date(fetchedAt))
+            Text(if (offline) "Offline · from $time" else "Updated $time", style = ui.text(13f))
+        }
         Text("Made by ${Brand.AUTHOR}. Free. Forever.", style = ui.text(13f), modifier = Modifier.clickable { uri.openUri(Brand.WEBSITE) })
     }
 }
