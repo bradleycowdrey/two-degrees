@@ -141,6 +141,8 @@ private struct NowBlock: View {
                     .minimumScaleFactor(0.8)
             }
         }
+        // Hug the leading edge: without this the column shrinks to its text and centres in the widget.
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
     }
 }
 
