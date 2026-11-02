@@ -1068,6 +1068,12 @@
     const P = 29.530588853, age = (((date.getTime() - Date.UTC(2000, 0, 6, 18, 14)) / 864e5) % P + P) % P, f = age / P;
     return { f, name: MOON_NAMES[Math.floor(f * 8 + 0.5) % 8], lit: Math.round((1 - Math.cos(2 * Math.PI * f)) / 2 * 100) };
   }
+  // The next full or new moon, whichever comes first: "Full moon in 5 days".
+  function moonNext(f) {
+    const P = 29.530588853, toFull = ((0.5 - f + 1) % 1) * P, toNew = ((1 - f) % 1) * P;
+    const [name, days] = toFull <= toNew ? ['Full moon', toFull] : ['New moon', toNew], n = Math.round(days);
+    return n === 0 ? `${name} today.` : n === 1 ? `${name} tomorrow.` : `${name} in ${n} days.`;
+  }
   function moonGlyph(f) {
     const c = 12, r = 8, k = Math.cos(2 * Math.PI * f), rx = (Math.abs(k) * r).toFixed(2), waxing = f < 0.5;
     // The lit half, then the terminator back across: it bulges toward the lit side for a crescent, away for a gibbous.
@@ -1214,7 +1220,12 @@
       const sum = next.reduce((x, y) => x + y, 0);
       tile('precip', 'Precipitation', v, s, !next.length ? '' : sum < 0.05 ? 'None expected' : `Expected in the next 24 hours: ${fmtRain(sum)[0]}`);
     } else missing('precip', 'Precipitation');
-    if (cur.cloud != null) tile('cloud', 'Cloud Cover', `${Math.round(cur.cloud)}%`, '', cloudLabel(cur.cloud));
+    const hNow = data.hourly[nowIndex(data)] || {};
+    const layers = hNow.lo == null || hNow.mi == null || hNow.hi == null ? ''
+      : Math.max(hNow.lo, hNow.mi, hNow.hi) < 10 ? 'No cloud at any height.'
+      : [hNow.lo, hNow.mi, hNow.hi].filter((x) => x >= 50).length >= 2 ? 'Cloud at several heights.'
+      : hNow.lo >= hNow.mi && hNow.lo >= hNow.hi ? 'Mostly low cloud.' : hNow.mi >= hNow.hi ? 'Mostly mid-level cloud.' : 'Mostly high, thin cloud.';
+    if (cur.cloud != null) tile('cloud', 'Cloud Cover', `${Math.round(cur.cloud)}%`, cloudLabel(cur.cloud), layers);
     else missing('cloud', 'Cloud Cover');
     // The next sunrise and the next sunset, and how colourful each is likely to be.
     const nowT = parseLocal(data.current.time);
@@ -1225,7 +1236,7 @@
       else missing(id, title);
     }
     const moon = moonPhase();
-    tile('moon', 'Moon', `${moon.name} · ${moon.lit}%`, '', '', '', moonGlyph(moon.f));
+    tile('moon', 'Moon', moon.name, `${moon.lit}% lit`, moonNext(moon.f), '', moonGlyph(moon.f));
     $('#dgrid').innerHTML = tiles.join('');
     $('#details').hidden = !tiles.length;
   }
@@ -1955,7 +1966,7 @@
   }
   // Read by tests/web.test.js. inject: put sample alerts or air quality on the city showing, as if they'd loaded.
   window.__twoDegreesTest = {
-    deg, moonPhase, skyRule,
+    deg, moonPhase, moonNext, skyRule,
     inject(kind, value) { state[kind][keyOf(state.cities[state.active])] = value; render(); },
   };
   applyLook();

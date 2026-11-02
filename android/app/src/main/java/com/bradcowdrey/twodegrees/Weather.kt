@@ -30,6 +30,15 @@ object Moon {
         val lit = (1 - cos(2 * PI * f)) / 2
         return Phase(name, (lit * 100).roundHalfUp(), f)
     }
+
+    /** The next full or new moon, whichever comes first: "Full moon in 5 days", "New moon tomorrow". */
+    fun next(at: Instant): String {
+        val f = phase(at).fraction
+        val toFull = ((0.5 - f + 1) % 1) * SYNODIC_MONTH
+        val toNew = ((1 - f) % 1) * SYNODIC_MONTH
+        val (name, days) = if (toFull <= toNew) "Full moon" to toFull else "New moon" to toNew
+        return when (val n = days.roundHalfUp()) { 0 -> "$name today."; 1 -> "$name tomorrow."; else -> "$name in $n days." }
+    }
 }
 
 /** The words for the newer detail tiles, as on the Mac, iPhone and web. */
@@ -94,6 +103,21 @@ object SkyColour {
 }
 
 object Detail {
+    /** Which clouds there are now, from the hour's layers: "Mostly high, thin cloud." */
+    fun cloudLayers(forecast: Forecast): String? {
+        val now = forecast.now.time
+        val hour = forecast.hours.minByOrNull { kotlin.math.abs(java.time.Duration.between(it.time, now).toMinutes()) } ?: return null
+        return cloudWords(hour.cloudLow ?: return null, hour.cloudMid ?: return null, hour.cloudHigh ?: return null)
+    }
+
+    fun cloudWords(low: Double, mid: Double, high: Double): String = when {
+        maxOf(low, mid, high) < 10 -> "No cloud at any height."
+        listOf(low, mid, high).count { it >= 50 } >= 2 -> "Cloud at several heights."
+        low >= mid && low >= high -> "Mostly low cloud."
+        mid >= high -> "Mostly mid-level cloud."
+        else -> "Mostly high, thin cloud."
+    }
+
     /** 0–10 Clear, to 30 Mostly clear, to 60 Partly cloudy, to 90 Mostly cloudy, else Overcast. */
     fun cloudWord(percent: Double) = when {
         percent <= 10 -> "Clear"

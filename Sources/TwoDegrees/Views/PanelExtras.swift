@@ -140,7 +140,7 @@ struct DetailsTile: View {
             list.append(missing("Precipitation"))
         }
         if let cover = now.cloudCover {
-            list.append(Item(key: "Cloud cover", value: "\(Int(cover.rounded()))%", sub: Details.clouds(cover), help: ""))
+            list.append(Item(key: "Cloud cover", value: "\(Int(cover.rounded()))%", sub: Details.clouds(cover), help: Details.cloudLayers(forecast) ?? ""))
         } else {
             list.append(missing("Cloud cover"))
         }
@@ -157,7 +157,7 @@ struct DetailsTile: View {
             }
         }
         let moon = Moon.phase(at: Date())
-        list.append(Item(key: "Moon", value: "\(moon.illumination)% lit", sub: moon.name, help: moon.name))
+        list.append(Item(key: "Moon", value: "\(moon.illumination)% lit", sub: moon.name, help: "\(moon.name). \(Moon.next(at: Date()))"))
         return list
     }
 }

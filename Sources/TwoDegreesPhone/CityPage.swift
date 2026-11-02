@@ -430,7 +430,8 @@ private struct DetailTiles: View {
         if let uv = today?.uvIndex {
             DetailTile(title: "UV index", icon: "sun.max.fill",
                        value: "\(Int(uv.rounded()))", sub: Meteo.uvLevel(uv),
-                       note: uv >= 3 ? "Use sun protection around midday." : "Low for the rest of the day.")
+                       note: uv >= 3 ? "Use sun protection around midday." : "Low for the rest of the day.",
+                       accessory: AnyView(ScaleBar(colors: ScaleBar.uv, position: min(max(uv / 11, 0), 1))))
         } else {
             DetailTile(title: "UV index", icon: "sun.max.fill", value: "–", sub: nil, note: "Pull down to refresh.")
         }
@@ -469,6 +470,8 @@ struct DetailTile: View {
     let value: String
     let sub: String?
     let note: String
+    /// A small picture under the reading: a scale bar or the moon.
+    var accessory: AnyView? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: ui.pt(4)) {
@@ -486,6 +489,7 @@ struct DetailTile: View {
             if let sub {
                 Text(sub).font(ui.font(15)).opacity(0.7).lineLimit(1).minimumScaleFactor(0.8)
             }
+            if let accessory { accessory.padding(.top, ui.pt(4)) }
             Spacer(minLength: ui.pt(4))
             Text(note)
                 .font(ui.font(13))

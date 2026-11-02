@@ -116,6 +116,22 @@ enum SkyColour {
 }
 
 enum Details {
+    /// Which clouds there are now, from the hour's layers: "Mostly high, thin cloud."
+    static func cloudLayers(_ forecast: Forecast) -> String? {
+        let now = forecast.now.time
+        guard let hour = forecast.hours.min(by: { abs($0.time.timeIntervalSince(now)) < abs($1.time.timeIntervalSince(now)) }),
+              let low = hour.cloudLow, let mid = hour.cloudMid, let high = hour.cloudHigh else { return nil }
+        return words(low: low, mid: mid, high: high)
+    }
+
+    static func words(low: Double, mid: Double, high: Double) -> String {
+        if max(low, mid, high) < 10 { return "No cloud at any height." }
+        if [low, mid, high].filter({ $0 >= 50 }).count >= 2 { return "Cloud at several heights." }
+        if low >= mid && low >= high { return "Mostly low cloud." }
+        if mid >= high { return "Mostly mid-level cloud." }
+        return "Mostly high, thin cloud."
+    }
+
     static func visibility(_ metres: Double, miles: Bool) -> (value: String, note: String) {
         let km = metres / 1000
         let value = miles ? (km / 1.609 >= 10 ? "10+ mi" : String(format: "%.0f mi", km / 1.609))
@@ -181,6 +197,22 @@ enum Moon {
         let names = ["New Moon", "Waxing Crescent", "First Quarter", "Waxing Gibbous",
                      "Full Moon", "Waning Gibbous", "Last Quarter", "Waning Crescent"]
         return (names[Int((fraction * 8 + 0.5).rounded(.down)) % 8], illumination)
+    }
+
+    /// 0 at new moon, 0.5 at full.
+    static func fraction(at date: Date) -> Double {
+        let days = date.timeIntervalSince(reference) / 86400
+        return ((days / synodicMonth).truncatingRemainder(dividingBy: 1) + 1).truncatingRemainder(dividingBy: 1)
+    }
+
+    /// The next full or new moon, whichever comes first: "Full moon in 5 days", "New moon tomorrow".
+    static func next(at date: Date) -> String {
+        let f = fraction(at: date)
+        let toFull = ((0.5 - f + 1).truncatingRemainder(dividingBy: 1)) * synodicMonth
+        let toNew = ((1 - f).truncatingRemainder(dividingBy: 1)) * synodicMonth
+        let (name, days) = toFull <= toNew ? ("Full moon", toFull) : ("New moon", toNew)
+        let n = Int(days.rounded())
+        return n == 0 ? "\(name) today." : n == 1 ? "\(name) tomorrow." : "\(name) in \(n) days."
     }
 }
 

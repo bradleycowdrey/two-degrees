@@ -200,7 +200,8 @@ struct ExtraTiles: View {
         if let reading = air?.reading(inUS: inUS) {
             let pollen = air?.pollenSummary.map { " Pollen: \($0.top.lowercased()) \($0.level.lowercased())." } ?? ""
             DetailTile(title: "Air quality", icon: "aqi.medium", value: "\(reading.value)", sub: reading.category,
-                       note: "\(reading.scale). \(reading.note)" + pollen)
+                       note: "\(reading.scale). \(reading.note)" + pollen,
+                       accessory: AnyView(ScaleBar(colors: inUS ? ScaleBar.usAQI : ScaleBar.europeanAQI, position: reading.position)))
         } else {
             DetailTile(title: "Air quality", icon: "aqi.medium", value: "–", sub: nil, note: Self.missing)
         }
@@ -227,12 +228,13 @@ struct ExtraTiles: View {
             DetailTile(title: "Precipitation", icon: "drop.fill", value: "–", sub: nil, note: Self.missing)
         }
         if let cover = now.cloudCover {
-            DetailTile(title: "Cloud cover", icon: "cloud.fill", value: "\(Int(cover.rounded()))%", sub: Details.clouds(cover), note: "")
+            DetailTile(title: "Cloud cover", icon: "cloud.fill", value: "\(Int(cover.rounded()))%", sub: Details.clouds(cover), note: Details.cloudLayers(forecast) ?? "")
         } else {
             DetailTile(title: "Cloud cover", icon: "cloud.fill", value: "–", sub: nil, note: Self.missing)
         }
         let moon = Moon.phase(at: Date())
-        DetailTile(title: "Moon", icon: "moon.fill", value: moon.name, sub: "\(moon.illumination)% lit", note: "")
+        DetailTile(title: "Moon", icon: "moon.fill", value: moon.name, sub: "\(moon.illumination)% lit", note: Moon.next(at: Date()),
+                   accessory: AnyView(MoonDisc(fraction: Moon.fraction(at: Date()))))
     }
 }
 
@@ -367,5 +369,61 @@ private struct DayDetailContent: View {
         .monospacedDigit()
         .foregroundStyle(.white)
         .accessibilityElement(children: .combine)
+    }
+}
+
+// MARK: - Tile pictures
+
+/// A thin bar in a scale's colours with a dot at the reading (0–1): air quality and UV.
+struct ScaleBar: View {
+    let colors: [Color]
+    let position: Double
+
+    var body: some View {
+        GeometryReader { geo in
+            ZStack(alignment: .leading) {
+                Capsule().fill(LinearGradient(colors: colors, startPoint: .leading, endPoint: .trailing)).frame(height: 5)
+                Circle().fill(.white).frame(width: 9, height: 9)
+                    .overlay(Circle().stroke(.black.opacity(0.35), lineWidth: 1))
+                    .offset(x: max(0, min(geo.size.width - 9, geo.size.width * position - 4.5)))
+            }
+            .frame(maxHeight: .infinity)
+        }
+        .frame(height: 10)
+        .accessibilityHidden(true)
+    }
+
+    static let uv: [Color] = [Color(hex: 0x3EA72D), Color(hex: 0xFFF300), Color(hex: 0xF18B00), Color(hex: 0xE53210), Color(hex: 0xB567A4)]
+    static let usAQI: [Color] = [Color(hex: 0x00E400), Color(hex: 0xFFFF00), Color(hex: 0xFF7E00), Color(hex: 0xFF0000), Color(hex: 0x8F3F97), Color(hex: 0x7E0023)]
+    static let europeanAQI: [Color] = [Color(hex: 0x50F0E6), Color(hex: 0x50CCAA), Color(hex: 0xF0E641), Color(hex: 0xFF5050), Color(hex: 0x960032), Color(hex: 0x7D2181)]
+}
+
+/// The moon as it looks tonight: the lit part over a dim disc (0 new, 0.5 full).
+struct MoonDisc: View {
+    let fraction: Double
+    var size: CGFloat = 26
+
+    var body: some View {
+        Canvas { context, canvas in
+            let r = min(canvas.width, canvas.height) / 2, c = CGPoint(x: canvas.width / 2, y: canvas.height / 2)
+            context.fill(Path(ellipseIn: CGRect(x: c.x - r, y: c.y - r, width: 2 * r, height: 2 * r)), with: .color(.white.opacity(0.18)))
+            let k = cos(2 * .pi * fraction), waxing = fraction < 0.5
+            var lit = Path()
+            // The lit half…
+            lit.addArc(center: c, radius: r, startAngle: .degrees(-90), endAngle: .degrees(90), clockwise: !waxing)
+            // …then the terminator back up: an ellipse half, bulging toward the lit side for a crescent.
+            let rx = abs(k) * r
+            let steps = 32
+            for i in 0...steps {
+                let t = Double.pi / 2 - Double.pi * Double(i) / Double(steps)   // from bottom (π/2) to top (−π/2)
+                let bulgeLit = (k > 0) // crescent: terminator on the lit side
+                let side: CGFloat = (waxing ? 1 : -1) * (bulgeLit ? 1 : -1)
+                lit.addLine(to: CGPoint(x: c.x + side * rx * CGFloat(cos(t)), y: c.y + r * CGFloat(sin(t))))
+            }
+            lit.closeSubpath()
+            context.fill(lit, with: .color(Color(hex: 0xF4E9D8)))
+        }
+        .frame(width: size, height: size)
+        .accessibilityHidden(true)
     }
 }

@@ -152,9 +152,9 @@ async function setSize(page, size) {
     await page.waitForFunction(() => /Normal high/.test((document.querySelector('.dt[data-tile="normal"]') || {}).textContent || ''), null, { timeout: 30000 }).catch(() => {});
     const tiles = await page.$$eval('.dt', (els) => Object.fromEntries(els.map((e) => [e.dataset.tile, e.querySelector('.dv').textContent.trim() + ' | ' + (e.querySelector('.dn') || { textContent: '' }).textContent.trim()])));
     const expect = {
-      visibility: /^\d+(\.\d)? mi \| (Clear view|Haze|Fog)$/, cloud: /^\d+% \| (Clear|Mostly clear|Partly cloudy|Mostly cloudy|Overcast)$/,
+      visibility: /^\d+(\.\d)? mi \| (Clear view|Haze|Fog)$/, cloud: /^\d+% \| (No cloud at any height|Cloud at several heights|Mostly low cloud|Mostly mid-level cloud|Mostly high, thin cloud)\.$/,
       precip: /^(0|\d+\.\d\d) in \| (None expected|Expected in the next 24 hours: .+ in)$/,
-      moon: /^(New Moon|Waxing Crescent|First Quarter|Waxing Gibbous|Full Moon|Waning Gibbous|Last Quarter|Waning Crescent) · \d+% \| $/,
+      moon: /^(New Moon|Waxing Crescent|First Quarter|Waxing Gibbous|Full Moon|Waning Gibbous|Last Quarter|Waning Crescent) \| (Full|New) moon (today|tomorrow|in \d+ days)\.$/,
       aqi: /^\d+ (Good|Moderate|Unhealthy for Sensitive Groups|Unhealthy|Very Unhealthy|Hazardous) \| (Better than yesterday|Worse than yesterday|About the same as yesterday|Mostly .+)(\. Pollen: [a-z ]+\.)?$/,
       normal: /^(About normal|\d+° (above|below) normal) \| Normal high -?\d+°F · -?\d+°C, low -?\d+°F · -?\d+°C$/,
     };
@@ -479,6 +479,8 @@ async function setSize(page, size) {
     const sun = await page.textContent('.dt[data-tile="sunset"]').catch(() => '');
     check(/\d:\d\d [AP]M/.test(sun) && /(Great|Good) colour likely|Some colour possible|Little colour expected/.test(sun), `the sunset tile gives the time and how colourful it'll be (${sun.replace(/\s+/g, ' ')})`);
     const rules = await page.evaluate(() => [[0, 20, 50], [20, 0, 50], [0, 0, 0], [0, 95, 95], [80, 30, 30]].map(([l, m, h]) => __twoDegreesTest.skyRule(l, m, h, 0, 2, 24000).r).join(','));
+    const nm = await page.evaluate(() => [__twoDegreesTest.moonNext(0.5 - 1 / 29.53), __twoDegreesTest.moonNext(0)].join(' | '));
+    check(nm === 'Full moon tomorrow. | New moon today.', `the moon tile says when the next full or new moon is (${nm})`);
     check(rules === '3,2,1,1,0', `sky colour: high cloud great, some low cloud good, clear or overcast fair, low cloud poor (${rules})`);
     await page.evaluate(() => __twoDegreesTest.inject('aq', { us: null, eu: null, pollen: null }));
     check(await page.$eval('.dt[data-tile="aqi"] .dv', (e) => e.textContent.trim()) === '–' && await page.$$eval('.dt', (els) => els.length) === 8, 'no air quality reading: its tile shows a dash and the count stays eight');

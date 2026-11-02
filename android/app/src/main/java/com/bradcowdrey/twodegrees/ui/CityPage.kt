@@ -379,7 +379,7 @@ private fun DetailTiles(forecast: Forecast, units: Units) {
         { mod ->
             val uv = today?.uvIndex
             if (uv != null) DetailTile("UV index", "${uv.roundHalfUp()}", Meteo.uvLevel(uv),
-                if (uv >= 3) "Use sun protection around midday." else "Low for the rest of the day.", mod)
+                if (uv >= 3) "Use sun protection around midday." else "Low for the rest of the day.", mod) { UvBar(uv) }
             else DetailTile("UV index", "–", null, "Pull down to refresh.", mod)
         },
     )
@@ -450,9 +450,10 @@ private fun MoreTiles(city: City, forecast: Forecast, state: WeatherStore.State)
         tiles.add { DetailTile("Precipitation", "–", null, missing, it) }
     }
     val pct = now.cloudCover
-    tiles.add { if (pct != null) DetailTile("Cloud cover", "${pct.roundHalfUp()}%", Detail.cloudWord(pct), null, it) else DetailTile("Cloud cover", "–", null, missing, it) }
+    tiles.add { if (pct != null) DetailTile("Cloud cover", "${pct.roundHalfUp()}%", Detail.cloudWord(pct), Detail.cloudLayers(forecast), it) else DetailTile("Cloud cover", "–", null, missing, it) }
     val moon = Moon.phase(java.time.Instant.ofEpochMilli(System.currentTimeMillis()))
-    tiles.add { DetailTile("Moon", moon.text, null, null, it) { MoonDisc(moon.fraction) } }
+    val nextMoon = Moon.next(java.time.Instant.now())
+    tiles.add { DetailTile("Moon", moon.name, "${moon.illumination}% lit", nextMoon, it) { MoonDisc(moon.fraction) } }
     TileGrid(tiles)
 }
 
@@ -468,6 +469,22 @@ private fun AirScaleBar(value: Double, scale: Air.Scale) {
             drawRect(Color(band.color), androidx.compose.ui.geometry.Offset(i * w, y - h / 2), androidx.compose.ui.geometry.Size(w, h))
         }
         val x = (size.width * Air.position(value, scale).toFloat()).coerceIn(size.height / 2, size.width - size.height / 2)
+        drawCircle(Color.White, size.height / 2, androidx.compose.ui.geometry.Offset(x, y))
+        drawCircle(Color.Black.copy(alpha = 0.4f), size.height / 2, androidx.compose.ui.geometry.Offset(x, y), style = androidx.compose.ui.graphics.drawscope.Stroke(1.dp.toPx()))
+    }
+}
+
+/** UV on its scale (0 to 11+), green to violet, with a dot at today's peak. */
+@Composable
+private fun UvBar(uv: Double) {
+    val ui = LocalMetrics.current
+    val colors = listOf(0xFF3EA72D, 0xFFFFF300, 0xFFF18B00, 0xFFE53210, 0xFFB567A4).map { Color(it) }
+    androidx.compose.foundation.Canvas(Modifier.fillMaxWidth().padding(top = ui.dp(4f)).height(ui.dp(10f))) {
+        val h = 4.dp.toPx()
+        val y = size.height / 2
+        drawRoundRect(androidx.compose.ui.graphics.Brush.horizontalGradient(colors), androidx.compose.ui.geometry.Offset(0f, y - h / 2),
+            androidx.compose.ui.geometry.Size(size.width, h), androidx.compose.ui.geometry.CornerRadius(h / 2))
+        val x = (size.width * (uv / 11).coerceIn(0.0, 1.0).toFloat()).coerceIn(size.height / 2, size.width - size.height / 2)
         drawCircle(Color.White, size.height / 2, androidx.compose.ui.geometry.Offset(x, y))
         drawCircle(Color.Black.copy(alpha = 0.4f), size.height / 2, androidx.compose.ui.geometry.Offset(x, y), style = androidx.compose.ui.graphics.drawscope.Stroke(1.dp.toPx()))
     }

@@ -736,6 +736,16 @@ final class WeatherExtrasTests: XCTestCase {
         XCTAssertEqual(Details.visibility(1_000, miles: true).note, "Fog is cutting the view.")
     }
 
+    func testCloudWordsAndMoon() {
+        XCTAssertEqual(Details.words(low: 0, mid: 5, high: 3), "No cloud at any height.")
+        XCTAssertEqual(Details.words(low: 80, mid: 10, high: 0), "Mostly low cloud.")
+        XCTAssertEqual(Details.words(low: 0, mid: 10, high: 60), "Mostly high, thin cloud.")
+        XCTAssertEqual(Details.words(low: 60, mid: 70, high: 0), "Cloud at several heights.")
+        // 2000-01-21 04:40 UTC was a full moon; a day before it, "Full moon tomorrow."
+        XCTAssertEqual(Moon.next(at: Date(timeIntervalSince1970: 948_429_600 - 86_400)), "Full moon tomorrow.")
+        XCTAssertEqual(Moon.next(at: Date(timeIntervalSince1970: 947_182_440)), "New moon today.")
+    }
+
     func testSkyColour() {
         let o = { (low: Double, mid: Double, high: Double) in SkyColour.outlook(low: low, mid: mid, high: high, precipitation: 0, code: 2, visibility: 24_000) }
         XCTAssertEqual(o(0, 20, 50).rating, .great, "high and mid cloud to catch the light")

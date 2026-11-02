@@ -104,6 +104,15 @@ class WeatherTest {
         )
     }
 
+    @Test fun cloudWordsAndNextMoon() {
+        assertEquals("No cloud at any height.", Detail.cloudWords(0.0, 5.0, 3.0))
+        assertEquals("Mostly low cloud.", Detail.cloudWords(80.0, 10.0, 0.0))
+        assertEquals("Mostly high, thin cloud.", Detail.cloudWords(0.0, 10.0, 60.0))
+        assertEquals("Cloud at several heights.", Detail.cloudWords(60.0, 70.0, 0.0))
+        assertEquals("Full moon tomorrow.", Moon.next(Instant.parse("2000-01-20T04:40:00Z")))
+        assertEquals("New moon today.", Moon.next(Instant.parse("2000-01-06T18:14:00Z")))
+    }
+
     @Test fun skyColour() {
         fun o(low: Double, mid: Double, high: Double) = SkyColour.outlook(low, mid, high, 0.0, 2, 24_000.0).rating
         assertEquals(SkyColour.Rating.GREAT, o(0.0, 20.0, 50.0))
