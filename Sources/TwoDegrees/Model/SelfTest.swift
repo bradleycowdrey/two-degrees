@@ -73,9 +73,10 @@ enum SelfTest {
         for _ in 0..<60 where store.airQuality[first.id] == nil || store.climate[first.id] == nil { try? await Task.sleep(for: .milliseconds(500)) }
         let reading = store.airQuality[first.id]?.reading(inUS: WeatherAlert.inUS(latitude: first.latitude, longitude: first.longitude))
         check(reading != nil, "\(first.name): air quality \(reading.map { "\($0.value) \($0.category) (\($0.scale))" } ?? "missing")")
-        let entry = store.climate[first.id]?.entry(for: Date())
-        check(entry?.normalHigh != nil && entry?.recordHighYear != nil,
-              "\(first.name): normals and records load (normal high \(entry?.normalHigh.map { TempUnit.fahrenheit.spaced(TempUnit.fahrenheit.value($0)) } ?? "none"), record from \(entry?.recordHighYear.map(String.init) ?? "none"))")
+        let (entry, limited) = await WeatherServices.climateForCheck(first, store: store)
+        check((entry?.normalHigh != nil && entry?.recordHighYear != nil) || (entry == nil && limited),
+              entry == nil && limited ? "\(first.name): normals and records skipped: the archive service is limiting or not answering this runner"
+              : "\(first.name): normals and records load (normal high \(entry?.normalHigh.map { TempUnit.fahrenheit.spaced(TempUnit.fahrenheit.value($0)) } ?? "none"), record from \(entry?.recordHighYear.map(String.init) ?? "none"))")
         let alerts = try? await WeatherServices.alerts(for: City(name: "Denver", region: "", latitude: 39.74, longitude: -104.98))
         check(alerts != nil, "National Weather Service alerts answer for Denver (\(alerts?.count ?? 0) active)")
         check(["New Moon", "Waxing Crescent", "First Quarter", "Waxing Gibbous", "Full Moon", "Waning Gibbous", "Last Quarter", "Waning Crescent"].contains(Moon.phase(at: Date()).name),

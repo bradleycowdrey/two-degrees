@@ -508,3 +508,26 @@ enum WeatherServices {
         return WeatherAlert.parseNWS(data)
     }
 }
+
+// MARK: - For the self-tests
+
+extension WeatherServices {
+    /// Normals and records for a city: the store's, or fetched again (up to 3 tries, 20 s apart) when the
+    /// free archive service was busy. `limited` is true when it kept refusing or timing out: that is the
+    /// service's limit on shared CI machines, not the app, so the check notes it instead of failing.
+    @MainActor static func climateForCheck(_ city: City, store: WeatherStore) async -> (entry: Climate.Entry?, limited: Bool) {
+        if let entry = store.climate[city.id]?.entry(for: Date()) { return (entry, false) }
+        var limited = false
+        for attempt in 0..<3 {
+            if attempt > 0 { try? await Task.sleep(for: .seconds(20)) }
+            do {
+                return (try await WeatherServices.climate(for: city).entry(for: Date()), false)
+            } catch let error as URLError where [.badServerResponse, .timedOut, .networkConnectionLost].contains(error.code) {
+                limited = true
+            } catch {
+                limited = false
+            }
+        }
+        return (nil, limited)
+    }
+}

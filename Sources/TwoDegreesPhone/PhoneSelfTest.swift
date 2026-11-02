@@ -55,7 +55,9 @@ enum PhoneSelfTest {
         for _ in 0..<60 where store.airQuality[first.id] == nil || store.climate[first.id] == nil { try? await Task.sleep(for: .milliseconds(500)) }
         let reading = store.airQuality[first.id]?.reading(inUS: WeatherAlert.inUS(latitude: first.latitude, longitude: first.longitude))
         check(reading != nil, "\(first.name): air quality \(reading.map { "\($0.value) \($0.category)" } ?? "missing")")
-        check(store.climate[first.id]?.entry(for: Date())?.normalHigh != nil, "\(first.name): normals and records load")
+        let (entry, limited) = await WeatherServices.climateForCheck(first, store: store)
+        check(entry?.normalHigh != nil || (entry == nil && limited),
+              entry == nil && limited ? "\(first.name): normals and records skipped: the archive service is limiting or not answering" : "\(first.name): normals and records load")
         check(WeatherStore.maxCities == 20, "up to 20 cities")
 
         // 2. Unit switch, both ways.
