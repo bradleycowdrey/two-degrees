@@ -187,7 +187,7 @@ fun CityList(store: WeatherStore, onDismiss: () -> Unit, onLocationSetting: () -
                     }
                     item {
                         Column(Modifier.fillMaxWidth().padding(vertical = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("The weather in °F and °C at once. Data: Open-Meteo, GeoNames.", style = ui.text(13f, align = TextAlign.Center).copy(color = Palette.textMuted))
+                            Text("The weather in °F and °C at once.\nData: Open\u2011Meteo, GeoNames.", style = ui.text(13f, align = TextAlign.Center).copy(color = Palette.textMuted))
                             Text("Made by ${Brand.AUTHOR} · bradcowdrey.com", style = ui.text(13f).copy(color = Palette.textMuted))
                         }
                     }

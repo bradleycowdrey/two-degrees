@@ -104,11 +104,12 @@ struct CityList: View {
 
     private var footer: some View {
         VStack(spacing: ui.pt(6)) {
-            Text("The weather in °F and °C at once. Data: Open-Meteo, GeoNames.")
+            Text("The weather in °F and °C at once.\nData: Open\u{2011}Meteo, GeoNames.")
             Text("Made by \(Brand.author) · \(Brand.websiteHost)")
         }
         .font(ui.font(13))
         .foregroundStyle(.secondary)
+        .multilineTextAlignment(.center)
         .frame(maxWidth: .infinity)
         .padding(.vertical, ui.pt(8))
     }

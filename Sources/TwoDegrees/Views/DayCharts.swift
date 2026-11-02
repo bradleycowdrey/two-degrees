@@ -75,6 +75,16 @@ struct WindChart: View {
 
     var body: some View {
         let unit = store.windUnit.resolved(store.unit)
+        VStack(alignment: .leading, spacing: ui.pt(6)) {
+        // A legend above the plot, so it never sits on the axis labels.
+        HStack(spacing: ui.pt(12)) {
+            legend("Wind", width: 2.5, opacity: 1)
+            legend("Gusts", width: 1.5, opacity: 0.35)
+            Spacer(minLength: 0)
+            Text(unit.label).opacity(0.6)
+        }
+        .font(ui.font(11))
+        .accessibilityHidden(true)
         Chart {
             ForEach(hours) { hour in
                 if let gusts = hour.gusts {
@@ -96,9 +106,14 @@ struct WindChart: View {
         } }
         .foregroundStyle(.white)
         .frame(height: ui.pt(120))
-        .overlay(alignment: .topTrailing) {
-            Text("\(unit.label) · gusts lighter").font(ui.font(11)).opacity(0.6)
+        .accessibilityLabel("Wind by the hour, in \(unit.label), with gusts")
         }
-        .accessibilityLabel("Wind by the hour, in \(unit.label)")
+    }
+
+    private func legend(_ title: String, width: CGFloat, opacity: Double) -> some View {
+        HStack(spacing: ui.pt(5)) {
+            Capsule().fill(.white.opacity(opacity)).frame(width: ui.pt(14), height: width)
+            Text(title).opacity(0.75)
+        }
     }
 }

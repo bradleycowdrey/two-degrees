@@ -284,12 +284,16 @@ private fun RainChart(hours: List<Forecast.Hour>) {
 @Composable
 private fun WindChart(hours: List<Forecast.Hour>, units: Units) {
     val unit = units.wind
-    val top = maxOf(hours.maxOf { maxOf(it.wind ?: 0.0, it.gusts ?: 0.0) }, 10.0) * 1.1
-    fun f(kmh: Double) = (kmh / top).toFloat()
-    val marks = listOf(0.0, top / 2, top / 1.1)
+    // Round steps in the wind unit (0, 10, 20, 30…), as on the iPhone, with the top a whole step.
+    val perKmh = unit.value(1.0)
+    val peak = maxOf(hours.maxOf { maxOf(it.wind ?: 0.0, it.gusts ?: 0.0) } * perKmh, 4.0)
+    val step = listOf(1.0, 2.0, 5.0, 10.0, 20.0, 25.0, 50.0, 100.0).first { peak / it <= 4 }
+    val topValue = kotlin.math.ceil(peak / step) * step
+    fun f(kmh: Double) = (kmh * perKmh / topValue).toFloat()
+    val marks = generateSequence(0.0) { it + step }.takeWhile { it <= topValue + 1e-9 }.toList()
     Chart(
-        left = marks.map { f(it) to "${unit.value(it).roundHalfUp()}" },
-        right = listOf(f(top / 1.1) to unit.symbol),
+        left = marks.map { (it / topValue).toFloat() to "${it.roundHalfUp()}" },
+        right = listOf(1f to unit.symbol),
         description = "Wind up to ${unit.text(hours.maxOf { it.wind ?: 0.0 })}, gusts up to ${unit.text(hours.maxOf { it.gusts ?: 0.0 })}",
         hours = hours,
     ) { rect ->
@@ -300,5 +304,5 @@ private fun WindChart(hours: List<Forecast.Hour>, units: Units) {
         drawPath(line(points { it.wind }), Color.White, style = Stroke(3.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
     }
     val ui = LocalMetrics.current
-    Text("Solid line: wind · faint line: gusts", style = ui.text(12f), modifier = Modifier.alpha(0.6f))
+    Text("Bright line: wind · faint line: gusts", style = ui.text(12f), modifier = Modifier.alpha(0.6f))
 }

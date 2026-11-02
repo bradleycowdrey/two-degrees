@@ -11,7 +11,16 @@ adb shell settings put global window_animation_scale 0
 adb shell settings put global transition_animation_scale 0
 adb shell settings put global animator_duration_scale 0
 adb install -r "$APK"
-shot() { adb exec-out screencap -p > "$OUT/$1.png"; }
+# The emulator's launcher sometimes stalls and Android shows "isn't responding" over the app: hide those
+# dialogs, and close any that still appear before each photo.
+adb shell settings put global hide_error_dialogs 1 || true
+clear_dialogs() {
+  if adb shell dumpsys window | grep -qiE "Application Not Responding|isn't responding"; then
+    adb shell am broadcast -a android.intent.action.CLOSE_SYSTEM_DIALOGS >/dev/null 2>&1 || true
+    sleep 1
+  fi
+}
+shot() { clear_dialogs; adb exec-out screencap -p > "$OUT/$1.png"; }
 launch() { adb shell am start -W -n $ID/.MainActivity "$@" >/dev/null; }
 stop() { adb shell am force-stop $ID; }
 
