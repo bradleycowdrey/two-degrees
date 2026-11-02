@@ -47,6 +47,17 @@ jobs:
         run: |
           # The team comes from the secret if set, else from the Developer ID certificate (same team).
           if [[ -n "$NOTARY_TEAM_ID" ]]; then echo "DERIVED_TEAM_ID=$NOTARY_TEAM_ID" >> "$GITHUB_ENV"; else scripts/import-signing-cert.sh; fi
+      - name: Clear the last build's throwaway signing certificates
+        if: env.HAS_KEY == 'true'
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: |
+          # Each run's development certificate dies with its machine, and Apple caps how many an account holds.
+          python3 -m venv "$RUNNER_TEMP/venv"
+          "$RUNNER_TEMP/venv/bin/pip" install --quiet "pyjwt[crypto]==2.9.0"
+          cd scripts && "$RUNNER_TEMP/venv/bin/python" appstore_certs.py
       - name: Archive and upload
         if: env.HAS_KEY == 'true'
         env:
