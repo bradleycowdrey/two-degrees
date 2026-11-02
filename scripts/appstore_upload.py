@@ -4,7 +4,8 @@ appstore/metadata.json), screenshots (from appstore/screenshots), copyright, rev
 Env: ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8 (the API key), BUILD (a build number, or empty for the newest
 processed one), CONTACT_NAME / CONTACT_PHONE / CONTACT_EMAIL (App Review's contact; empty leaves it as is),
 SUBMIT=1 to submit the version for App Review once it's filled in, SKIP_SCREENSHOTS=1 to keep the
-screenshots already uploaded. Run by .github/workflows/appstore-metadata.yml. Needs PyJWT and cryptography.
+screenshots already uploaded, REPLACE_WAITING=1 to take a version out of review first (a submission that's
+waiting for review is cancelled, so its version can be edited and given a newer build). Run by .github/workflows/appstore-metadata.yml. Needs PyJWT and cryptography.
 Screenshots replace whatever is in each set, so running it twice is safe.
 """
 import hashlib
@@ -57,11 +58,32 @@ def step(text):
     print(f"== {text}", flush=True)
 
 
+def take_out_of_review(app):
+    """Cancels an iOS review submission that's waiting for review, and waits until its version can be edited."""
+    waiting = call("GET", f"/reviewSubmissions?filter[app]={app['id']}&filter[platform]=IOS&filter[state]=WAITING_FOR_REVIEW")["data"]
+    if not waiting:
+        print("nothing waiting for review")
+        return
+    for sub in waiting:
+        call("PATCH", f"/reviewSubmissions/{sub['id']}", {"data": {"type": "reviewSubmissions", "id": sub["id"], "attributes": {"canceled": True}}})
+        print(f"cancelled the submission from {sub['attributes'].get('submittedDate') or 'earlier'}")
+    for _ in range(45):   # Apple takes a moment to hand the version back
+        if call("GET", f"/apps/{app['id']}/appStoreVersions?filter[platform]=IOS&filter[appStoreState]={EDITABLE}")["data"]:
+            print("the version can be edited again")
+            return
+        time.sleep(20)
+    print("::error::The version is still not editable 15 minutes after cancelling. Check App Store Connect.")
+    raise SystemExit(1)
+
+
 def main():
     meta = json.load(open(os.path.join(ROOT, "metadata.json")))
 
     step("App and version")
     app = call("GET", f"/apps?filter[bundleId]={BUNDLE_ID}")["data"][0]
+    if os.environ.get("REPLACE_WAITING") == "1":
+        step("Taking the waiting version out of review")
+        take_out_of_review(app)
     versions = call("GET", f"/apps/{app['id']}/appStoreVersions?filter[platform]=IOS&filter[appStoreState]={EDITABLE}")["data"]
     if not versions:
         print("::error::No iOS version waiting to be submitted. Create one in App Store Connect (＋ next to iOS App).")
@@ -104,6 +126,12 @@ def main():
         print(f"::error::No processed build {number or ''} yet; Apple may still be processing it. Try again in a few minutes.")
         raise SystemExit(1)
     build = builds[0]
+    # The version's number must match the build's (CFBundleShortVersionString): a 1.0 version can't take a 2.1.0 build.
+    pre = call("GET", f"/builds/{build['id']}/preReleaseVersion")["data"]["attributes"]["version"]
+    if version["attributes"]["versionString"] != pre:
+        call("PATCH", f"/appStoreVersions/{version['id']}", {"data": {"type": "appStoreVersions", "id": version["id"], "attributes": {"versionString": pre}}})
+        print(f"version {version['attributes']['versionString']} renamed {pre} to match the build")
+        version["attributes"]["versionString"] = pre
     call("PATCH", f"/appStoreVersions/{version['id']}/relationships/build", {"data": {"type": "builds", "id": build["id"]}})
     print(f"build {build['attributes']['version']}")
 
