@@ -137,9 +137,9 @@ class WeatherTest {
         assertTrue(Detail.sunHeight(noon + 0.5, rise, set) < 0)
         assertTrue(Detail.sunHeight(Detail.dayFraction(LocalDateTime.of(2026, 11, 1, 21, 0), date), rise, set) < 0)
 
-        // The Averages scale reaches the records, and today where it's outside them.
+        // The Averages scale just fits the normal and today's range (not the records), with a little room.
         val (low, high) = Detail.averagesScale(5.0, 15.0, Normals.Entry(17.8, 7.2, 27.2, 1999, -2.2, 1957))
-        assertTrue(low < -2.2 && high > 27.2)
+        assertTrue(low < 5.0 && low > -2.2 && high > 17.8 && high < 27.2)
         val (low2, high2) = Detail.averagesScale(-10.0, 30.0, Normals.Entry(17.8, 7.2, null, null, null, null))
         assertTrue(low2 < -10.0 && high2 > 30.0)
     }

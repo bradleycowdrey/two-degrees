@@ -564,7 +564,7 @@ struct SunPath: View {
 }
 
 /// The normal low to high (muted) over today's low to high (in the tile's colour), on one scale that
-/// also takes in the records, so a day near a record sits near the end.
+/// just fits both, as in Apple's Weather, so the difference is easy to see.
 struct RangeBars: View {
     @Environment(\.metrics) private var ui
     let normalLow: Double
@@ -577,8 +577,8 @@ struct RangeBars: View {
 
     var body: some View {
         Canvas { context, canvas in
-            let lowest = min(recordLow ?? normalLow, normalLow, todayLow), highest = max(recordHigh ?? normalHigh, normalHigh, todayHigh)
-            let padding = max(highest - lowest, 1) * 0.05
+            let lowest = min(normalLow, todayLow), highest = max(normalHigh, todayHigh)
+            let padding = max((highest - lowest) * 0.15, 2)
             let low = lowest - padding, high = highest + padding
             let x = { (value: Double) in canvas.width * CGFloat((value - low) / (high - low)) }
             // One lane: a faint track, then the band from `from` to `to` with rounded ends.

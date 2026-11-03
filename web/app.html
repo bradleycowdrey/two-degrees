@@ -1219,7 +1219,8 @@
   /* ---------- More detail tiles ---------- */
   // Averages: one scale from the record (or normal) low to the record (or normal) high, today's range on top.
   function rangeBar(n, lo, hi) {
-    const min = Math.min(n[4] ?? n[1], lo), max = Math.max(n[2] ?? n[0], hi), pad = (max - min) * 0.04 || 1;
+    // Just fits the normal and today's range, as in Apple's Weather, so the difference is easy to see.
+    const min = Math.min(n[1], lo), max = Math.max(n[0], hi), pad = Math.max((max - min) * 0.15, 2);
     const at = (t) => ((t - min + pad) / (max - min + 2 * pad) * 100).toFixed(1);
     const band = (tag, a, b) => `<${tag} style="left:${at(a)}%;width:max(5px,${(at(b) - at(a)).toFixed(1)}%)"></${tag}>`;
     return `<div class="rbar" aria-hidden="true">${band('i', n[1], n[0])}${band('b', lo, hi)}</div>`;

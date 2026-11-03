@@ -136,9 +136,10 @@ object Detail {
      * and today's low and high, with a little room at each end.
      */
     fun averagesScale(todayLow: Double, todayHigh: Double, entry: Normals.Entry): Pair<Double, Double> {
-        val low = minOf(entry.recordLow ?: entry.normalLow ?: todayLow, todayLow)
-        val high = maxOf(entry.recordHigh ?: entry.normalHigh ?: todayHigh, todayHigh)
-        val pad = maxOf((high - low) * 0.05, 0.5)
+        // Just fits the normal and today's range, as in Apple's Weather, so the difference is easy to see.
+        val low = minOf(entry.normalLow ?: todayLow, todayLow)
+        val high = maxOf(entry.normalHigh ?: todayHigh, todayHigh)
+        val pad = maxOf((high - low) * 0.15, 2.0)
         return (low - pad) to (high + pad)
     }
 
