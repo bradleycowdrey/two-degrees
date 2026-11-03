@@ -408,7 +408,8 @@ private struct DetailTiles: View {
                  value: "\(Int(now.humidity.rounded()))%", sub: nil,
                  note: dewNote(now)).accent(TileAccent.humidity)
             let wind = store.windUnit.text(now.wind, temp: unit)
-            DetailTile(title: "Wind", icon: "wind", value: wind.main, sub: wind.other, note: windNote(now)).accent(TileAccent.wind)
+            DetailTile(title: "Wind", icon: "wind", value: wind.main, sub: wind.other, note: windNote(now),
+                       accessory: AnyView(WindCompass(direction: now.windDirection, accent: Color(hex: TileAccent.wind)))).accent(TileAccent.wind)
             DetailTile(title: "Rain", icon: "drop.fill",
                  value: "\(today?.rainChance ?? 0)%", sub: "chance today",
                  note: rainNote).accent(TileAccent.rain)
@@ -481,12 +482,21 @@ private struct DetailTiles: View {
             let outlook = SkyColour.outlook(forecast, at: next.time)
             let day = forecast.days.first { Calendar.current.isDate($0.date, inSameDayAs: next.time) }
             let other = next.isSunset ? forecast.days.first { ($0.sunrise ?? .distantPast) > next.time }?.sunrise : day?.sunset
+            let accent = next.isSunset ? TileAccent.sunset : TileAccent.sunrise
             DetailTile(title: next.isSunset ? "Sunset" : "Sunrise", icon: next.isSunset ? "sunset.fill" : "sunrise.fill",
                        value: time(next.time), sub: outlook?.rating.line,
-                       note: [outlook?.reason, "\(next.isSunset ? "Sunrise" : "Sunset") \(time(other))."].compactMap { $0 }.joined(separator: " ")).accent(next.isSunset ? TileAccent.sunset : TileAccent.sunrise)
+                       note: [outlook?.reason, "\(next.isSunset ? "Sunrise" : "Sunset") \(time(other))."].compactMap { $0 }.joined(separator: " "),
+                       accessory: sunPath(today, accent: accent)).accent(accent)
         } else {
-            DetailTile(title: "Sunset", icon: "sunset.fill", value: time(today?.sunset), sub: nil, note: "Sunrise \(time(today?.sunrise)).").accent(TileAccent.sunset)
+            DetailTile(title: "Sunset", icon: "sunset.fill", value: time(today?.sunset), sub: nil, note: "Sunrise \(time(today?.sunrise)).",
+                       accessory: sunPath(today, accent: TileAccent.sunset)).accent(TileAccent.sunset)
         }
+    }
+
+    /// Today's path of the sun, whichever of sunrise or sunset the tile shows (after sunset, the dot is below the horizon).
+    private func sunPath(_ today: Forecast.Day?, accent: UInt32) -> AnyView? {
+        guard let sunrise = today?.sunrise, let sunset = today?.sunset else { return nil }
+        return AnyView(SunPath(now: forecast.now.time, sunrise: sunrise, sunset: sunset, accent: Color(hex: accent)))
     }
 }
 
@@ -497,7 +507,7 @@ struct DetailTile: View {
     let value: String
     let sub: String?
     let note: String
-    /// A small picture under the reading: a scale bar or the moon.
+    /// A small picture under the reading: a scale bar, compass, sun path, range, cloud bars or the moon.
     var accessory: AnyView? = nil
     /// The tile's own colour (TileAccent): its icon and title, and a faint glow at the top.
     var accent: UInt32 = TileAccent.neutral
@@ -531,7 +541,8 @@ struct DetailTile: View {
         .monospacedDigit()
         .foregroundStyle(.white)
         .padding(ui.pt(14))
-        .frame(maxWidth: .infinity, minHeight: ui.pt(160), alignment: .topLeading)
+        // Fills its grid row, so two tiles side by side are always the same height.
+        .frame(maxWidth: .infinity, minHeight: ui.pt(160), maxHeight: .infinity, alignment: .topLeading)
         .background {
             let shape = RoundedRectangle(cornerRadius: ui.pt(16), style: .continuous)
             ZStack {

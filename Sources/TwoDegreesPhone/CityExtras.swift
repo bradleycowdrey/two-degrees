@@ -207,9 +207,12 @@ struct ExtraTiles: View {
         }
         if let today = forecast.days.first?.including(now.temperature), let entry = store.climate[city.id]?.entry(for: today.date),
            let normalHigh = entry.normalHigh, let normalLow = entry.normalLow {
+            let accent = TileAccent.versusNormal(today.high - normalHigh)
             DetailTile(title: "Averages", icon: "chart.line.uptrend.xyaxis",
                        value: Climate.comparison(high: today.high, normal: normalHigh, unit: unit), sub: nil,
-                       note: "Normal high \(unit.spaced(unit.value(normalHigh))) · \(unit.other.spaced(unit.other.value(normalHigh))), low \(unit.spaced(unit.value(normalLow))) · \(unit.other.spaced(unit.other.value(normalLow))).").accent(TileAccent.versusNormal(today.high - normalHigh))
+                       note: "Normal high \(unit.spaced(unit.value(normalHigh))) · \(unit.other.spaced(unit.other.value(normalHigh))), low \(unit.spaced(unit.value(normalLow))) · \(unit.other.spaced(unit.other.value(normalLow))).",
+                       accessory: AnyView(RangeBars(normalLow: normalLow, normalHigh: normalHigh, recordLow: entry.recordLow, recordHigh: entry.recordHigh,
+                                                    todayLow: today.low, todayHigh: today.high, accent: Color(hex: accent)))).accent(accent)
         } else {
             DetailTile(title: "Averages", icon: "chart.line.uptrend.xyaxis", value: "–", sub: nil, note: Self.missing).accent(TileAccent.neutral)
         }
@@ -228,13 +231,22 @@ struct ExtraTiles: View {
             DetailTile(title: "Precipitation", icon: "drop.fill", value: "–", sub: nil, note: Self.missing).accent(TileAccent.rain)
         }
         if let cover = now.cloudCover {
-            DetailTile(title: "Cloud cover", icon: "cloud.fill", value: "\(Int(cover.rounded()))%", sub: Details.clouds(cover), note: Details.cloudLayers(forecast) ?? "").accent(TileAccent.cloud)
+            DetailTile(title: "Cloud cover", icon: "cloud.fill", value: "\(Int(cover.rounded()))%", sub: Details.clouds(cover), note: Details.cloudLayers(forecast) ?? "",
+                       accessory: cloudBars()).accent(TileAccent.cloud)
         } else {
             DetailTile(title: "Cloud cover", icon: "cloud.fill", value: "–", sub: nil, note: Self.missing).accent(TileAccent.cloud)
         }
         let moon = Moon.phase(at: Date())
         DetailTile(title: "Moon", icon: "moon.fill", value: moon.name, sub: "\(moon.illumination)% lit", note: Moon.next(at: Date()),
                    accessory: AnyView(MoonDisc(fraction: Moon.fraction(at: Date())))).accent(TileAccent.moon)
+    }
+
+    /// Bars for the cloud at each height in the hour nearest now (the hour Details.cloudLayers reads).
+    private func cloudBars() -> AnyView? {
+        let time = forecast.now.time
+        guard let hour = forecast.hours.min(by: { abs($0.time.timeIntervalSince(time)) < abs($1.time.timeIntervalSince(time)) }),
+              let low = hour.cloudLow, let mid = hour.cloudMid, let high = hour.cloudHigh else { return nil }
+        return AnyView(CloudBars(low: low, mid: mid, high: high, accent: Color(hex: TileAccent.cloud)))
     }
 }
 
@@ -432,5 +444,195 @@ struct MoonDisc: View {
         }
         .frame(width: size, height: size)
         .accessibilityHidden(true)
+    }
+}
+
+/// A compass with the wind's arrow pointing where it's blowing, its tail on the side it comes from.
+/// No arrow when the direction isn't known.
+struct WindCompass: View {
+    @Environment(\.metrics) private var ui
+    let direction: Double?
+    let accent: Color
+
+    var body: some View {
+        Canvas { context, canvas in
+            let s = canvas.width / 56   // drawn at 56 pt, scaled with the text size
+            let c = CGPoint(x: canvas.width / 2, y: canvas.height / 2), r = canvas.width / 2 - 0.5
+            // A point at a bearing (0 = north, clockwise) and a distance from the centre.
+            func at(_ degrees: Double, _ distance: CGFloat) -> CGPoint {
+                let a = degrees * .pi / 180
+                return CGPoint(x: c.x + distance * CGFloat(sin(a)), y: c.y - distance * CGFloat(cos(a)))
+            }
+            context.stroke(Path(ellipseIn: CGRect(x: c.x - r, y: c.y - r, width: 2 * r, height: 2 * r)), with: .color(.white.opacity(0.25)), lineWidth: 1)
+            // A tick every 30°.
+            var ticks = Path()
+            for degrees in stride(from: 0.0, to: 360.0, by: 30.0) {
+                ticks.move(to: at(degrees, r - 1))
+                ticks.addLine(to: at(degrees, r - 4 * s))
+            }
+            context.stroke(ticks, with: .color(.white.opacity(0.35)), style: StrokeStyle(lineWidth: 1, lineCap: .round))
+            for (letter, degrees) in [("N", 0.0), ("E", 90.0), ("S", 180.0), ("W", 270.0)] {
+                var text = context.resolve(Text(letter).font(ui.font(8, .semibold)))
+                text.shading = .color(.white.opacity(0.5))
+                context.draw(text, at: at(degrees, r - 10 * s))
+            }
+            guard let direction else { return }
+            // The wind comes from `direction`, so it blows toward the opposite side.
+            let toward = direction + 180, length = r - 14 * s
+            let a = toward * .pi / 180
+            let along = CGVector(dx: CGFloat(sin(a)), dy: -CGFloat(cos(a))), across = CGVector(dx: -along.dy, dy: along.dx)
+            let head = at(toward, length), tail = at(direction, length)
+            let base = CGPoint(x: head.x - along.dx * 6 * s, y: head.y - along.dy * 6 * s)
+            var shaft = Path()
+            shaft.move(to: tail)
+            shaft.addLine(to: base)
+            context.stroke(shaft, with: .color(accent), style: StrokeStyle(lineWidth: 2 * s, lineCap: .round))
+            var tip = Path()
+            tip.move(to: head)
+            tip.addLine(to: CGPoint(x: base.x + across.dx * 3.5 * s, y: base.y + across.dy * 3.5 * s))
+            tip.addLine(to: CGPoint(x: base.x - across.dx * 3.5 * s, y: base.y - across.dy * 3.5 * s))
+            tip.closeSubpath()
+            context.fill(tip, with: .color(accent))
+            // A small ring at the tail, on the side the wind comes from.
+            let ring = 2.5 * s
+            context.stroke(Path(ellipseIn: CGRect(x: tail.x - ring, y: tail.y - ring, width: 2 * ring, height: 2 * ring)), with: .color(accent), lineWidth: 1.5 * s)
+        }
+        .frame(width: ui.pt(56), height: ui.pt(56))
+        .accessibilityHidden(true)
+    }
+}
+
+/// The sun's path across the day: a curve over the tile's width (midnight to midnight) that rises
+/// through a thin horizon at sunrise and sets through it at sunset, faint below it at night, with a dot
+/// where the sun is now.
+struct SunPath: View {
+    @Environment(\.metrics) private var ui
+    let now: Date
+    let sunrise: Date
+    let sunset: Date
+    let accent: Color
+
+    var body: some View {
+        Canvas { context, canvas in
+            let day = 86_400.0
+            // Seconds since that day's midnight (times are the city's wall clock, stored as GMT).
+            let clock = { (date: Date) in date.timeIntervalSince(Forecast.localCalendar.startOfDay(for: date)) }
+            let rise = clock(sunrise), length = min(max(sunset.timeIntervalSince(sunrise), 0), day)
+            let noon = rise + length / 2, offset = cos(Double.pi * length / day)
+            // How high the sun is: 0 at sunrise and sunset, highest at noon, lowest at midnight.
+            let height = { (t: Double) in cos(2 * Double.pi * (t - noon) / day) - offset }
+            let pad = ui.pt(6)
+            let k = (canvas.height - 2 * pad) / 2
+            let horizon = pad + k * CGFloat(1 - offset)
+            let point = { (t: Double) in CGPoint(x: canvas.width * CGFloat(t / day), y: horizon - k * CGFloat(height(t))) }
+
+            // The whole day, faint.
+            var whole = Path()
+            whole.move(to: point(0))
+            for i in 1...96 { whole.addLine(to: point(day * Double(i) / 96)) }
+            context.stroke(whole, with: .color(.white.opacity(0.22)), style: StrokeStyle(lineWidth: 1.5, lineCap: .round))
+            // Daylight: the arc above the horizon, in the tile's colour.
+            if length > 0 {
+                var arc = Path()
+                arc.move(to: point(rise))
+                for i in 1...48 { arc.addLine(to: point(rise + length * Double(i) / 48)) }
+                var under = arc
+                under.closeSubpath()
+                context.fill(under, with: .color(accent.opacity(0.15)))
+                context.stroke(arc, with: .color(accent.opacity(0.6)), style: StrokeStyle(lineWidth: 2, lineCap: .round))
+            }
+            var line = Path()
+            line.move(to: CGPoint(x: 0, y: horizon))
+            line.addLine(to: CGPoint(x: canvas.width, y: horizon))
+            context.stroke(line, with: .color(.white.opacity(0.3)), lineWidth: 1)
+            // The sun: bright with a glow when it's up, dim below the horizon.
+            let t = clock(now), sun = point(t)
+            if height(t) >= 0 {
+                let glow = ui.pt(6), dot = ui.pt(3.5)
+                context.fill(Path(ellipseIn: CGRect(x: sun.x - glow, y: sun.y - glow, width: 2 * glow, height: 2 * glow)), with: .color(accent.opacity(0.35)))
+                context.fill(Path(ellipseIn: CGRect(x: sun.x - dot, y: sun.y - dot, width: 2 * dot, height: 2 * dot)), with: .color(.white))
+            } else {
+                let dot = ui.pt(3)
+                context.fill(Path(ellipseIn: CGRect(x: sun.x - dot, y: sun.y - dot, width: 2 * dot, height: 2 * dot)), with: .color(.white.opacity(0.4)))
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: ui.pt(34))
+        .accessibilityHidden(true)
+    }
+}
+
+/// The normal low to high (muted) over today's low to high (in the tile's colour), on one scale that
+/// also takes in the records, so a day near a record sits near the end.
+struct RangeBars: View {
+    @Environment(\.metrics) private var ui
+    let normalLow: Double
+    let normalHigh: Double
+    let recordLow: Double?
+    let recordHigh: Double?
+    let todayLow: Double
+    let todayHigh: Double
+    let accent: Color
+
+    var body: some View {
+        Canvas { context, canvas in
+            let lowest = min(recordLow ?? normalLow, normalLow, todayLow), highest = max(recordHigh ?? normalHigh, normalHigh, todayHigh)
+            let padding = max(highest - lowest, 1) * 0.05
+            let low = lowest - padding, high = highest + padding
+            let x = { (value: Double) in canvas.width * CGFloat((value - low) / (high - low)) }
+            // One lane: a faint track, then the band from `from` to `to` with rounded ends.
+            func lane(_ from: Double, _ to: Double, y: CGFloat, thickness: CGFloat, colour: Color) {
+                let track = CGRect(x: 0, y: y, width: canvas.width, height: thickness)
+                context.fill(Path(roundedRect: track, cornerRadius: thickness / 2), with: .color(.white.opacity(0.08)))
+                let start = x(min(from, to)), width = max(x(max(from, to)) - start, thickness)
+                let band = CGRect(x: min(start, canvas.width - width), y: y, width: width, height: thickness)
+                context.fill(Path(roundedRect: band, cornerRadius: thickness / 2), with: .color(colour))
+            }
+            let normal = ui.pt(4), today = ui.pt(6)
+            lane(normalLow, normalHigh, y: 0, thickness: normal, colour: .white.opacity(0.4))
+            lane(todayLow, todayHigh, y: canvas.height - today, thickness: today, colour: accent)
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: ui.pt(14))
+        .accessibilityHidden(true)
+    }
+}
+
+/// Cloud at each height, high to low, as thin bars filled to its share of the sky.
+struct CloudBars: View {
+    @Environment(\.metrics) private var ui
+    let low: Double
+    let mid: Double
+    let high: Double
+    let accent: Color
+
+    var body: some View {
+        VStack(spacing: ui.pt(3)) {
+            row("High", high)
+            row("Mid", mid)
+            row("Low", low)
+        }
+        .accessibilityHidden(true)
+    }
+
+    private func row(_ name: String, _ percent: Double) -> some View {
+        HStack(spacing: ui.pt(6)) {
+            Text(name)
+                .font(ui.font(10))
+                .opacity(0.55)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+                .frame(width: ui.pt(26), alignment: .leading)
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Capsule().fill(.white.opacity(0.12))
+                    if percent >= 0.5 {
+                        Capsule().fill(accent)
+                            .frame(width: max(geo.size.height, geo.size.width * CGFloat(min(percent, 100) / 100)))
+                    }
+                }
+            }
+            .frame(height: ui.pt(4))
+        }
     }
 }
