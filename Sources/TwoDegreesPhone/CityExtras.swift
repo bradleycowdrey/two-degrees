@@ -524,7 +524,8 @@ struct SunPath: View {
             let pad = ui.pt(6)
             let k = (canvas.height - 2 * pad) / 2
             let horizon = pad + k * CGFloat(1 - offset)
-            let point = { (t: Double) in CGPoint(x: canvas.width * CGFloat(t / day), y: horizon - k * CGFloat(height(t))) }
+            let inset = ui.pt(6)   // keeps the sun's glow inside the tile near midnight
+            let point = { (t: Double) in CGPoint(x: inset + (canvas.width - 2 * inset) * CGFloat(t / day), y: horizon - k * CGFloat(height(t))) }
 
             // The whole day, faint.
             var whole = Path()
