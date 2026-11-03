@@ -105,9 +105,41 @@ object SkyColour {
 object Detail {
     /** Which clouds there are now, from the hour's layers: "Mostly high, thin cloud." */
     fun cloudLayers(forecast: Forecast): String? {
+        val (low, mid, high) = cloudLayerValues(forecast) ?: return null
+        return cloudWords(low, mid, high)
+    }
+
+    /** The hour nearest now's cloud by height, (low, mid, high) in %, or null if any is missing. */
+    fun cloudLayerValues(forecast: Forecast): Triple<Double, Double, Double>? {
         val now = forecast.now.time
         val hour = forecast.hours.minByOrNull { kotlin.math.abs(java.time.Duration.between(it.time, now).toMinutes()) } ?: return null
-        return cloudWords(hour.cloudLow ?: return null, hour.cloudMid ?: return null, hour.cloudHigh ?: return null)
+        return Triple(hour.cloudLow ?: return null, hour.cloudMid ?: return null, hour.cloudHigh ?: return null)
+    }
+
+    /** How far through the day a time is, 0 at midnight to 1 at the next midnight. */
+    fun dayFraction(time: java.time.LocalDateTime, date: java.time.LocalDate): Double =
+        (java.time.Duration.between(date.atStartOfDay(), time).toMinutes() / 1440.0).coerceIn(0.0, 1.0)
+
+    /**
+     * The sun's height on the sunrise/sunset curve at a point in the day (all day fractions): a cosine
+     * over 24 hours, highest midway between sunrise and sunset and 0 at both. Runs from -1 - k to 1 - k,
+     * where k is [sunCurveShift].
+     */
+    fun sunHeight(x: Double, sunrise: Double, sunset: Double): Double =
+        kotlin.math.cos(2 * Math.PI * (x - (sunrise + sunset) / 2)) - sunCurveShift(sunrise, sunset)
+
+    /** How far the curve sits below centre: the cosine's value at sunrise. */
+    fun sunCurveShift(sunrise: Double, sunset: Double): Double = kotlin.math.cos(Math.PI * (sunset - sunrise))
+
+    /**
+     * The Averages tile's scale: from the lowest to the highest of the record (or normal) low and high
+     * and today's low and high, with a little room at each end.
+     */
+    fun averagesScale(todayLow: Double, todayHigh: Double, entry: Normals.Entry): Pair<Double, Double> {
+        val low = minOf(entry.recordLow ?: entry.normalLow ?: todayLow, todayLow)
+        val high = maxOf(entry.recordHigh ?: entry.normalHigh ?: todayHigh, todayHigh)
+        val pad = maxOf((high - low) * 0.05, 0.5)
+        return (low - pad) to (high + pad)
     }
 
     fun cloudWords(low: Double, mid: Double, high: Double): String = when {
