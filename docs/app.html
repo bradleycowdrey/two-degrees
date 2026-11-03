@@ -614,7 +614,15 @@
   const rainIn = (mm, unit) => (mm === 0 ? `0 ${unit}` : unit === 'in' ? `${(mm / 25.4).toFixed(2)} in` : `${mm < 10 ? mm.toFixed(1) : Math.round(mm)} mm`);
   const fmtRain = (mm) => { const r = rainUnit(); return [rainIn(mm, r), rainIn(mm, r === 'in' ? 'mm' : 'in')]; };
   // Visibility follows the wind unit's system: miles with mph, kilometres otherwise.
-  const fmtVis = (m) => { const mi = windUnit() === 'mph', v = mi ? m / 1609.344 : m / 1000; return `${v >= 10 ? Math.round(v) : v.toFixed(1)} ${mi ? 'mi' : 'km'}`; };
+  // Visibility in both systems, the wind unit's first: "8 mi" and "13 km"; under a mile or a kilometre,
+  // feet and metres ("1,600 ft", "490 m"). The same rule as the apps.
+  const distance = (m, imperial) => {
+    const short = (v) => v.toFixed(1).replace(/\.0$/, '');
+    if (imperial) { const mi = m / 1609.344; return mi >= 10 ? `${Math.round(mi)} mi` : mi >= 1 ? `${short(mi)} mi` : `${(Math.round(m * 3.28084 / 100) * 100).toLocaleString('en-US')} ft`; }
+    const km = m / 1000; return km >= 10 ? `${Math.round(km)} km` : km >= 1 ? `${short(km)} km` : `${Math.round(m / 10) * 10} m`;
+  };
+  const fmtVis = (m) => distance(m, windUnit() === 'mph');
+  const fmtVisOther = (m) => distance(m, windUnit() !== 'mph');
 
   /* ---------- State ---------- */
   const EMBEDDED = window.parent !== window;   // running inside the product page's frame
@@ -1218,7 +1226,7 @@
     if (n) { const dlt = today.max - n[0]; acc.normal = dlt >= 1.5 ? '#F2A65A' : dlt <= -1.5 ? '#8CC0F5' : '#C9C2B8'; }
     if (n) tile('normal', 'Averages', vsNormal(today.max, n[0]), '', `Normal high ${nw(n[0])}, low ${nw(n[1])}`);
     else missing('normal', 'Averages');
-    if (cur.vis != null) tile('visibility', 'Visibility', fmtVis(cur.vis), '', visLabel(cur.vis));
+    if (cur.vis != null) tile('visibility', 'Visibility', fmtVis(cur.vis), fmtVisOther(cur.vis), visLabel(cur.vis));
     else missing('visibility', 'Visibility');
     if (data.daily[0].psum != null) {
       const [v, s] = fmtRain(data.daily[0].psum);
@@ -1543,6 +1551,9 @@
       sheet.innerHTML = daySheet(city, data, spec.i, 320);   // lay out once, then draw the charts at the real width
       sheet.innerHTML = daySheet(city, data, spec.i, chartWidth());
       sheet.setAttribute('aria-label', `${$('#sheetTitle').textContent}: the day in detail`);
+      // On a narrow screen at a large text size, "Wednesday, Nov 4" becomes "Wed, Nov 4" rather than being cut off.
+      const h = $('#sheetTitle');
+      if (h.scrollWidth > h.clientWidth + 1) h.textContent = h.textContent.replace(/^([A-Za-z]{3})[a-z]+,/, '$1,');
     } else {
       const a = alertsOf(city)[spec.i];
       if (!a) return closeSheet();
@@ -1988,7 +1999,7 @@
   }
   // Read by tests/web.test.js. inject: put sample alerts or air quality on the city showing, as if they'd loaded.
   window.__twoDegreesTest = {
-    deg, moonPhase, moonNext, skyRule, stepDay,
+    deg, moonPhase, moonNext, skyRule, stepDay, distance,
     inject(kind, value) { state[kind][keyOf(state.cities[state.active])] = value; render(); },
   };
   applyLook();

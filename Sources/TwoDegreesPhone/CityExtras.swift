@@ -215,7 +215,7 @@ struct ExtraTiles: View {
         }
         if let metres = now.visibility {
             let v = Details.visibility(metres, miles: store.windUnit.usesMiles(unit))
-            DetailTile(title: "Visibility", icon: "eye.fill", value: v.value, sub: nil, note: v.note).accent(TileAccent.visibility)
+            DetailTile(title: "Visibility", icon: "eye.fill", value: v.value, sub: v.other, note: v.note).accent(TileAccent.visibility)
         } else {
             DetailTile(title: "Visibility", icon: "eye.fill", value: "–", sub: nil, note: Self.missing).accent(TileAccent.visibility)
         }

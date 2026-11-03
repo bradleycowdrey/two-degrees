@@ -129,7 +129,7 @@ struct DetailsTile: View {
         }
         if let metres = now.visibility {
             let v = Details.visibility(metres, miles: store.windUnit.usesMiles(unit))
-            list.append(Item(key: "Visibility", value: v.value, sub: v.note.replacingOccurrences(of: ".", with: ""), help: v.note))
+            list.append(Item(key: "Visibility", value: v.value, sub: v.other, help: v.note))
         } else {
             list.append(missing("Visibility"))
         }

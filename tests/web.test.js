@@ -349,11 +349,11 @@ async function setSize(page, size) {
     check(/km\/h \/ /.test(await wind()) && /mm \/ .*in$/.test(await tile('precip')), `units: Automatic with °C is km/h and mm (${await wind()}; ${await tile('precip')})`);
     const pick = async (attr) => { await page.click('#moreBtn'); await page.click(`#moreMenu [${attr}]`); };
     await pick('data-wind-unit="ms"');
-    check(/^\d+ m\/s \/ /.test(await wind()) && / km \/ $/.test(await tile('visibility')), `Wind: m/s stands alone (${await wind()})`);
+    check(/^\d+ m\/s \/ /.test(await wind()) && / km \/ [\d.,]+ (mi|ft)$/.test(await tile('visibility')), `Wind: m/s stands alone; visibility in km with miles beside it (${await wind()}; ${await tile('visibility')})`);
     await pick('data-wind-unit="kn"');
     check(/^\d+ kn \/ /.test(await wind()), `Wind: knots (${await wind()})`);
     await pick('data-wind-unit="mph"');
-    check(/^\d+ mph \/ (\d+ km\/h|Gusts to \d+\u00A0mph)$/.test(await wind()) && / mi \/ $/.test(await tile('visibility')), `Wind: mph, with km/h beside it, and visibility in miles (${await wind()}; ${await tile('visibility')})`);
+    check(/^\d+ mph \/ (\d+ km\/h|Gusts to \d+\u00A0mph)$/.test(await wind()) && / mi \/ [\d.,]+ (km|m)$/.test(await tile('visibility')), `Wind: mph, with km/h beside it, and visibility in miles (${await wind()}; ${await tile('visibility')})`);
     await pick('data-rain-unit="in"');
     check(/^(0|\d+\.\d\d) in \/ (0|\d+(\.\d)?) mm$/.test(await tile('precip')), `Rain: in, with mm beside it (${await tile('precip')})`);
     await page.click('#moreBtn');
@@ -494,6 +494,8 @@ async function setSize(page, size) {
     const rules = await page.evaluate(() => [[0, 20, 50], [20, 0, 50], [0, 0, 0], [0, 95, 95], [80, 30, 30]].map(([l, m, h]) => __twoDegreesTest.skyRule(l, m, h, 0, 2, 24000).r).join(','));
     const nm = await page.evaluate(() => [__twoDegreesTest.moonNext(0.5 - 1 / 29.53), __twoDegreesTest.moonNext(0)].join(' | '));
     check(nm === 'Full moon tomorrow. | New moon today.', `the moon tile says when the next full or new moon is (${nm})`);
+    const dist = await page.evaluate(() => [[24000, false], [24000, true], [12875, true], [12875, false], [490, true], [490, false]].map(([m, i]) => __twoDegreesTest.distance(m, i)).join(', '));
+    check(dist === '24 km, 15 mi, 8 mi, 13 km, 1,600 ft, 490 m', `visibility in miles and kilometres, and feet and metres in fog (${dist})`);
     check(rules === '3,2,1,1,0', `sky colour: high cloud great, some low cloud good, clear or overcast fair, low cloud poor (${rules})`);
     await page.evaluate(() => __twoDegreesTest.inject('aq', { us: null, eu: null, pollen: null }));
     check(await page.$eval('.dt[data-tile="aqi"] .dv', (e) => e.textContent.trim()) === '–' && await page.$$eval('.dt', (els) => els.length) === 8, 'no air quality reading: its tile shows a dash and the count stays eight');

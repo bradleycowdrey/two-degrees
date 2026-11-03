@@ -132,12 +132,27 @@ enum Details {
         return "Mostly high, thin cloud."
     }
 
-    static func visibility(_ metres: Double, miles: Bool) -> (value: String, note: String) {
+    /// Visibility in both systems, the chosen one first: "8 mi" and "13 km"; under a mile or a kilometre,
+    /// feet and metres ("1,600 ft", "490 m"). The same rule on every platform.
+    static func visibility(_ metres: Double, miles: Bool) -> (value: String, other: String, note: String) {
         let km = metres / 1000
-        let value = miles ? (km / 1.609 >= 10 ? "10+ mi" : String(format: "%.0f mi", km / 1.609))
-                          : (km >= 16 ? "16+ km" : String(format: "%.0f km", km))
         let note = km >= 10 ? "Clear view." : (km >= 2 ? "Haze is cutting the view." : "Fog is cutting the view.")
-        return (value, note)
+        let imperial = distance(metres, imperial: true), metric = distance(metres, imperial: false)
+        return miles ? (imperial, metric, note) : (metric, imperial, note)
+    }
+
+    static func distance(_ metres: Double, imperial: Bool) -> String {
+        let grouped = { (n: Int) in n.formatted(.number.grouping(.automatic).locale(Locale(identifier: "en_US"))) }
+        if imperial {
+            let mi = metres / 1609.344
+            if mi >= 10 { return "\(Int(mi.rounded())) mi" }
+            if mi >= 1 { return String(format: "%.1f mi", mi).replacingOccurrences(of: ".0 ", with: " ") }
+            return "\(grouped(Int((metres * 3.28084 / 100).rounded()) * 100)) ft"
+        }
+        let km = metres / 1000
+        if km >= 10 { return "\(Int(km.rounded())) km" }
+        if km >= 1 { return String(format: "%.1f km", km).replacingOccurrences(of: ".0 ", with: " ") }
+        return "\(Int((metres / 10).rounded()) * 10) m"
     }
 
     static func clouds(_ percent: Double) -> String {

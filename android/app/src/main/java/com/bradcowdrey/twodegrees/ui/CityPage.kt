@@ -435,7 +435,7 @@ private fun MoreTiles(city: City, forecast: Forecast, state: WeatherStore.State)
         tiles.add { DetailTile("Averages", "–", null, missing, it, accent = TileAccent.NEUTRAL) }
     }
     val m = now.visibility
-    tiles.add { if (m != null) DetailTile("Visibility", units.visibility(m), null, Detail.visibilityWord(m), it, accent = TileAccent.VISIBILITY) else DetailTile("Visibility", "–", null, missing, it, accent = TileAccent.VISIBILITY) }
+    tiles.add { if (m != null) DetailTile("Visibility", units.visibility(m), units.visibilityOther(m), Detail.visibilityWord(m), it, accent = TileAccent.VISIBILITY) else DetailTile("Visibility", "–", null, missing, it, accent = TileAccent.VISIBILITY) }
     val mm = today?.precipitationSum
     if (mm != null) {
         val (main, other) = units.rain(mm)

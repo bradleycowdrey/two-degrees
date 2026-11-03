@@ -732,7 +732,12 @@ final class WeatherExtrasTests: XCTestCase {
     func testWords() {
         XCTAssertEqual(Details.clouds(5), "Clear")
         XCTAssertEqual(Details.clouds(75), "Mostly cloudy")
-        XCTAssertEqual(Details.visibility(24_000, miles: false).value, "16+ km")
+        XCTAssertEqual(Details.visibility(24_000, miles: false).value, "24 km")
+        XCTAssertEqual(Details.visibility(24_000, miles: false).other, "15 mi")
+        XCTAssertEqual(Details.visibility(12_875, miles: true).value, "8 mi")
+        XCTAssertEqual(Details.visibility(12_875, miles: true).other, "13 km")
+        XCTAssertEqual(Details.visibility(490, miles: true).value, "1,600 ft")
+        XCTAssertEqual(Details.visibility(490, miles: true).other, "490 m")
         XCTAssertEqual(Details.visibility(1_000, miles: true).note, "Fog is cutting the view.")
     }
 

@@ -240,6 +240,11 @@ class WeatherTest {
         assertEquals("16 km", c.visibility(16_000.0))
         assertEquals("9.9 mi", f.visibility(16_000.0))
         assertEquals("1.5 km", c.visibility(1_500.0))
+        assertEquals("9.9 mi", c.visibilityOther(16_000.0))
+        assertEquals("8 mi", f.visibility(12_875.0))
+        assertEquals("13 km", f.visibilityOther(12_875.0))
+        assertEquals("1,600 ft", f.visibility(490.0))
+        assertEquals("490 m", f.visibilityOther(490.0))
         assertEquals(WindUnit.KN, WindUnit.of("kn"))
         assertEquals(RainUnit.AUTO, RainUnit.of(null))
     }

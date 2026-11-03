@@ -64,10 +64,30 @@ data class Units(val temperature: TempUnit, val windChoice: WindUnit = WindUnit.
     fun rain(mm: Double): Pair<String, String?> = rain.text(mm) to rain.counterpart.text(mm)
 
     /** "16 km" or "9.9 mi", from metres. */
-    fun visibility(metres: Double): String {
-        val v = if (wind.usesMiles) metres / 1609.344 else metres / 1000
-        val text = if (v >= 10) "${v.roundHalfUp()}" else fixed(v, 1)
-        return "$text ${if (wind.usesMiles) "mi" else "km"}"
+    /** Visibility in the wind unit's system: "8 mi", "13 km"; under a mile or kilometre, "1,600 ft", "490 m". */
+    fun visibility(metres: Double): String = distance(metres, wind.usesMiles)
+    /** The same distance in the other system, shown beside it. */
+    fun visibilityOther(metres: Double): String = distance(metres, !wind.usesMiles)
+
+    companion object {
+        fun distance(metres: Double, imperial: Boolean): String {
+            fun short(v: Double) = fixed(v, 1).removeSuffix(".0")
+            return if (imperial) {
+                val mi = metres / 1609.344
+                when {
+                    mi >= 10 -> "${mi.roundHalfUp()} mi"
+                    mi >= 1 -> "${short(mi)} mi"
+                    else -> "${"%,d".format(java.util.Locale.US, (metres * 3.28084 / 100).roundHalfUp() * 100)} ft"
+                }
+            } else {
+                val km = metres / 1000
+                when {
+                    km >= 10 -> "${km.roundHalfUp()} km"
+                    km >= 1 -> "${short(km)} km"
+                    else -> "${(metres / 10).roundHalfUp() * 10} m"
+                }
+            }
+        }
     }
 }
 
