@@ -159,6 +159,14 @@ async function setSize(page, size) {
       normal: /^(About normal|\d+° (above|below) normal) \| Normal high -?\d+°F · -?\d+°C, low -?\d+°F · -?\d+°C$/,
     };
     for (const [k, re] of Object.entries(expect)) check(re.test(tiles[k] || ''), t(`${k} tile shows a value (${tiles[k]})`));
+    // Graphics: the averages range bar, the sun's path on sunrise and sunset, the cloud layers; all hidden from screen readers.
+    const gfx = await page.evaluate(() => Object.fromEntries([['normal', '.rbar b'], ['sunrise', '.sunpath svg'], ['sunset', '.sunpath svg'], ['cloud', '.clbars i']].map(([k, sel]) => {
+      const e = document.querySelector(`.dt[data-tile="${k}"] ${sel}`), box = e && e.closest('[aria-hidden="true"]');
+      return [k, !!e && !!box && e.getBoundingClientRect().width > 0];
+    })));
+    for (const [k, ok] of Object.entries(gfx)) check(ok, t(`${k} tile has its graphic, hidden from screen readers`));
+    const uneven = await page.$$eval('.dgrid .dt', (els) => els.map((e) => e.getBoundingClientRect()).filter((r, i, a) => i > 0 && Math.abs(r.top - a[i - 1].top) < 1 && Math.abs(r.height - a[i - 1].height) > 0.5).length);
+    check(uneven === 0, t('detail tiles side by side are the same height'));
     check(/^(\d+ mph|Gusts to \d+\u00A0mph)$/.test((await page.textContent('.stat:nth-child(3) .s')).trim()) || /km\/h$/.test(await page.textContent('.stat:nth-child(3) .s')),
       t(`wind shows km/h beside mph, or the gusts (${(await page.textContent('.stat:nth-child(3)')).trim()})`));
     const map = await page.getAttribute('#mapLink', 'href');

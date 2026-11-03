@@ -341,6 +341,22 @@
   .dt .dn { margin-top: auto; padding-top: 6px; font-size: 13px; line-height: 1.35; color: var(--secondary); overflow-wrap: break-word; }
   .aqbar { position: relative; height: 4px; margin: 8px 6px 2px 0; border-radius: 4px; }
   .aqbar u { position: absolute; top: 50%; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%; background: var(--text); box-shadow: 0 0 0 2.5px var(--tile); }
+  /* Averages: normal low–high (muted) and today's low–high (the accent) on one scale. */
+  .rbar { position: relative; height: 6px; margin: 10px 6px 2px 0; border-radius: 3px; background: color-mix(in srgb, var(--text) 8%, transparent); }
+  .rbar i, .rbar b { position: absolute; top: 50%; border-radius: 3px; }
+  .rbar i { height: 5px; margin-top: -2.5px; background: color-mix(in srgb, var(--text) 26%, transparent); }
+  .rbar b { height: 6px; margin-top: -3px; background: var(--acc); box-shadow: 0 0 0 1.5px var(--tile); }
+  /* Sunrise and sunset: the sun's path over one day, the horizon, and where the sun is now. */
+  .sunpath { position: relative; height: 34px; margin: 10px 0 2px; }
+  .sunpath svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+  .sunpath u { position: absolute; width: 8px; height: 8px; margin: -4px 0 0 -4px; border-radius: 50%; }
+  .sunpath u.up { background: var(--acc); box-shadow: 0 0 6px 1px color-mix(in srgb, var(--acc) 60%, transparent); }
+  .sunpath u.down { background: color-mix(in srgb, var(--text) 30%, var(--tile)); }
+  /* Cloud cover: high, mid and low layers, each filled to its share. */
+  .clbars { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 4px 8px; margin: 10px 6px 2px 0; }
+  .clbars span { font-size: 11px; line-height: 13px; color: var(--muted); }
+  .clbars div { position: relative; height: 4px; border-radius: 2px; background: color-mix(in srgb, var(--text) 10%, transparent); }
+  .clbars div i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 2px; background: var(--acc); }
   @container (max-width: 250px) { .dgrid { grid-template-columns: minmax(0, 1fr); } }
 
   /* Rain map: opens the shared map page, at this city, in a new tab. */
@@ -1201,6 +1217,33 @@
   }
 
   /* ---------- More detail tiles ---------- */
+  // Averages: one scale from the record (or normal) low to the record (or normal) high, today's range on top.
+  function rangeBar(n, lo, hi) {
+    const min = Math.min(n[4] ?? n[1], lo), max = Math.max(n[2] ?? n[0], hi), pad = (max - min) * 0.04 || 1;
+    const at = (t) => ((t - min + pad) / (max - min + 2 * pad) * 100).toFixed(1);
+    const band = (tag, a, b) => `<${tag} style="left:${at(a)}%;width:max(5px,${(at(b) - at(a)).toFixed(1)}%)"></${tag}>`;
+    return `<div class="rbar" aria-hidden="true">${band('i', n[1], n[0])}${band('b', lo, hi)}</div>`;
+  }
+  // The sun's path over today: a cosine through sunrise and sunset, across 24 hours, with the sun at the current time.
+  function sunPath(now, rise, set) {
+    const hrs = (s) => { const d = parseLocal(s); return d.getUTCHours() + d.getUTCMinutes() / 60; };
+    const r = hrs(rise), s = hrs(set), noon = (r + s) / 2, H = 34;
+    if (!(s > r)) return '';
+    const y = (h) => H / 2 - 15 * Math.cos(2 * Math.PI * (h - noon) / 24), horizon = y(r);
+    const pts = (a, b) => { const p = []; for (let h = a; h < b; h += 0.25) p.push(`${(h / 24 * 100).toFixed(2)},${y(h).toFixed(2)}`); p.push(`${(b / 24 * 100).toFixed(2)},${y(b).toFixed(2)}`); return p.join(' '); };
+    const t = Math.min(24, Math.max(0, (parseLocal(now) - parseLocal(rise.slice(0, 10) + 'T00:00')) / 36e5)), up = t > r && t < s;
+    const line = 'fill="none" vector-effect="non-scaling-stroke" stroke-linecap="round"';
+    return `<div class="sunpath" aria-hidden="true"><svg viewBox="0 0 100 ${H}" preserveAspectRatio="none">` +
+      `<line x1="0" x2="100" y1="${horizon.toFixed(2)}" y2="${horizon.toFixed(2)}" stroke="var(--text)" stroke-opacity=".22" stroke-width="1" vector-effect="non-scaling-stroke"/>` +
+      `<polyline points="${pts(0, r)}" ${line} stroke="var(--text)" stroke-opacity=".2" stroke-width="1.5"/>` +
+      `<polyline points="${pts(s, 24)}" ${line} stroke="var(--text)" stroke-opacity=".2" stroke-width="1.5"/>` +
+      `<polygon points="${pts(r, s)}" fill="var(--acc)" fill-opacity=".12"/>` +
+      `<polyline points="${pts(r, s)}" ${line} stroke="var(--acc)" stroke-opacity=".75" stroke-width="1.5"/></svg>` +
+      `<u class="${up ? 'up' : 'down'}" style="left:${(t / 24 * 100).toFixed(1)}%;top:${y(t).toFixed(1)}px"></u></div>`;
+  }
+  // Cloud cover by height: high, mid and low, top to bottom.
+  const cloudBars = (h) => `<div class="clbars" aria-hidden="true">` +
+    [['High', h.hi], ['Mid', h.mi], ['Low', h.lo]].map(([k, v]) => `<span>${k}</span><div><i style="width:${Math.max(0, Math.min(100, v)).toFixed(0)}%"></i></div>`).join('') + '</div>';
   function renderDetails(city, data, today) {
     const cur = data.current, tiles = [];
     // One quiet accent colour per tile, on its title and as a faint glow at the top (as in the apps).
@@ -1223,7 +1266,7 @@
     const n = normalsFor(city, data.daily[0].date);
     const nw = (t) => `<span style="white-space:nowrap">${both(t)}</span>`;
     if (n) { const dlt = today.max - n[0]; acc.normal = dlt >= 1.5 ? '#F2A65A' : dlt <= -1.5 ? '#8CC0F5' : '#C9C2B8'; }
-    if (n) tile('normal', 'Averages', vsNormal(today.max, n[0]), '', `Normal high ${nw(n[0])}, low ${nw(n[1])}`);
+    if (n) tile('normal', 'Averages', vsNormal(today.max, n[0]), '', `Normal high ${nw(n[0])}, low ${nw(n[1])}`, rangeBar(n, today.min, today.max));
     else missing('normal', 'Averages');
     if (cur.vis != null) tile('visibility', 'Visibility', fmtVis(cur.vis), fmtVisOther(cur.vis), visLabel(cur.vis));
     else missing('visibility', 'Visibility');
@@ -1238,14 +1281,15 @@
       : Math.max(hNow.lo, hNow.mi, hNow.hi) < 10 ? 'No cloud at any height.'
       : [hNow.lo, hNow.mi, hNow.hi].filter((x) => x >= 50).length >= 2 ? 'Cloud at several heights.'
       : hNow.lo >= hNow.mi && hNow.lo >= hNow.hi ? 'Mostly low cloud.' : hNow.mi >= hNow.hi ? 'Mostly mid-level cloud.' : 'Mostly high, thin cloud.';
-    if (cur.cloud != null) tile('cloud', 'Cloud Cover', `${Math.round(cur.cloud)}%`, cloudLabel(cur.cloud), layers);
+    if (cur.cloud != null) tile('cloud', 'Cloud Cover', `${Math.round(cur.cloud)}%`, cloudLabel(cur.cloud), layers, layers ? cloudBars(hNow) : '');
     else missing('cloud', 'Cloud Cover');
     // The next sunrise and the next sunset, and how colourful each is likely to be.
-    const nowT = parseLocal(data.current.time);
+    const nowT = parseLocal(data.current.time), d0 = data.daily[0];
+    const sun = d0.sunrise && d0.sunset ? sunPath(data.current.time, d0.sunrise, d0.sunset) : '';
     for (const [id, title, key] of [['sunrise', 'Sunrise', 'sunrise'], ['sunset', 'Sunset', 'sunset']]) {
       const when = data.daily.map((d) => d[key]).find((x) => x && parseLocal(x) > nowT);
       const sky = skyAt(data, when);
-      if (when) tile(id, title, clock(when), sky ? sky.line : '', sky ? sky.why : '');
+      if (when) tile(id, title, clock(when), sky ? sky.line : '', sky ? sky.why : '', sun);
       else missing(id, title);
     }
     const moon = moonPhase();
