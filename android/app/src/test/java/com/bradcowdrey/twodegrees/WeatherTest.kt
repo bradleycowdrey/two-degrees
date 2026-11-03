@@ -113,6 +113,37 @@ class WeatherTest {
         assertEquals("New moon today.", Moon.next(Instant.parse("2000-01-06T18:14:00Z")))
     }
 
+    @Test fun tileGraphics() {
+        // Cloud layers from the hour nearest now; none if a layer is missing.
+        val now = LocalDateTime.of(2026, 11, 1, 14, 20)
+        fun f(hours: List<Forecast.Hour>) = Forecast(Forecast.Now(now, 10.0, 9.0, 70.0, 10.0, 3, true, 200.0), hours, emptyList(), "UTC", 0L)
+        val hours = listOf(
+            Forecast.Hour(now.withMinute(0), 10.0, 3, 0, true, cloudLow = 10.0, cloudMid = 20.0, cloudHigh = 30.0),
+            Forecast.Hour(now.withMinute(0).plusHours(1), 10.0, 3, 0, true, cloudLow = 90.0, cloudMid = 0.0, cloudHigh = 0.0),
+        )
+        assertEquals(Triple(10.0, 20.0, 30.0), Detail.cloudLayerValues(f(hours)))
+        assertNull(Detail.cloudLayerValues(f(listOf(Forecast.Hour(now, 10.0, 3, 0, true, cloudLow = 10.0)))))
+
+        // The sun path: 0 at sunrise and sunset, highest midway, below the horizon after dark.
+        val date = LocalDate.of(2026, 11, 1)
+        assertEquals(0.25, Detail.dayFraction(LocalDateTime.of(2026, 11, 1, 6, 0), date), 1e-9)
+        assertEquals(1.0, Detail.dayFraction(LocalDateTime.of(2026, 11, 2, 3, 0), date), 1e-9)
+        val rise = Detail.dayFraction(LocalDateTime.of(2026, 11, 1, 6, 30), date)
+        val set = Detail.dayFraction(LocalDateTime.of(2026, 11, 1, 16, 50), date)
+        assertEquals(0.0, Detail.sunHeight(rise, rise, set), 1e-9)
+        assertEquals(0.0, Detail.sunHeight(set, rise, set), 1e-9)
+        val noon = (rise + set) / 2
+        assertEquals(1 - Detail.sunCurveShift(rise, set), Detail.sunHeight(noon, rise, set), 1e-9)
+        assertTrue(Detail.sunHeight(noon + 0.5, rise, set) < 0)
+        assertTrue(Detail.sunHeight(Detail.dayFraction(LocalDateTime.of(2026, 11, 1, 21, 0), date), rise, set) < 0)
+
+        // The Averages scale reaches the records, and today where it's outside them.
+        val (low, high) = Detail.averagesScale(5.0, 15.0, Normals.Entry(17.8, 7.2, 27.2, 1999, -2.2, 1957))
+        assertTrue(low < -2.2 && high > 27.2)
+        val (low2, high2) = Detail.averagesScale(-10.0, 30.0, Normals.Entry(17.8, 7.2, null, null, null, null))
+        assertTrue(low2 < -10.0 && high2 > 30.0)
+    }
+
     @Test fun skyColour() {
         fun o(low: Double, mid: Double, high: Double) = SkyColour.outlook(low, mid, high, 0.0, 2, 24_000.0).rating
         assertEquals(SkyColour.Rating.GREAT, o(0.0, 20.0, 50.0))

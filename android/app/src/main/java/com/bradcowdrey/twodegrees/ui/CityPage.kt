@@ -17,6 +17,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -52,6 +54,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -360,20 +363,27 @@ private fun DetailTiles(forecast: Forecast, units: Units) {
     val tiles = listOf<@Composable (Modifier) -> Unit>(
         { DetailTile("Feels like", unit.spaced(now.feelsLike), other.spaced(now.feelsLike), feelsNote(forecast), it, accent = TileAccent.temperature(now.feelsLike)) },
         { DetailTile("Humidity", "${now.humidity.roundHalfUp()}%", null, "The dew point is ${unit.spaced(dew)} · ${other.spaced(dew)} right now.", it, accent = TileAccent.HUMIDITY) },
-        { DetailTile("Wind", wind, windOther, listOfNotNull(windNote(forecast), Detail.gustNote(now, units)?.let { "$it." }).joinToString(" "), it, accent = TileAccent.WIND) },
+        { DetailTile("Wind", wind, windOther, listOfNotNull(windNote(forecast), Detail.gustNote(now, units)?.let { "$it." }).joinToString(" "), it, accent = TileAccent.WIND) { WindCompass(now.windDirection) } },
         { DetailTile("Rain", "${today?.rainChance ?: 0}%", "chance today", Summary.rainNote(forecast), it, accent = TileAccent.RAIN) },
         { mod ->
             // The next sunrise or sunset, how colourful it's likely to be, and the other one's time.
             val next = SkyColour.next(forecast)
+            // Today's sun path, whichever one the tile shows.
+            val day = forecast.days.firstOrNull()
+            val rise = day?.sunrise
+            val set = day?.sunset
+            val path: @Composable (Long) -> Unit = { accent -> if (day != null && rise != null && set != null) SunPathCurve(day.date, rise, set, now.time, accent) }
             if (next != null) {
                 val (isSunset, time) = next
                 val outlook = SkyColour.outlook(forecast, time)
                 val other = if (isSunset) forecast.days.mapNotNull { it.sunrise }.firstOrNull { it > time }
                             else forecast.days.firstOrNull { it.date == time.toLocalDate() }?.sunset
                 DetailTile(if (isSunset) "Sunset" else "Sunrise", Forecast.clock(time), outlook?.rating?.line,
-                    listOfNotNull(outlook?.reason, "${if (isSunset) "Sunrise" else "Sunset"} ${other?.let(Forecast::clock) ?: "–"}.").joinToString(" "), mod, accent = if (isSunset) TileAccent.SUNSET else TileAccent.SUNRISE)
+                    listOfNotNull(outlook?.reason, "${if (isSunset) "Sunrise" else "Sunset"} ${other?.let(Forecast::clock) ?: "–"}.").joinToString(" "), mod, accent = if (isSunset) TileAccent.SUNSET else TileAccent.SUNRISE) {
+                    path(if (isSunset) TileAccent.SUNSET else TileAccent.SUNRISE)
+                }
             } else {
-                DetailTile("Sunset", today?.sunset?.let(Forecast::clock) ?: "–", null, "Sunrise ${today?.sunrise?.let(Forecast::clock) ?: "–"}.", mod, accent = TileAccent.SUNSET)
+                DetailTile("Sunset", today?.sunset?.let(Forecast::clock) ?: "–", null, "Sunrise ${today?.sunrise?.let(Forecast::clock) ?: "–"}.", mod, accent = TileAccent.SUNSET) { path(TileAccent.SUNSET) }
             }
         },
         { mod ->
@@ -386,14 +396,14 @@ private fun DetailTiles(forecast: Forecast, units: Units) {
     TileGrid(tiles)
 }
 
-/** Two across; an odd one out keeps its half width. */
+/** Two across, each row as tall as its taller tile; an odd one out keeps its half width. */
 @Composable
 private fun TileGrid(tiles: List<@Composable (Modifier) -> Unit>) {
     val ui = LocalMetrics.current
     Column(verticalArrangement = Arrangement.spacedBy(ui.dp(10f))) {
         tiles.chunked(2).forEach { row ->
-            Row(horizontalArrangement = Arrangement.spacedBy(ui.dp(10f))) {
-                row.forEach { tile -> tile(Modifier.weight(1f)) }
+            Row(Modifier.height(IntrinsicSize.Max), horizontalArrangement = Arrangement.spacedBy(ui.dp(10f))) {
+                row.forEach { tile -> tile(Modifier.weight(1f).fillMaxHeight()) }
                 if (row.size == 1) Spacer(Modifier.weight(1f))
             }
         }
@@ -430,7 +440,8 @@ private fun MoreTiles(city: City, forecast: Forecast, state: WeatherStore.State)
     }
     val normal = today?.let { state.normals(city)?.of(it.date) }
     if (today != null && normal?.normalHigh != null) {
-        tiles.add { DetailTile("Averages", Normals.versus(today.high, normal.normalHigh, unit), null, Normals.normalLine(normal, unit), it, accent = TileAccent.versusNormal(today.high - normal.normalHigh)) }
+        val accent = TileAccent.versusNormal(today.high - normal.normalHigh)
+        tiles.add { DetailTile("Averages", Normals.versus(today.high, normal.normalHigh, unit), null, Normals.normalLine(normal, unit), it, accent = accent) { AveragesBar(today.low, today.high, normal, accent) } }
     } else {
         tiles.add { DetailTile("Averages", "–", null, missing, it, accent = TileAccent.NEUTRAL) }
     }
@@ -450,7 +461,8 @@ private fun MoreTiles(city: City, forecast: Forecast, state: WeatherStore.State)
         tiles.add { DetailTile("Precipitation", "–", null, missing, it, accent = TileAccent.RAIN) }
     }
     val pct = now.cloudCover
-    tiles.add { if (pct != null) DetailTile("Cloud cover", "${pct.roundHalfUp()}%", Detail.cloudWord(pct), Detail.cloudLayers(forecast), it, accent = TileAccent.CLOUD) else DetailTile("Cloud cover", "–", null, missing, it, accent = TileAccent.CLOUD) }
+    val layers = Detail.cloudLayerValues(forecast)
+    tiles.add { if (pct != null) DetailTile("Cloud cover", "${pct.roundHalfUp()}%", Detail.cloudWord(pct), Detail.cloudLayers(forecast), it, accent = TileAccent.CLOUD) { if (layers != null) CloudLayerBars(layers) } else DetailTile("Cloud cover", "–", null, missing, it, accent = TileAccent.CLOUD) }
     val moon = Moon.phase(java.time.Instant.ofEpochMilli(System.currentTimeMillis()))
     val nextMoon = Moon.next(java.time.Instant.now())
     tiles.add { DetailTile("Moon", moon.name, "${moon.illumination}% lit", nextMoon, it, accent = TileAccent.MOON) { MoonDisc(moon.fraction) } }
@@ -487,6 +499,150 @@ private fun UvBar(uv: Double) {
         val x = (size.width * (uv / 11).coerceIn(0.0, 1.0).toFloat()).coerceIn(size.height / 2, size.width - size.height / 2)
         drawCircle(Color.White, size.height / 2, androidx.compose.ui.geometry.Offset(x, y))
         drawCircle(Color.Black.copy(alpha = 0.4f), size.height / 2, androidx.compose.ui.geometry.Offset(x, y), style = androidx.compose.ui.graphics.drawscope.Stroke(1.dp.toPx()))
+    }
+}
+
+/** A small compass with an arrow the way the wind is blowing, its tail on the side it comes from. No arrow without a direction. */
+@Composable
+private fun WindCompass(direction: Double?) {
+    val ui = LocalMetrics.current
+    val letter = ui.text(9f, FontWeight.Medium)
+    Box(Modifier.fillMaxWidth().padding(top = ui.dp(4f)).clearAndSetSemantics {}, contentAlignment = Alignment.Center) {
+        Box(Modifier.size(ui.dp(56f))) {
+            androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
+                val stroke = 1.dp.toPx()
+                val r = size.minDimension / 2 - stroke
+                val c = center
+                drawCircle(Color.White.copy(alpha = 0.25f), r, c, style = androidx.compose.ui.graphics.drawscope.Stroke(stroke))
+                // Ticks every 30°, leaving room for the letters at N, E, S and W.
+                for (deg in 0 until 360 step 30) {
+                    if (deg % 90 == 0) continue
+                    val a = Math.toRadians(deg.toDouble())
+                    val dx = kotlin.math.sin(a).toFloat()
+                    val dy = -kotlin.math.cos(a).toFloat()
+                    val inner = r - 4.dp.toPx()
+                    drawLine(Color.White.copy(alpha = 0.35f), androidx.compose.ui.geometry.Offset(c.x + dx * inner, c.y + dy * inner),
+                        androidx.compose.ui.geometry.Offset(c.x + dx * r, c.y + dy * r), stroke, androidx.compose.ui.graphics.StrokeCap.Round)
+                }
+                if (direction != null) {
+                    // Wind direction is where it comes from; the arrow points where it's going.
+                    val a = Math.toRadians(direction + 180)
+                    val dx = kotlin.math.sin(a).toFloat()
+                    val dy = -kotlin.math.cos(a).toFloat()
+                    val len = r * 0.62f
+                    val head = 6.dp.toPx()
+                    val tip = androidx.compose.ui.geometry.Offset(c.x + dx * len, c.y + dy * len)
+                    val tail = androidx.compose.ui.geometry.Offset(c.x - dx * len, c.y - dy * len)
+                    val neck = androidx.compose.ui.geometry.Offset(tip.x - dx * head, tip.y - dy * head)
+                    val accent = Color(TileAccent.WIND)
+                    drawLine(accent, tail, neck, 1.5.dp.toPx(), androidx.compose.ui.graphics.StrokeCap.Round)
+                    drawCircle(accent, 2.dp.toPx(), tail)
+                    val half = head * 0.55f
+                    drawPath(androidx.compose.ui.graphics.Path().apply {
+                        moveTo(tip.x, tip.y)
+                        lineTo(neck.x - dy * half, neck.y + dx * half)
+                        lineTo(neck.x + dy * half, neck.y - dx * half)
+                        close()
+                    }, accent)
+                }
+            }
+            val inset = Modifier.padding(ui.dp(3f)).alpha(0.55f)
+            Text("N", style = letter, modifier = Modifier.align(Alignment.TopCenter).then(inset))
+            Text("E", style = letter, modifier = Modifier.align(Alignment.CenterEnd).then(inset))
+            Text("S", style = letter, modifier = Modifier.align(Alignment.BottomCenter).then(inset))
+            Text("W", style = letter, modifier = Modifier.align(Alignment.CenterStart).then(inset))
+        }
+    }
+}
+
+/**
+ * Today's sun path across the day, midnight to midnight: above a thin horizon between sunrise and
+ * sunset, faintly below it otherwise, with a dot for the sun now.
+ */
+@Composable
+private fun SunPathCurve(date: java.time.LocalDate, sunrise: java.time.LocalDateTime, sunset: java.time.LocalDateTime, now: java.time.LocalDateTime, accent: Long) {
+    val ui = LocalMetrics.current
+    val rise = Detail.dayFraction(sunrise, date)
+    val set = Detail.dayFraction(sunset, date)
+    val sun = Detail.dayFraction(now, date)
+    androidx.compose.foundation.Canvas(Modifier.fillMaxWidth().padding(top = ui.dp(4f)).height(ui.dp(34f)).clearAndSetSemantics {}) {
+        val dot = 3.5.dp.toPx()
+        val pad = dot + 2.dp.toPx()
+        val k = Detail.sunCurveShift(rise, set)
+        // Heights run from 1 - k at the top to -1 - k at the bottom.
+        fun y(h: Double) = (pad + (1 - k - h) / 2 * (size.height - 2 * pad)).toFloat()
+        val horizon = y(0.0)
+        val steps = 96
+        val curve = androidx.compose.ui.graphics.Path()
+        val fill = androidx.compose.ui.graphics.Path().apply { moveTo(0f, horizon) }
+        for (s in 0..steps) {
+            val x = s.toDouble() / steps
+            val px = (x * size.width).toFloat()
+            val py = y(Detail.sunHeight(x, rise, set))
+            if (s == 0) curve.moveTo(px, py) else curve.lineTo(px, py)
+            fill.lineTo(px, py)
+        }
+        fill.lineTo(size.width, horizon)
+        fill.close()
+        val line = androidx.compose.ui.graphics.drawscope.Stroke(1.5.dp.toPx(), cap = androidx.compose.ui.graphics.StrokeCap.Round)
+        val color = Color(accent)
+        // Below the horizon: faint white.
+        clipRect(top = horizon) { drawPath(curve, Color.White.copy(alpha = 0.2f), style = line) }
+        // Above it: the accent, with a soft fill down to the horizon.
+        clipRect(bottom = horizon) {
+            drawPath(fill, color.copy(alpha = 0.12f))
+            drawPath(curve, color.copy(alpha = 0.6f), style = line)
+        }
+        drawLine(Color.White.copy(alpha = 0.3f), androidx.compose.ui.geometry.Offset(0f, horizon), androidx.compose.ui.geometry.Offset(size.width, horizon), 1.dp.toPx())
+        val at = androidx.compose.ui.geometry.Offset((sun * size.width).toFloat().coerceIn(dot, size.width - dot), y(Detail.sunHeight(sun, rise, set)))
+        if (sun in rise..set) {
+            drawCircle(color.copy(alpha = 0.25f), dot * 2, at)
+            drawCircle(color, dot, at)
+        } else {
+            drawCircle(Color.White.copy(alpha = 0.35f), dot, at)
+        }
+    }
+}
+
+/** Today's low to high (accent) over the normal low to high (muted), on one scale out to the records. */
+@Composable
+private fun AveragesBar(todayLow: Double, todayHigh: Double, normal: Normals.Entry, accent: Long) {
+    val ui = LocalMetrics.current
+    val (low, high) = Detail.averagesScale(todayLow, todayHigh, normal)
+    androidx.compose.foundation.Canvas(Modifier.fillMaxWidth().padding(top = ui.dp(6f)).height(ui.dp(10f)).clearAndSetSemantics {}) {
+        val y = size.height / 2
+        fun x(c: Double) = (size.width * ((c - low) / (high - low))).toFloat()
+        fun band(from: Double, to: Double, h: Float, color: Color) {
+            val start = x(from)
+            drawRoundRect(color, androidx.compose.ui.geometry.Offset(start, y - h / 2),
+                androidx.compose.ui.geometry.Size(maxOf(x(to) - start, h), h), androidx.compose.ui.geometry.CornerRadius(h / 2))
+        }
+        band(low, high, 3.dp.toPx(), Color.White.copy(alpha = 0.08f))
+        val nLow = normal.normalLow
+        val nHigh = normal.normalHigh
+        if (nLow != null && nHigh != null) band(nLow, nHigh, 7.dp.toPx(), Color.White.copy(alpha = 0.22f))
+        band(todayLow, todayHigh, 5.dp.toPx(), Color(accent))
+    }
+}
+
+/** High, mid and low cloud, top to bottom, each filled to its %. */
+@Composable
+private fun CloudLayerBars(layers: Triple<Double, Double, Double>) {
+    val ui = LocalMetrics.current
+    val (low, mid, high) = layers
+    Column(Modifier.fillMaxWidth().padding(top = ui.dp(4f)).clearAndSetSemantics {}, verticalArrangement = Arrangement.spacedBy(ui.dp(2f))) {
+        listOf("High" to high, "Mid" to mid, "Low" to low).forEach { (label, pct) ->
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(label, style = ui.text(10f), maxLines = 1, softWrap = false, modifier = Modifier.widthIn(min = ui.dp(30f)).alpha(0.55f))
+                androidx.compose.foundation.Canvas(Modifier.weight(1f).height(ui.dp(4f))) {
+                    val h = size.height
+                    val corner = androidx.compose.ui.geometry.CornerRadius(h / 2)
+                    drawRoundRect(Color.White.copy(alpha = 0.12f), size = size, cornerRadius = corner)
+                    val w = (size.width * (pct / 100).coerceIn(0.0, 1.0)).toFloat()
+                    if (w > 0f) drawRoundRect(Color(TileAccent.CLOUD), size = androidx.compose.ui.geometry.Size(maxOf(w, h), h), cornerRadius = corner)
+                }
+            }
+        }
     }
 }
 
