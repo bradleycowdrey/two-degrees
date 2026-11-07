@@ -451,9 +451,13 @@
 <main class="panel" aria-labelledby="appName">
   <header class="hdr">
     <svg class="mark" viewBox="0 0 28 28" aria-hidden="true">
-      <rect width="28" height="28" rx="7.3" fill="#222018"/>
+      <defs>
+        <linearGradient id="markSky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#627A98"/><stop offset=".62" stop-color="#2C364A"/><stop offset="1" stop-color="#3A2E32"/></linearGradient>
+        <linearGradient id="markRing" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F7A870"/><stop offset="1" stop-color="#E24A7A"/></linearGradient>
+      </defs>
+      <rect width="28" height="28" rx="7.3" fill="url(#markSky)"/>
       <circle cx="10.4" cy="11.6" r="4.6" fill="none" stroke="#FFF1E5" stroke-width="2.4"/>
-      <circle cx="18.6" cy="16.4" r="3.4" fill="none" stroke="#E04A7A" stroke-width="2.2"/>
+      <circle cx="18.6" cy="16.4" r="3.4" fill="none" stroke="url(#markRing)" stroke-width="2.2"/>
     </svg>
     <h1 id="appName">Two Degrees</h1>
     <span class="sp"></span>

@@ -827,13 +827,17 @@ struct Eyebrow: View {
     }
 }
 
-/// Small in-app mark: two degree rings, cream and pink, on the warm-black tile.
+/// Small in-app mark, as the app icon (scripts/make-icon.py): two degree rings, cream and a sunset
+/// coral-to-pink, on the dusk sky.
 struct AppMark: View {
     var size: CGFloat = 28
 
     var body: some View {
         RoundedRectangle(cornerRadius: size * 0.26, style: .continuous)
-            .fill(Palette.subtle)
+            .fill(LinearGradient(stops: [.init(color: Color(hex: 0x627A98), location: 0),
+                                         .init(color: Color(hex: 0x2C364A), location: 0.62),
+                                         .init(color: Color(hex: 0x3A2E32), location: 1)],
+                                 startPoint: .top, endPoint: .bottom))
             .overlay {
                 ZStack {
                     Circle()
@@ -841,7 +845,8 @@ struct AppMark: View {
                         .frame(width: size * 0.41, height: size * 0.41)
                         .offset(x: -size * 0.13, y: -size * 0.086)
                     Circle()
-                        .strokeBorder(Palette.pink, lineWidth: size * 0.079)
+                        .strokeBorder(LinearGradient(colors: [Color(hex: 0xF7A870), Color(hex: 0xE24A7A)],
+                                                     startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: size * 0.079)
                         .frame(width: size * 0.30, height: size * 0.30)
                         .offset(x: size * 0.164, y: size * 0.086)
                 }
