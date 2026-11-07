@@ -1,0 +1,31 @@
+ALL PASSED (30 passed)
+PASS forecast loads for New York: Light Rain, 61 ° F / 16 ° C
+PASS every saved city has a forecast (3 of 3)
+PASS 24 hours ahead (24)
+PASS 10 days ahead (11)
+PASS a forecast saves and reads back unchanged
+PASS new tiles' data: visibility 6.2 km, cloud cover 100%, today's precipitation 22 mm
+PASS 15-minute precipitation decoded (8 steps from 20:30)
+PASS air quality for New York: US AQI 55, Moderate (About the same as yesterday)
+PASS normals and records for New York: Normal high 56 ° F · 13 ° C, low 41 ° F · 5 ° C; Record high 81 ° F · 27 ° C (2024) · Record low 29 ° F · -1 ° C (2012)
+PASS NWS alerts for New York: 0 active
+PASS moon tonight: Waning Crescent · 9%
+PASS switch to °C
+PASS switch back to °F
+PASS wind units switch: 31 mph ↔ 50 km/h
+PASS the city limit is 20
+PASS a first launch asks whether to use your location
+PASS Use My Location finds Denver, Colorado, United States and shows it first
+PASS where you are: its forecast loads
+PASS where you are: air quality loads (US AQI 53, after 0 ms)
+PASS turning Use My Location off removes it
+PASS turning it back on brings it back
+PASS city search finds Denver (Colorado, United States)
+PASS offline city search: 34191 cities bundled, finds Denver (Colorado, United States)
+PASS add Denver and select it
+PASS adding the city you're in makes it My Location, with no second card
+PASS Denver's forecast loads
+PASS remove Denver
+PASS removing it brings back My Location as its own card
+PASS widget following the app shows Denver
+PASS widget with its own city shows Paris
