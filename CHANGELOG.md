@@ -8,6 +8,13 @@ A **patch** (2.0.1) fixes things, a **minor** version (2.1.0) adds features, and
 (3.0.0) is a big redesign or a change that stops something working the way it did. The build number
 counts every change ever made, so each build is higher than the last.
 
+## [2.2.0] - 2026-11-07
+
+- **A new icon**: the two degree rings, cream and a sunset coral, on the dusk sky of the city pages.
+- **Richer tiles**: a compass on Wind, the sun's path across the day on Sunrise and Sunset, a range bar
+  comparing today with the usual on Averages, and high, mid and low cloud on Cloud cover.
+- **Visibility in both systems**: miles and kilometres side by side, and feet and metres in fog.
+
 ## [2.1.1] - 2026-11-02
 
 - **Use My Location, asked the way Apple prefers**: after the terms, one screen explains it, then iOS
