@@ -87,7 +87,7 @@ struct CityChips: View {
                 let on = city.id == store.activeID
                 Button { store.select(city) } label: {
                     HStack(spacing: ui.pt(6)) {
-                        if city.isCurrent {
+                        if store.isHere(city) {
                             Image(systemName: "location.fill")
                                 .font(ui.font(10, .semibold))
                                 .accessibilityLabel("My Location:")
@@ -372,7 +372,8 @@ struct NowTile: View {
                     Stat(key: "Today", value: "\(unit.value(today.low))–\(unit.value(today.high))\(unit.symbol)",
                          sub: "\(other.value(today.low))–\(other.value(today.high))\(other.symbol)")
                 }
-                Stat(key: "Wind", value: "\(Int((now.wind * 0.621371).rounded())) mph", sub: "\(Int(now.wind.rounded())) km/h")
+                let wind = store.windUnit.text(now.wind, temp: unit)
+                Stat(key: "Wind", value: wind.main, sub: wind.other ?? (now.windDirection.map { "from the " + Meteo.compass($0) } ?? ""))
                 Stat(key: "Rain today", value: "\(today?.rainChance ?? 0)%", sub: "\(Int(now.humidity.rounded()))% humid")
             }
             .padding(.top, ui.m)
@@ -573,6 +574,8 @@ struct DaysTile: View {
     let forecast: Forecast
     @Binding var open: Bool
     @State private var hovering = false
+    /// The day shown in detail (click a row).
+    @State private var detail: Date?
 
     var body: some View {
         // One shared scale for all five bars (including right now), with ticks every 10°F or 5°C.
@@ -628,13 +631,43 @@ struct DaysTile: View {
                 if open {
                     ForEach(Array(days.enumerated()), id: \.element.id) { index, day in
                         if index > 0 { Rectangle().fill(Palette.borderStrong).frame(height: 0.5) }
-                        DayRow(day: index == 0 ? day.including(now) : day, isToday: index == 0, low: low, high: high, ticks: ticks.map(\.celsius),
-                               now: index == 0 ? now : nil)
+                        DayRowButton(forecast: forecast, day: index == 0 ? day.including(now) : day, isToday: index == 0,
+                                     low: low, high: high, ticks: ticks.map(\.celsius), now: index == 0 ? now : nil, detail: $detail)
                     }
                     .transition(.opacity)
                 }
             }
         }
+    }
+}
+
+/// A day's row; on the Mac, click it for the day in detail.
+struct DayRowButton: View {
+    @EnvironmentObject private var store: WeatherStore
+    @Environment(\.metrics) private var ui
+    let forecast: Forecast
+    let day: Forecast.Day
+    let isToday: Bool
+    let low: Double
+    let high: Double
+    let ticks: [Double]
+    let now: Double?
+    @Binding var detail: Date?
+
+    var body: some View {
+        let row = DayRow(day: day, isToday: isToday, low: low, high: high, ticks: ticks, now: now)
+        #if os(macOS)
+        Button { detail = day.date } label: { row.contentShape(Rectangle()) }
+            .buttonStyle(.plain)
+            .help("Show \(isToday ? "today" : Forecast.format(day.date, "EEEE")) in detail")
+            .popover(isPresented: Binding(get: { detail == day.date }, set: { if !$0 { detail = nil } }), arrowEdge: .leading) {
+                DayDetailPopover(city: store.active, forecast: forecast, day: day, isToday: isToday)
+                    .environmentObject(store)
+                    .environment(\.metrics, ui)
+            }
+        #else
+        row
+        #endif
     }
 }
 
@@ -794,13 +827,17 @@ struct Eyebrow: View {
     }
 }
 
-/// Small in-app mark: two degree rings, cream and pink, on the warm-black tile.
+/// Small in-app mark, as the app icon (scripts/make-icon.py): two degree rings, cream and a sunset
+/// coral-to-pink, on the dusk sky.
 struct AppMark: View {
     var size: CGFloat = 28
 
     var body: some View {
         RoundedRectangle(cornerRadius: size * 0.26, style: .continuous)
-            .fill(Palette.subtle)
+            .fill(LinearGradient(stops: [.init(color: Color(hex: 0x627A98), location: 0),
+                                         .init(color: Color(hex: 0x2C364A), location: 0.62),
+                                         .init(color: Color(hex: 0x3A2E32), location: 1)],
+                                 startPoint: .top, endPoint: .bottom))
             .overlay {
                 ZStack {
                     Circle()
@@ -808,7 +845,8 @@ struct AppMark: View {
                         .frame(width: size * 0.41, height: size * 0.41)
                         .offset(x: -size * 0.13, y: -size * 0.086)
                     Circle()
-                        .strokeBorder(Palette.pink, lineWidth: size * 0.079)
+                        .strokeBorder(LinearGradient(colors: [Color(hex: 0xF7A870), Color(hex: 0xE24A7A)],
+                                                     startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: size * 0.079)
                         .frame(width: size * 0.30, height: size * 0.30)
                         .offset(x: size * 0.164, y: size * 0.086)
                 }

@@ -24,6 +24,19 @@ data class City(
 
     companion object {
         const val CURRENT_ID = "here"
+
+        /**
+         * Whether two cities are the same place: the same name within 25 km, or anything within 2 km.
+         * Where you are and a saved city that's the same place share one card.
+         */
+        fun samePlace(a: City, b: City): Boolean {
+            val k = Math.cos(Math.toRadians(a.latitude))
+            var dx = Math.abs(a.longitude - b.longitude)
+            if (dx > 180) dx = 360 - dx
+            val dy = a.latitude - b.latitude
+            val km = Math.sqrt(dy * dy + (dx * k) * (dx * k)) * 111
+            return km <= 2 || (km <= 25 && OfflineCities.fold(a.name) == OfflineCities.fold(b.name))
+        }
     }
 }
 
@@ -55,13 +68,18 @@ enum class TempUnit(val letter: String) {
 /** Rounds .5 away from zero, as Swift's `rounded()` does, so every app shows the same number. */
 fun Double.roundHalfUp(): Int = if (this >= 0) (this + 0.5).toInt() else -((-this + 0.5).toInt())
 
-/** One city's forecast, in Celsius and km/h, with times as the city's own wall-clock. */
+/**
+ * One city's forecast, in Celsius, km/h, mm, hPa and metres, with times as the city's own wall-clock.
+ * Everything added in 0.5 is optional: a missing value hides its tile, never the forecast.
+ */
 data class Forecast(
     val now: Now,
     val hours: List<Hour>,
     val days: List<Day>,
     val timeZone: String,
     val fetchedAt: Long,
+    /** The next two hours' precipitation, in 15-minute steps from the current one. */
+    val steps: List<Step> = emptyList(),
 ) {
     data class Now(
         val time: LocalDateTime,
@@ -73,9 +91,32 @@ data class Forecast(
         val isDay: Boolean,
         /** Degrees the wind comes from (0 = north). */
         val windDirection: Double?,
+        val pressure: Double? = null,
+        val cloudCover: Double? = null,
+        val gusts: Double? = null,
+        val visibility: Double? = null,
+        val precipitation: Double? = null,
     )
 
-    data class Hour(val time: LocalDateTime, val temperature: Double, val code: Int, val rainChance: Int, val isDay: Boolean)
+    data class Hour(
+        val time: LocalDateTime,
+        val temperature: Double,
+        val code: Int,
+        val rainChance: Int,
+        val isDay: Boolean,
+        val precipitation: Double? = null,
+        val wind: Double? = null,
+        val gusts: Double? = null,
+        val pressure: Double? = null,
+        val visibility: Double? = null,
+        /** Low (up to ~2 km), mid (~2–6 km) and high (above ~6 km) cloud, % of the sky. */
+        val cloudLow: Double? = null,
+        val cloudMid: Double? = null,
+        val cloudHigh: Double? = null,
+    )
+
+    /** One 15-minute step: its start and the precipitation in it (mm). */
+    data class Step(val time: LocalDateTime, val precipitation: Double)
 
     data class Day(
         val date: LocalDate,
@@ -86,6 +127,12 @@ data class Forecast(
         val sunrise: LocalDateTime?,
         val sunset: LocalDateTime?,
         val uvIndex: Double?,
+        val precipitationSum: Double? = null,
+        val rainSum: Double? = null,
+        val snowfallSum: Double? = null,
+        val windMax: Double? = null,
+        val gustMax: Double? = null,
+        val windDirection: Double? = null,
     ) {
         /** This day with its range widened to include a reading, so today never contradicts "now". */
         fun including(celsius: Double) = copy(low = minOf(low, celsius), high = maxOf(high, celsius))
@@ -98,6 +145,16 @@ data class Forecast(
             return hours.dropWhile { it.time < hourStart }.take(24)
         }
 
+    /** One day's hours, midnight to midnight. */
+    fun hoursOf(date: LocalDate): List<Hour> = hours.filter { it.time.toLocalDate() == date }
+
+    /** The hourly entry for the current hour, if the forecast has it. */
+    val nowIndex: Int
+        get() {
+            val hourStart = now.time.withMinute(0).withSecond(0).withNano(0)
+            return hours.indexOfFirst { it.time == hourStart }
+        }
+
     companion object {
         fun hour(time: LocalDateTime): String =
             time.format(DateTimeFormatter.ofPattern(if (is24Hour()) "HH" else "h a", Locale.getDefault()))
@@ -106,6 +163,9 @@ data class Forecast(
             time.format(DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).withLocale(Locale.getDefault()))
 
         fun weekday(date: LocalDate): String = date.format(DateTimeFormatter.ofPattern("EEE", Locale.getDefault()))
+
+        /** "Tuesday, Nov 4". */
+        fun longDate(date: LocalDate): String = date.format(DateTimeFormatter.ofPattern("EEEE, MMM d", Locale.getDefault()))
 
         /** Set by the app from the phone's 12/24-hour setting. */
         @Volatile var uses24Hour: Boolean? = null
@@ -232,5 +292,20 @@ object Summary {
         Condition.isSnow(code) -> "Snow"
         Condition.isStorm(code) -> "Storms"
         else -> "Rain"
+    }
+}
+
+/**
+ * When to ask for the Terms of Use and Privacy, as on the Mac and iPhone: always the first time; again
+ * when they change, but no more than once a month.
+ */
+object TermsSchedule {
+    const val INTERVAL_MS = 30L * 24 * 60 * 60 * 1000
+
+    fun shouldAsk(acceptedVersion: String?, acceptedAt: Long?, current: String, now: Long = System.currentTimeMillis()): Boolean {
+        if (acceptedVersion.isNullOrEmpty()) return true   // never agreed
+        if (acceptedVersion == current) return false
+        if (acceptedAt == null || acceptedAt <= 0) return true   // agreed before the date was kept
+        return now - acceptedAt >= INTERVAL_MS
     }
 }

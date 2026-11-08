@@ -63,6 +63,24 @@ class ModelTest {
         assertNull(Codec.cities("not json"))
     }
 
+    @Test fun samePlace() {
+        val denver = City("Denver", "", 39.74, -104.98)
+        assertTrue(City.samePlace(denver, City("Denver", "CO", 39.68, -104.90)))
+        assertTrue(City.samePlace(denver, City("Downtown", "", 39.745, -104.985)))
+        assertEquals(false, City.samePlace(denver, City("Aurora", "", 39.73, -104.83)))
+        assertEquals(false, City.samePlace(denver, City("Denver", "", 40.5, -104.98)))
+    }
+
+    @Test fun changedTermsAreAskedAtMostOnceAMonth() {
+        val now = 1_800_000_000_000L
+        val day = 24 * 60 * 60 * 1000L
+        assertTrue(TermsSchedule.shouldAsk(null, null, "b", now))
+        assertEquals(false, TermsSchedule.shouldAsk("b", now - 90 * day, "b", now))
+        assertEquals(false, TermsSchedule.shouldAsk("a", now - 10 * day, "b", now))
+        assertTrue(TermsSchedule.shouldAsk("a", now - 31 * day, "b", now))
+        assertTrue(TermsSchedule.shouldAsk("a", 0, "b", now))
+    }
+
     @Test fun whereYouAreHasOneIDAndOlderSavedCitiesStillLoad() {
         val here = City("Denver", "Colorado, United States", 39.74, -104.98, isCurrent = true)
         assertEquals(City.CURRENT_ID, here.id)

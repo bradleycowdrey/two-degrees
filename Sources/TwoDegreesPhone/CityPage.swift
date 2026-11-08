@@ -18,14 +18,18 @@ struct CityPage: View {
             ScrollView(.vertical) {
                 VStack(spacing: ui.pt(10)) {
                     header(forecast)
+                        .id("top")
                         .padding(.top, ui.pt(36))
                         .padding(.bottom, ui.pt(26))
                         // Where the header is in the scroll view, read on every scroll.
                         .onGeometryChange(for: CGFloat.self) { proxy in proxy.frame(in: .named("page")).minY } action: { offset = $0 }
                     if let forecast {
+                        AlertCards(city: city)
+                        NextHoursCard(forecast: forecast)
                         HourlyCard(forecast: forecast)
-                        DailyCard(forecast: forecast).id("days")
-                        DetailTiles(forecast: forecast).id("tiles")
+                        DailyCard(forecast: forecast, city: city).id("days")
+                        MapCard(city: city)
+                        DetailTiles(forecast: forecast, city: city).id("tiles")
                         footer
                     } else {
                         Card(title: "Forecast", icon: "clock") {
@@ -59,6 +63,13 @@ struct CityPage: View {
                 }
             }
             .overlay(alignment: .top) { compactHeader(forecast) }
+            // Swiping to another city puts this one back at the top, so it starts there when you return.
+            // (And again on the way back, in case the page wasn't drawn when it was left.)
+            .onChange(of: store.activeID) { old, new in
+                if old == city.id && new != city.id { reader.scrollTo("top", anchor: .top) }
+                if new == city.id && old != city.id && offset < -1 { reader.scrollTo("top", anchor: .top) }
+            }
+            .onDisappear { reader.scrollTo("top", anchor: .top) }
             .task {
                 if PhoneSelfTest.showDays && city.id == store.activeID {
                     try? await Task.sleep(for: .seconds(2.5))
@@ -78,7 +89,7 @@ struct CityPage: View {
     private func header(_ forecast: Forecast?) -> some View {
         let unit = store.unit, other = unit.other
         return VStack(spacing: ui.pt(2)) {
-            if city.isCurrent {
+            if store.isHere(city) {
                 Label("My Location", systemImage: "location.fill")
                     .font(ui.font(13, .semibold))
                     .textCase(.uppercase)
@@ -155,20 +166,44 @@ struct CityPage: View {
     }
 
     private var footer: some View {
+        AppFooter(lead: "Weather for \(city.name)", fetched: store.forecasts[city.id]?.fetchedAt, offline: store.failed.contains(city.id))
+    }
+}
+
+/// The footer every screen ends with, in one style: where the weather comes from (linked), when it
+/// was updated (or that it's offline), and the sign-off.
+struct AppFooter: View {
+    @Environment(\.metrics) private var ui
+    /// "Weather for Denver"; nil for the city list, which credits the city search too.
+    let lead: String?
+    let fetched: Date?
+    let offline: Bool
+
+    var body: some View {
         VStack(spacing: ui.pt(6)) {
             HStack(spacing: ui.pt(4)) {
-                Text("Weather for \(city.name)")
-                Text("·")
-                Link("Open-Meteo", destination: Brand.dataCredit).underline()
+                if let lead {
+                    Text(lead)
+                    Text("·")
+                    Link("Open-Meteo", destination: Brand.dataCredit).underline()
+                } else {
+                    Text("Weather by")
+                    Link("Open-Meteo", destination: Brand.dataCredit).underline()
+                    Text("· Places by")
+                    Link("GeoNames", destination: URL(string: "https://www.geonames.org")!).underline()
+                }
             }
-            if let fetched = store.forecasts[city.id]?.fetchedAt {
-                Text(store.failed.contains(city.id) ? "Offline · from \(fetched.formatted(date: .omitted, time: .shortened))"
-                                                    : "Updated \(fetched.formatted(date: .omitted, time: .shortened))")
+            .lineLimit(1)
+            .minimumScaleFactor(0.8)
+            if let fetched {
+                Text(offline ? "Offline · from \(fetched.formatted(date: .omitted, time: .shortened))"
+                             : "Updated \(fetched.formatted(date: .omitted, time: .shortened))")
             }
             Link(destination: Brand.website) { Text("Made by \(Brand.author). Free. Forever.") }
         }
         .font(ui.font(13))
         .foregroundStyle(.white.opacity(0.6))
+        .tint(.white.opacity(0.6))
         .frame(maxWidth: .infinity)
         .padding(.top, ui.pt(8))
     }
@@ -245,6 +280,9 @@ private struct DailyCard: View {
     @EnvironmentObject private var store: WeatherStore
     @Environment(\.metrics) private var ui
     let forecast: Forecast
+    let city: City
+    /// The day shown in detail (tap a row).
+    @State private var selected: Date?
 
     var body: some View {
         let days = Array(forecast.days.prefix(10))
@@ -254,10 +292,26 @@ private struct DailyCard: View {
             VStack(spacing: 0) {
                 ForEach(Array(days.enumerated()), id: \.element.id) { index, day in
                     Divider().overlay(Color.white.opacity(0.2))
-                    DailyRow(day: index == 0 ? day.including(now) : day, isToday: index == 0,
-                             scaleLow: low, scaleHigh: high, now: index == 0 ? now : nil)
+                    Button { selected = day.date } label: {
+                        DailyRow(day: index == 0 ? day.including(now) : day, isToday: index == 0,
+                                 scaleLow: low, scaleHigh: high, now: index == 0 ? now : nil)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityHint("Shows the day in detail")
                 }
             }
+        }
+        .task {
+            if PhoneSelfTest.showDay && city.id == store.activeID && days.count > 1 {
+                try? await Task.sleep(for: .seconds(2.5))
+                selected = days[1].date
+            }
+        }
+        .sheet(isPresented: Binding(get: { selected != nil }, set: { if !$0 { selected = nil } })) {
+            DayDetailView(city: city, days: days, selection: $selected)
+                .environmentObject(store)
+                .environment(\.metrics, ui)
         }
     }
 }
@@ -341,6 +395,7 @@ private struct DetailTiles: View {
     @EnvironmentObject private var store: WeatherStore
     @Environment(\.metrics) private var ui
     let forecast: Forecast
+    let city: City
 
     var body: some View {
         let now = forecast.now, unit = store.unit, other = unit.other
@@ -348,19 +403,19 @@ private struct DetailTiles: View {
         LazyVGrid(columns: [GridItem(.flexible(), spacing: ui.pt(10)), GridItem(.flexible(), spacing: ui.pt(10))], spacing: ui.pt(10)) {
             DetailTile(title: "Feels like", icon: "thermometer.medium",
                  value: "\(unit.value(now.feelsLike))\(unit.symbol)", sub: "\(other.value(now.feelsLike))\(other.symbol)",
-                 note: feelsNote(now))
+                 note: feelsNote(now)).accent(TileAccent.temperature(now.feelsLike))
             DetailTile(title: "Humidity", icon: "humidity",
                  value: "\(Int(now.humidity.rounded()))%", sub: nil,
-                 note: dewNote(now))
-            DetailTile(title: "Wind", icon: "wind",
-                 value: unit == .fahrenheit ? "\(mph(now.wind)) mph" : "\(Int(now.wind.rounded())) km/h",
-                 sub: unit == .fahrenheit ? "\(Int(now.wind.rounded())) km/h" : "\(mph(now.wind)) mph",
-                 note: windNote(now))
+                 note: dewNote(now)).accent(TileAccent.humidity)
+            let wind = store.windUnit.text(now.wind, temp: unit)
+            DetailTile(title: "Wind", icon: "wind", value: wind.main, sub: wind.other, note: windNote(now),
+                       accessory: AnyView(WindCompass(direction: now.windDirection, accent: Color(hex: TileAccent.wind)))).accent(TileAccent.wind)
             DetailTile(title: "Rain", icon: "drop.fill",
                  value: "\(today?.rainChance ?? 0)%", sub: "chance today",
-                 note: rainNote)
+                 note: rainNote).accent(TileAccent.rain)
             sunTile(today)
             uvTile(today)
+            ExtraTiles(forecast: forecast, city: city)
         }
     }
 
@@ -383,7 +438,12 @@ private struct DetailTiles: View {
         case ..<50: strength = "A strong breeze"
         default: strength = "Gale-force wind"
         }
-        return now.windDirection.map { "\(strength) from the \(Meteo.compassName($0))." } ?? "\(strength)."
+        let note = now.windDirection.map { "\(strength) from the \(Meteo.compassName($0))." } ?? "\(strength)."
+        // Gusts, when they're well above the steady wind.
+        if let gusts = now.gusts, gusts - now.wind >= 10 {
+            return note + " Gusts to \(store.windUnit.text(gusts, temp: store.unit).main)."
+        }
+        return note
     }
 
     /// The dew point in both units, as Apple's Weather gives it under humidity.
@@ -398,9 +458,10 @@ private struct DetailTiles: View {
         if let uv = today?.uvIndex {
             DetailTile(title: "UV index", icon: "sun.max.fill",
                        value: "\(Int(uv.rounded()))", sub: Meteo.uvLevel(uv),
-                       note: uv >= 3 ? "Use sun protection around midday." : "Low for the rest of the day.")
+                       note: uv >= 3 ? "Use sun protection around midday." : "Low for the rest of the day.",
+                       accessory: AnyView(ScaleBar(colors: ScaleBar.uv, position: min(max(uv / 11, 0), 1)))).accent(TileAccent.uv(uv))
         } else {
-            DetailTile(title: "UV index", icon: "sun.max.fill", value: "–", sub: nil, note: "Pull down to refresh.")
+            DetailTile(title: "UV index", icon: "sun.max.fill", value: "–", sub: nil, note: "Pull down to refresh.").accent(TileAccent.neutral)
         }
     }
 
@@ -413,39 +474,64 @@ private struct DetailTiles: View {
         return "None expected in the next 12 hours."
     }
 
+    /// The next sunrise or sunset, how colourful it's likely to be, and the other one's time.
     @ViewBuilder
     private func sunTile(_ today: Forecast.Day?) -> some View {
         let time = { (date: Date?) in date.map { Forecast.format($0, "jmm") } ?? "–" }
-        if let sunset = today?.sunset, forecast.now.time < sunset {
-            DetailTile(title: "Sunset", icon: "sunset.fill", value: time(sunset), sub: nil, note: "Sunrise: \(time(today?.sunrise))")
+        if let next = SkyColour.next(forecast) {
+            let outlook = SkyColour.outlook(forecast, at: next.time)
+            let day = forecast.days.first { Calendar.current.isDate($0.date, inSameDayAs: next.time) }
+            let other = next.isSunset ? forecast.days.first { ($0.sunrise ?? .distantPast) > next.time }?.sunrise : day?.sunset
+            let accent = next.isSunset ? TileAccent.sunset : TileAccent.sunrise
+            DetailTile(title: next.isSunset ? "Sunset" : "Sunrise", icon: next.isSunset ? "sunset.fill" : "sunrise.fill",
+                       value: time(next.time), sub: outlook?.rating.line,
+                       note: [outlook?.reason, "\(next.isSunset ? "Sunrise" : "Sunset") \(time(other))."].compactMap { $0 }.joined(separator: " "),
+                       accessory: sunPath(today, accent: accent)).accent(accent)
         } else {
-            let tomorrow = forecast.days.dropFirst().first
-            DetailTile(title: "Sunrise", icon: "sunrise.fill", value: time(tomorrow?.sunrise), sub: nil, note: "Sunset: \(time(tomorrow?.sunset))")
+            DetailTile(title: "Sunset", icon: "sunset.fill", value: time(today?.sunset), sub: nil, note: "Sunrise \(time(today?.sunrise)).",
+                       accessory: sunPath(today, accent: TileAccent.sunset)).accent(TileAccent.sunset)
         }
+    }
+
+    /// Today's path of the sun, whichever of sunrise or sunset the tile shows (after sunset, the dot is below the horizon).
+    private func sunPath(_ today: Forecast.Day?, accent: UInt32) -> AnyView? {
+        guard let sunrise = today?.sunrise, let sunset = today?.sunset else { return nil }
+        return AnyView(SunPath(now: forecast.now.time, sunrise: sunrise, sunset: sunset, accent: Color(hex: accent)))
     }
 }
 
-private struct DetailTile: View {
+struct DetailTile: View {
     @Environment(\.metrics) private var ui
     let title: String
     let icon: String
     let value: String
     let sub: String?
     let note: String
+    /// A small picture under the reading: a scale bar, compass, sun path, range, cloud bars or the moon.
+    var accessory: AnyView? = nil
+    /// The tile's own colour (TileAccent): its icon and title, and a faint glow at the top.
+    var accent: UInt32 = TileAccent.neutral
+
+    func accent(_ colour: UInt32) -> DetailTile { var tile = self; tile.accent = colour; return tile }
 
     var body: some View {
+        let tint = Color(hex: accent)
         VStack(alignment: .leading, spacing: ui.pt(4)) {
             Label(title.uppercased(), systemImage: icon)
                 .font(ui.font(12, .semibold))
-                .foregroundStyle(.white.opacity(0.6))
+                .foregroundStyle(tint.opacity(0.9))
+            // A reading in words ("18° above normal") is set smaller, on up to two lines, as on Android.
+            let words = value.count > 7
             Text(value)
-                .font(ui.font(32, .medium))
-                .lineLimit(1)
+                .font(ui.font(words ? 22 : 32, .medium))
+                .lineLimit(words ? 2 : 1)
                 .minimumScaleFactor(0.6)
+                .fixedSize(horizontal: false, vertical: words)
                 .padding(.top, ui.pt(4))
             if let sub {
-                Text(sub).font(ui.font(15)).opacity(0.7).lineLimit(1)
+                Text(sub).font(ui.font(15)).opacity(0.7).lineLimit(1).minimumScaleFactor(0.8)
             }
+            if let accessory { accessory.padding(.top, ui.pt(4)) }
             Spacer(minLength: ui.pt(4))
             Text(note)
                 .font(ui.font(13))
@@ -455,8 +541,15 @@ private struct DetailTile: View {
         .monospacedDigit()
         .foregroundStyle(.white)
         .padding(ui.pt(14))
-        .frame(maxWidth: .infinity, minHeight: ui.pt(160), alignment: .topLeading)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: ui.pt(16), style: .continuous))
+        // Fills its grid row, so two tiles side by side are always the same height.
+        .frame(maxWidth: .infinity, minHeight: ui.pt(160), maxHeight: .infinity, alignment: .topLeading)
+        .background {
+            let shape = RoundedRectangle(cornerRadius: ui.pt(16), style: .continuous)
+            ZStack {
+                shape.fill(.ultraThinMaterial)
+                shape.fill(LinearGradient(colors: [tint.opacity(0.16), tint.opacity(0)], startPoint: .top, endPoint: .center))
+            }
+        }
         .environment(\.colorScheme, .dark)
         .accessibilityElement(children: .combine)
     }

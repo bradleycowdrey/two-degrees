@@ -19,11 +19,18 @@ object OpenMeteo {
         val url = "https://api.open-meteo.com/v1/forecast" +
             "?latitude=${"%.4f".format(Locale.US, city.latitude)}&longitude=${"%.4f".format(Locale.US, city.longitude)}" +
             "&timezone=auto&forecast_days=11" +
-            "&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,wind_direction_10m,is_day" +
-            "&hourly=temperature_2m,weather_code,precipitation_probability,is_day" +
-            "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset,uv_index_max"
+            "&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,wind_direction_10m,is_day," +
+            "pressure_msl,cloud_cover,wind_gusts_10m,visibility,precipitation" +
+            "&hourly=temperature_2m,weather_code,precipitation_probability,is_day,precipitation,wind_speed_10m,wind_gusts_10m,cloud_cover_low,cloud_cover_mid,cloud_cover_high,visibility" +
+            "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset,uv_index_max," +
+            "precipitation_sum,rain_sum,snowfall_sum,wind_speed_10m_max,wind_gusts_10m_max,wind_direction_10m_dominant" +
+            "&minutely_15=precipitation&forecast_minutely_15=8"
         return decodeForecast(fetch(url))
     }
+
+    /** Coordinates as Open-Meteo's other services take them. */
+    internal fun coordinates(city: City) =
+        "latitude=${"%.4f".format(Locale.US, city.latitude)}&longitude=${"%.4f".format(Locale.US, city.longitude)}"
 
     /** Open-Meteo's geocoder; with the internet out, the bundled city list (OfflineCities). */
     fun search(query: String): List<City> = try {
@@ -60,6 +67,11 @@ object OpenMeteo {
             code = current.getInt("weather_code"),
             isDay = current.getInt("is_day") == 1,
             windDirection = current.optDoubleOrNull("wind_direction_10m"),
+            pressure = current.optDoubleOrNull("pressure_msl"),
+            cloudCover = current.optDoubleOrNull("cloud_cover"),
+            gusts = current.optDoubleOrNull("wind_gusts_10m"),
+            visibility = current.optDoubleOrNull("visibility"),
+            precipitation = current.optDoubleOrNull("precipitation"),
         )
         val hourly = raw.getJSONObject("hourly")
         val hourTimes = hourly.getJSONArray("time")
@@ -71,8 +83,25 @@ object OpenMeteo {
                 code = hourly.getJSONArray("weather_code").intOrNull(i) ?: 3,
                 rainChance = hourly.getJSONArray("precipitation_probability").intOrNull(i) ?: 0,
                 isDay = (hourly.getJSONArray("is_day").intOrNull(i) ?: 1) == 1,
+                precipitation = hourly.optJSONArray("precipitation")?.doubleOrNull(i),
+                wind = hourly.optJSONArray("wind_speed_10m")?.doubleOrNull(i),
+                gusts = hourly.optJSONArray("wind_gusts_10m")?.doubleOrNull(i),
+                pressure = hourly.optJSONArray("pressure_msl")?.doubleOrNull(i),
+                visibility = hourly.optJSONArray("visibility")?.doubleOrNull(i),
+                cloudLow = hourly.optJSONArray("cloud_cover_low")?.doubleOrNull(i),
+                cloudMid = hourly.optJSONArray("cloud_cover_mid")?.doubleOrNull(i),
+                cloudHigh = hourly.optJSONArray("cloud_cover_high")?.doubleOrNull(i),
             )
         }
+        // The next two hours in 15-minute steps; a step with no value is left out.
+        val steps = raw.optJSONObject("minutely_15")?.let { m ->
+            val times = m.optJSONArray("time") ?: return@let emptyList()
+            val mm = m.optJSONArray("precipitation") ?: return@let emptyList()
+            (0 until times.length()).mapNotNull { i ->
+                val time = times.stringOrNull(i)?.let(::dateTime) ?: return@mapNotNull null
+                Forecast.Step(time, mm.doubleOrNull(i) ?: return@mapNotNull null)
+            }
+        } ?: emptyList()
         val daily = raw.getJSONObject("daily")
         val dayTimes = daily.getJSONArray("time")
         val days = (0 until dayTimes.length()).mapNotNull { i ->
@@ -85,19 +114,28 @@ object OpenMeteo {
                 sunrise = daily.optJSONArray("sunrise")?.stringOrNull(i)?.let(::dateTime),
                 sunset = daily.optJSONArray("sunset")?.stringOrNull(i)?.let(::dateTime),
                 uvIndex = daily.optJSONArray("uv_index_max")?.doubleOrNull(i),
+                precipitationSum = daily.optJSONArray("precipitation_sum")?.doubleOrNull(i),
+                rainSum = daily.optJSONArray("rain_sum")?.doubleOrNull(i),
+                snowfallSum = daily.optJSONArray("snowfall_sum")?.doubleOrNull(i),
+                windMax = daily.optJSONArray("wind_speed_10m_max")?.doubleOrNull(i),
+                gustMax = daily.optJSONArray("wind_gusts_10m_max")?.doubleOrNull(i),
+                windDirection = daily.optJSONArray("wind_direction_10m_dominant")?.doubleOrNull(i),
             )
         }
-        return Forecast(now, hours, days, raw.optString("timezone", "GMT"), fetchedAt)
+        return Forecast(now, hours, days, raw.optString("timezone", "GMT"), fetchedAt, steps)
     }
 
     /** "2026-10-17T14:00", the city's own wall-clock. */
     fun dateTime(text: String): LocalDateTime? = runCatching { LocalDateTime.parse(text) }.getOrNull()
 
-    private fun httpGet(url: String): String {
+    private fun httpGet(url: String): String = request(url, mapOf("User-Agent" to "TwoDegrees"))
+
+    /** A GET with these headers: the body of a 200, else IOException. */
+    internal fun request(url: String, headers: Map<String, String>): String {
         val connection = URL(url).openConnection() as HttpURLConnection
         connection.connectTimeout = 15_000
-        connection.readTimeout = 20_000
-        connection.setRequestProperty("User-Agent", "TwoDegrees")
+        connection.readTimeout = 30_000
+        headers.forEach { (k, v) -> connection.setRequestProperty(k, v) }
         try {
             if (connection.responseCode != 200) throw IOException("HTTP ${connection.responseCode}")
             return connection.inputStream.bufferedReader().use { it.readText() }
@@ -133,34 +171,53 @@ object Codec {
         runCatching { JSONArray(it).let { a -> (0 until a.length()).map { i -> city(a.getJSONObject(i)) } } }.getOrNull()
     }
 
+    /** Optional numbers are left out when missing, so older saved forecasts (without them) read the same way. */
+    private fun JSONObject.putOpt(key: String, value: Double?): JSONObject = if (value != null) put(key, value) else this
+
     fun forecast(f: Forecast): JSONObject = JSONObject()
         .put("now", JSONObject()
             .put("time", f.now.time.toString()).put("temperature", f.now.temperature).put("feelsLike", f.now.feelsLike)
             .put("humidity", f.now.humidity).put("wind", f.now.wind).put("code", f.now.code).put("isDay", f.now.isDay)
-            .put("windDirection", f.now.windDirection ?: JSONObject.NULL))
+            .put("windDirection", f.now.windDirection ?: JSONObject.NULL)
+            .putOpt("pressure", f.now.pressure).putOpt("cloudCover", f.now.cloudCover).putOpt("gusts", f.now.gusts)
+            .putOpt("visibility", f.now.visibility).putOpt("precipitation", f.now.precipitation))
         .put("hours", JSONArray(f.hours.map {
             JSONObject().put("time", it.time.toString()).put("temperature", it.temperature).put("code", it.code)
                 .put("rainChance", it.rainChance).put("isDay", it.isDay)
+                .putOpt("precipitation", it.precipitation).putOpt("wind", it.wind).putOpt("gusts", it.gusts)
+                .putOpt("pressure", it.pressure).putOpt("visibility", it.visibility)
+                .putOpt("cloudLow", it.cloudLow).putOpt("cloudMid", it.cloudMid).putOpt("cloudHigh", it.cloudHigh)
         }))
         .put("days", JSONArray(f.days.map {
             JSONObject().put("date", it.date.toString()).put("code", it.code).put("high", it.high).put("low", it.low)
                 .put("rainChance", it.rainChance).put("sunrise", it.sunrise?.toString() ?: JSONObject.NULL)
                 .put("sunset", it.sunset?.toString() ?: JSONObject.NULL).put("uvIndex", it.uvIndex ?: JSONObject.NULL)
+                .putOpt("precipitationSum", it.precipitationSum).putOpt("rainSum", it.rainSum).putOpt("snowfallSum", it.snowfallSum)
+                .putOpt("windMax", it.windMax).putOpt("gustMax", it.gustMax).putOpt("windDirection", it.windDirection)
         }))
+        .put("steps", JSONArray(f.steps.map { JSONObject().put("time", it.time.toString()).put("precipitation", it.precipitation) }))
         .put("timeZone", f.timeZone).put("fetchedAt", f.fetchedAt)
 
     fun forecast(o: JSONObject): Forecast? = runCatching {
         val n = o.getJSONObject("now")
         val hours = o.getJSONArray("hours")
         val days = o.getJSONArray("days")
+        val steps = o.optJSONArray("steps")
         Forecast(
             now = Forecast.Now(
                 LocalDateTime.parse(n.getString("time")), n.getDouble("temperature"), n.getDouble("feelsLike"),
                 n.getDouble("humidity"), n.getDouble("wind"), n.getInt("code"), n.getBoolean("isDay"), n.optDoubleOrNull("windDirection"),
+                pressure = n.optDoubleOrNull("pressure"), cloudCover = n.optDoubleOrNull("cloudCover"), gusts = n.optDoubleOrNull("gusts"),
+                visibility = n.optDoubleOrNull("visibility"), precipitation = n.optDoubleOrNull("precipitation"),
             ),
             hours = (0 until hours.length()).map { i ->
                 val h = hours.getJSONObject(i)
-                Forecast.Hour(LocalDateTime.parse(h.getString("time")), h.getDouble("temperature"), h.getInt("code"), h.getInt("rainChance"), h.getBoolean("isDay"))
+                Forecast.Hour(
+                    LocalDateTime.parse(h.getString("time")), h.getDouble("temperature"), h.getInt("code"), h.getInt("rainChance"), h.getBoolean("isDay"),
+                    precipitation = h.optDoubleOrNull("precipitation"), wind = h.optDoubleOrNull("wind"), gusts = h.optDoubleOrNull("gusts"),
+                    pressure = h.optDoubleOrNull("pressure"), visibility = h.optDoubleOrNull("visibility"),
+                    cloudLow = h.optDoubleOrNull("cloudLow"), cloudMid = h.optDoubleOrNull("cloudMid"), cloudHigh = h.optDoubleOrNull("cloudHigh"),
+                )
             },
             days = (0 until days.length()).map { i ->
                 val d = days.getJSONObject(i)
@@ -168,10 +225,16 @@ object Codec {
                     LocalDate.parse(d.getString("date")), d.getInt("code"), d.getDouble("high"), d.getDouble("low"), d.getInt("rainChance"),
                     d.optStringOrNull("sunrise")?.let(LocalDateTime::parse), d.optStringOrNull("sunset")?.let(LocalDateTime::parse),
                     d.optDoubleOrNull("uvIndex"),
+                    precipitationSum = d.optDoubleOrNull("precipitationSum"), rainSum = d.optDoubleOrNull("rainSum"),
+                    snowfallSum = d.optDoubleOrNull("snowfallSum"), windMax = d.optDoubleOrNull("windMax"),
+                    gustMax = d.optDoubleOrNull("gustMax"), windDirection = d.optDoubleOrNull("windDirection"),
                 )
             },
             timeZone = o.optString("timeZone", "GMT"),
             fetchedAt = o.getLong("fetchedAt"),
+            steps = steps?.let { a ->
+                (0 until a.length()).map { i -> a.getJSONObject(i).let { Forecast.Step(LocalDateTime.parse(it.getString("time")), it.getDouble("precipitation")) } }
+            } ?: emptyList(),
         )
     }.getOrNull()
 

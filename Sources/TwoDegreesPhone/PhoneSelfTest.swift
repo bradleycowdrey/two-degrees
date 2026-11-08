@@ -13,8 +13,12 @@ enum PhoneSelfTest {
     nonisolated static let showTiles = ProcessInfo.processInfo.arguments.contains("--show-tiles")
     /// Opens the city list at launch, for a screenshot.
     nonisolated static let showList = ProcessInfo.processInfo.arguments.contains("--show-list")
+    /// Opens tomorrow's day detail at launch, for a screenshot.
+    nonisolated static let showDay = ProcessInfo.processInfo.arguments.contains("--show-day")
     /// Checks Use My Location (CI grants the permission and sets the Simulator's location first).
     nonisolated static let locate = ProcessInfo.processInfo.arguments.contains("--locate")
+    /// Shows the "Show the weather where you are?" question, for a screenshot.
+    nonisolated static let showLocationPrompt = ProcessInfo.processInfo.arguments.contains("--show-location-prompt")
 
     private static var lines: [String] = []
     private static var failures = 0
@@ -42,6 +46,20 @@ enum PhoneSelfTest {
                   "UV index and wind direction arrive (UV \(forecast.days.first?.uvIndex.map { String($0) } ?? "none"), wind from \(forecast.now.windDirection.map(Meteo.compass) ?? "none"))")
         }
 
+        // 0.5's details, with live data for the first city.
+        let first = store.cities[0]
+        if let f = store.forecasts[first.id] {
+            check(f.steps?.count == 8, "\(first.name): the next two hours in 15-minute steps (\(f.steps?.count ?? 0))")
+            check(f.now.pressure != nil && f.now.cloudCover != nil && f.days.first?.precipitation != nil, "\(first.name): pressure, cloud cover and today's precipitation arrive")
+        }
+        for _ in 0..<60 where store.airQuality[first.id] == nil || store.climate[first.id] == nil { try? await Task.sleep(for: .milliseconds(500)) }
+        let reading = store.airQuality[first.id]?.reading(inUS: WeatherAlert.inUS(latitude: first.latitude, longitude: first.longitude))
+        check(reading != nil, "\(first.name): air quality \(reading.map { "\($0.value) \($0.category)" } ?? "missing")")
+        let (entry, limited) = await WeatherServices.climateForCheck(first, store: store)
+        check(entry?.normalHigh != nil || (entry == nil && limited),
+              entry == nil && limited ? "\(first.name): normals and records skipped: the archive service is limiting or not answering" : "\(first.name): normals and records load")
+        check(WeatherStore.maxCities == 20, "up to 20 cities")
+
         // 2. Unit switch, both ways.
         let unit = store.unit
         store.unit = unit.other
@@ -53,6 +71,8 @@ enum PhoneSelfTest {
         // when the setting is turned off.
         if locate {
             store.locate = { await LocationService.shared.currentCity() }
+            check(store.needsLocationPrompt, "a first launch asks whether to use your location")
+            store.answerLocationPrompt(true)
             await store.updateLocation()
             let here = store.cities.first
             check(store.locationStatus == .found && here?.isCurrent == true && store.activeID == here?.id,
@@ -80,8 +100,14 @@ enum PhoneSelfTest {
             store.add(denver)
             for _ in 0..<20 where store.forecasts[denver.id] == nil { try? await Task.sleep(for: .milliseconds(500)) }
             check(store.forecasts[denver.id] != nil && store.activeID == denver.id, "add Denver: selected and its forecast loads")
+            if locate {
+                // The Simulator is in Denver: Denver becomes My Location instead of a second card.
+                check(store.hereID == denver.id && !store.cities.contains(where: \.isCurrent),
+                      "adding the city you're in makes it My Location, with no second card")
+            }
             store.remove(denver)
             check(store.cities.count == before, "remove Denver")
+            if locate { check(store.cities.first?.isCurrent == true, "removing it brings back My Location as its own card") }
         }
 
         // 4. The widget's data path, as the widget runs it, and every size drawn.

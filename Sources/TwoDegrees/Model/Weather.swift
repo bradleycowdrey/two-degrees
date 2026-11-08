@@ -30,6 +30,17 @@ struct City: Codable, Hashable, Identifiable {
     /// Where you are has one ID wherever you go, so the page, its forecast and widgets following it stay put.
     var id: String { isCurrent ? City.currentID : String(format: "%.2f,%.2f", latitude, longitude) }
     static let currentID = "here"
+
+    /// Whether two cities are the same place: the same name within 25 km, or anything within 2 km. Where
+    /// you are and a saved city that's the same place share one card.
+    static func samePlace(_ a: City, _ b: City) -> Bool {
+        let k = cos(a.latitude * .pi / 180)
+        var dx = abs(a.longitude - b.longitude)
+        if dx > 180 { dx = 360 - dx }
+        let km = ((a.latitude - b.latitude) * (a.latitude - b.latitude) + (dx * k) * (dx * k)).squareRoot() * 111
+        let fold = { (s: String) in s.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil) }
+        return km <= 2 || (km <= 25 && fold(a.name) == fold(b.name))
+    }
 }
 
 enum TempUnit: String, Codable, CaseIterable, Identifiable {
@@ -70,6 +81,12 @@ struct Forecast: Codable {
         var isDay: Bool
         /// Degrees the wind comes from (0 = north). Absent in forecasts saved before it was fetched.
         var windDirection: Double? = nil
+        // 0.5's details. Each is absent in older saved forecasts, which hides its tile.
+        var pressure: Double? = nil        // hPa, at sea level
+        var cloudCover: Double? = nil      // %
+        var gusts: Double? = nil           // km/h
+        var visibility: Double? = nil      // m
+        var precipitation: Double? = nil   // mm in the last hour
     }
 
     struct Hour: Codable, Identifiable {
@@ -78,6 +95,21 @@ struct Forecast: Codable {
         var code: Int
         var rainChance: Int
         var isDay: Bool
+        var precipitation: Double? = nil   // mm
+        var wind: Double? = nil            // km/h
+        var gusts: Double? = nil           // km/h
+        var pressure: Double? = nil        // hPa
+        var cloudLow: Double? = nil        // % of the sky, low cloud (up to ~2 km)
+        var cloudMid: Double? = nil        // %, mid-level cloud (~2–6 km)
+        var cloudHigh: Double? = nil       // %, high cloud (above ~6 km)
+        var visibility: Double? = nil      // metres
+        var id: Date { time }
+    }
+
+    /// One 15-minute step of the next two hours.
+    struct Step: Codable, Identifiable {
+        var time: Date
+        var precipitation: Double          // mm in the 15 minutes
         var id: Date { time }
     }
 
@@ -91,6 +123,11 @@ struct Forecast: Codable {
         var sunset: Date?
         /// The day's highest UV index. Absent in forecasts saved before it was fetched.
         var uvIndex: Double? = nil
+        var precipitation: Double? = nil   // mm, rain and melted snow
+        var snowfall: Double? = nil        // cm
+        var windMax: Double? = nil         // km/h
+        var gustMax: Double? = nil         // km/h
+        var windDirection: Double? = nil   // dominant, degrees
         var id: Date { date }
 
         /// This day with its range widened to include a reading, so today never contradicts "now".
@@ -107,6 +144,14 @@ struct Forecast: Codable {
     var days: [Day]
     var timeZone: String
     var fetchedAt: Date
+    /// The next two hours in 15-minute steps (precipitation only). Absent in older saved forecasts.
+    var steps: [Step]? = nil
+
+    /// The hours of one day (by its date), for the day detail.
+    func hours(on day: Day) -> [Hour] {
+        let calendar = Forecast.localCalendar
+        return hours.filter { calendar.isDate($0.time, inSameDayAs: day.date) }
+    }
 
     /// The next 24 hours starting with the current one.
     var upcomingHours: [Hour] {
@@ -198,9 +243,11 @@ enum OpenMeteo {
             .init(name: "longitude", value: String(format: "%.4f", city.longitude)),
             .init(name: "timezone", value: "auto"),
             .init(name: "forecast_days", value: "11"),   // the iPhone shows 10 days; the Mac and widgets 5
-            .init(name: "current", value: "temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,wind_direction_10m,is_day"),
-            .init(name: "hourly", value: "temperature_2m,weather_code,precipitation_probability,is_day"),
-            .init(name: "daily", value: "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset,uv_index_max"),
+            .init(name: "current", value: "temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,wind_direction_10m,is_day,pressure_msl,cloud_cover,wind_gusts_10m,visibility,precipitation"),
+            .init(name: "hourly", value: "temperature_2m,weather_code,precipitation_probability,is_day,precipitation,wind_speed_10m,wind_gusts_10m,cloud_cover_low,cloud_cover_mid,cloud_cover_high,visibility"),
+            .init(name: "daily", value: "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset,uv_index_max,precipitation_sum,snowfall_sum,wind_speed_10m_max,wind_gusts_10m_max,wind_direction_10m_dominant"),
+            .init(name: "minutely_15", value: "precipitation"),
+            .init(name: "forecast_minutely_15", value: "8"),
         ]
         var request = URLRequest(url: components.url!, timeoutInterval: 20)
         request.setValue("TwoDegrees", forHTTPHeaderField: "User-Agent")
@@ -255,6 +302,11 @@ enum OpenMeteo {
             let wind_speed_10m: Double
             let wind_direction_10m: Double?
             let is_day: Int
+            let pressure_msl: Double?
+            let cloud_cover: Double?
+            let wind_gusts_10m: Double?
+            let visibility: Double?
+            let precipitation: Double?
         }
         struct Hourly: Decodable {
             let time: [String]
@@ -262,6 +314,18 @@ enum OpenMeteo {
             let weather_code: [Int?]
             let precipitation_probability: [Int?]
             let is_day: [Int?]
+            let precipitation: [Double?]?
+            let wind_speed_10m: [Double?]?
+            let wind_gusts_10m: [Double?]?
+            let pressure_msl: [Double?]?
+            let cloud_cover_low: [Double?]?
+            let cloud_cover_mid: [Double?]?
+            let cloud_cover_high: [Double?]?
+            let visibility: [Double?]?
+        }
+        struct Minutely: Decodable {
+            let time: [String]
+            let precipitation: [Double?]
         }
         struct Daily: Decodable {
             let time: [String]
@@ -272,31 +336,52 @@ enum OpenMeteo {
             let sunrise: [String?]
             let sunset: [String?]
             let uv_index_max: [Double?]?
+            let precipitation_sum: [Double?]?
+            let snowfall_sum: [Double?]?
+            let wind_speed_10m_max: [Double?]?
+            let wind_gusts_10m_max: [Double?]?
+            let wind_direction_10m_dominant: [Double?]?
         }
         let timezone: String
         let current: Current
         let hourly: Hourly
         let daily: Daily
+        let minutely_15: Minutely?
 
         func forecast() -> Forecast {
             let now = Forecast.Now(
                 time: OpenMeteo.date(current.time) ?? Date(),
                 temperature: current.temperature_2m, feelsLike: current.apparent_temperature,
                 humidity: current.relative_humidity_2m, wind: current.wind_speed_10m,
-                code: current.weather_code, isDay: current.is_day == 1, windDirection: current.wind_direction_10m)
+                code: current.weather_code, isDay: current.is_day == 1, windDirection: current.wind_direction_10m,
+                pressure: current.pressure_msl, cloudCover: current.cloud_cover, gusts: current.wind_gusts_10m,
+                visibility: current.visibility, precipitation: current.precipitation)
+            let at = { (list: [Double?]?, i: Int) -> Double? in list.flatMap { i < $0.count ? $0[i] : nil } }
             let hours: [Forecast.Hour] = hourly.time.indices.compactMap { i in
                 guard let time = OpenMeteo.date(hourly.time[i]), let t = hourly.temperature_2m[i] else { return nil }
                 return .init(time: time, temperature: t, code: hourly.weather_code[i] ?? 3,
-                             rainChance: hourly.precipitation_probability[i] ?? 0, isDay: (hourly.is_day[i] ?? 1) == 1)
+                             rainChance: hourly.precipitation_probability[i] ?? 0, isDay: (hourly.is_day[i] ?? 1) == 1,
+                             precipitation: at(hourly.precipitation, i), wind: at(hourly.wind_speed_10m, i),
+                             gusts: at(hourly.wind_gusts_10m, i), pressure: at(hourly.pressure_msl, i),
+                             cloudLow: at(hourly.cloud_cover_low, i), cloudMid: at(hourly.cloud_cover_mid, i),
+                             cloudHigh: at(hourly.cloud_cover_high, i), visibility: at(hourly.visibility, i))
             }
             let days: [Forecast.Day] = daily.time.indices.compactMap { i in
                 guard let date = OpenMeteo.date(daily.time[i]), let hi = daily.temperature_2m_max[i], let lo = daily.temperature_2m_min[i] else { return nil }
                 return .init(date: date, code: daily.weather_code[i] ?? 3, high: hi, low: lo,
                              rainChance: daily.precipitation_probability_max[i] ?? 0,
                              sunrise: daily.sunrise[i].flatMap(OpenMeteo.date), sunset: daily.sunset[i].flatMap(OpenMeteo.date),
-                             uvIndex: daily.uv_index_max.flatMap { i < $0.count ? $0[i] : nil })
+                             uvIndex: at(daily.uv_index_max, i), precipitation: at(daily.precipitation_sum, i),
+                             snowfall: at(daily.snowfall_sum, i), windMax: at(daily.wind_speed_10m_max, i),
+                             gustMax: at(daily.wind_gusts_10m_max, i), windDirection: at(daily.wind_direction_10m_dominant, i))
             }
-            return Forecast(now: now, hours: hours, days: days, timeZone: timezone, fetchedAt: Date())
+            let steps: [Forecast.Step]? = minutely_15.map { m in
+                m.time.indices.compactMap { i in
+                    guard let time = OpenMeteo.date(m.time[i]) else { return nil }
+                    return .init(time: time, precipitation: i < m.precipitation.count ? (m.precipitation[i] ?? 0) : 0)
+                }
+            }
+            return Forecast(now: now, hours: hours, days: days, timeZone: timezone, fetchedAt: Date(), steps: steps)
         }
     }
 

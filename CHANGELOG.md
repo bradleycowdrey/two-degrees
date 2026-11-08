@@ -3,6 +3,101 @@
 Two Degrees updates itself: when a new version is out, the app shows a banner with an **Update** button
 (or use **Check for Updates** in the ⋯ menu). Every version is on [Releases](https://github.com/bradleycowdrey/two-degrees/releases).
 
+Version numbers follow [Semantic Versioning](https://semver.org) from 2.0.0 on: **major.minor.patch**.
+A **patch** (2.0.1) fixes things, a **minor** version (2.1.0) adds features, and a **major** version
+(3.0.0) is a big redesign or a change that stops something working the way it did. The build number
+counts every change ever made, so each build is higher than the last.
+
+## [2.2.0] - 2026-11-07
+
+- **A new icon**: the two degree rings, cream and a sunset coral, on the dusk sky of the city pages.
+- **Richer tiles**: a compass on Wind, the sun's path across the day on Sunrise and Sunset, a range bar
+  comparing today with the usual on Averages, and high, mid and low cloud on Cloud cover.
+- **Visibility in both systems**: miles and kilometres side by side, and feet and metres in fog.
+
+## [2.1.1] - 2026-11-02
+
+- **Use My Location, asked the way Apple prefers**: after the terms, one screen explains it, then iOS
+  asks; choose Allow or Don't Allow there. Turn it on or off anytime in the ⋯ menu.
+- **Clearer privacy wording**: the location request and the terms now say your location goes to the
+  weather services for the weather and alerts where you are, rounded to about a kilometre. The
+  updated terms are asked for once, no more than once a month.
+- **Privacy manifest** for the iPhone and iPad app and its widgets.
+
+## [2.1.0] - 2026-11-02
+
+- **Sunrise and sunset colour**: a forecast of how good the next sunrise and sunset will look, from
+  the clouds at each height: Great, Good, Some colour or Little colour, with the reason ("High and
+  mid-level clouds to catch the colour", "Low cloud will likely block it"). On the sun tile, as Sunrise
+  and Sunset tiles on the Mac and web, and beside the times in every day.
+- **Back to the top**: swipe to another city and back, and the page starts at the top again.
+- **Swipe between days**: in a day's detail, swipe left and right to move between days, as well as
+  the arrows.
+- **Better tiles**: UV and air quality scales, the moon's shape and when the next full or new moon
+  is, and which heights the clouds are at.
+- **A touch of colour**: each tile has its own accent on its icon and title, with a faint glow at
+  the top. Some follow the reading: Feels like goes from blue to coral with the warmth, UV and air
+  quality take their level's colour, and Averages is warm above normal and cool below.
+- **Cleaner widgets**: the reading sits right under the city, with the sky and the day's range below.
+- **One footer**: the city list ends like a city page, with where the weather comes from and when it
+  was updated.
+- **Polish**: the wind chart's legend no longer overlaps its numbers, rounder chart steps on Android,
+  and tidier wrapping in the footers and the rain map's credits.
+
+## [2.0.0] - 2026-11-01
+
+Two Degrees 2.0: everything since 0.4 adds up to a new app, on Mac, iPhone, iPad, Android and the web.
+
+- **The same tiles for every city**: air quality, averages, visibility, precipitation, cloud cover and
+  the moon show for every city, so each city page has the same layout. Pollen, measured only in some
+  places, is a line on the air quality tile, and a reading that isn't in yet shows a dash.
+- **Since 0.4**: severe weather alerts and notifications, a rain map, rain in the next two hours, air
+  quality, averages and records, a full day view, wind and rain units, up to 20 cities, Use My
+  Location without duplicate cards, city search that works offline, and Two Degrees for Android.
+
+## [0.5.1] - 2026-11-01
+
+- **Rain map fixed**: it now uses a free dark map from OpenFreeMap, so the map shows instead of an
+  "API key required" notice. The zoom buttons moved to the top right, clear of the close button.
+- **Pressure removed**: the pressure tile and its unit setting are gone, for a cleaner city page.
+
+## [0.5.0] - 2026-11-01
+
+- **Severe weather alerts**: warnings, watches and advisories from the US National Weather Service show
+  at the top of a city, most serious first; tap one for the full text and what to do. Turn on
+  **Notifications** to hear about new alerts and rain starting soon (off unless you turn them on).
+- **Rain map**: live radar for the past two hours, centred on your city, with a short look ahead when the radar service offers one.
+- **Next two hours**: when rain or snow is near, see when it starts and stops in 15-minute steps.
+- **Air quality and pollen**: the US AQI in the US and the European AQI elsewhere, with what's driving
+  it, plus tree, grass and weed pollen where it's measured.
+- **More details**: pressure and whether it's rising or falling, visibility, cloud cover, the day's rain
+  or snow, wind gusts and the moon.
+- **Tap a day** for its temperature, rain and wind through the day, sunrise and sunset, UV and the
+  strongest gust.
+- **Averages and records**: how today compares with the 1991–2020 normal, and the record high and low
+  for the date, with the year.
+- **Your units**: choose wind in km/h, mph, m/s or knots, rain in mm or inches, and pressure in hPa,
+  inHg or mmHg. Temperatures are always in both, as ever.
+- **Up to 20 cities**, up from 5.
+
+## [0.4.7] - 2026-11-01
+
+- **No more duplicate cards**: when where you are is a city you've saved, that city's card shows My
+  Location (with the arrow) instead of a second card for the same place. Move somewhere else and My
+  Location gets its own card again.
+
+## [0.4.6] - 2026-10-31
+
+- **Use My Location**: after you agree to the terms, Two Degrees asks once whether to show the weather
+  where you are (recommended). Say yes and the place you're in comes first in your cities, kept up to
+  date as you move, with an arrow beside it. Say no and it never asks again. Change it anytime in
+  Settings (Mac) or the ⋯ menu. Your location is rounded to about a kilometre and used only to get its
+  weather.
+- **Pick cities with the internet out**: search falls back on a built-in list of 34,000 cities.
+- **Updated terms**: they now cover Use My Location, so you'll be asked to agree once more. When the
+  terms change, Two Degrees asks again no more than once a month.
+- **Two Degrees for Android**: the same app and widgets, as an APK from bradcowdrey.com/two-degrees.
+
 ## [0.4.5] - 2026-10-26
 
 - **Widgets can follow your Two Degrees cities**, like Meridian's: edit a widget and turn on **Use Two

@@ -7,7 +7,7 @@ struct SettingsView: View {
             CitiesSettings().tabItem { Label("Cities", systemImage: "mappin.and.ellipse") }
             AboutView().tabItem { Label("About", systemImage: "info.circle") }
         }
-        .frame(width: 480, height: 440)
+        .frame(width: 500, height: 560)
     }
 }
 
@@ -31,6 +31,9 @@ private struct GeneralSettings: View {
                 ForEach(AppFont.allCases) { Text($0.label).tag($0) }
             }
             LocationSetting()
+            Picker("Wind", selection: $store.windUnit) { ForEach(WindUnit.allCases) { Text($0.label).tag($0) } }
+            Picker("Rain", selection: $store.rainUnit) { ForEach(RainUnit.allCases) { Text($0.label).tag($0) } }
+            NotificationSettings()
             Toggle("Keep window on top", isOn: $store.floatOnTop)
             Toggle("Open at login", isOn: Binding(get: { store.opensAtLogin }, set: { store.opensAtLogin = $0 }))
             UpdateSettings()
@@ -153,8 +156,31 @@ private struct LocationSetting: View {
         case .unavailable: return "Couldn’t find where you are just now. It tries again when your Mac wakes."
         case .locating: return "Finding where you are…"
         default:
-            let here = store.cities.first(where: \.isCurrent)
+            let here = store.cities.first(where: store.isHere)
             return here.map { "Showing \($0.name), first in your cities." } ?? "Show the weather where you are, first in your cities."
+        }
+    }
+}
+
+/// Severe weather and rain-starting-soon notifications, for My Location or the first city.
+private struct NotificationSettings: View {
+    @EnvironmentObject private var store: WeatherStore
+    @State private var denied = false
+
+    var body: some View {
+        Toggle(isOn: $store.notifySevere) {
+            Text("Notify me of severe weather")
+            Text("For My Location, or your first city. United States only, from the National Weather Service.")
+        }
+        Toggle(isOn: $store.notifyRain) {
+            Text("Notify me when rain is starting soon")
+            Text("At most once every three hours, while Two Degrees is running.")
+        }
+        .task(id: store.notifySevere || store.notifyRain) { denied = await Notifier.shared.isDenied() }
+        if denied && (store.notifySevere || store.notifyRain) {
+            Button("Notifications are off for Two Degrees. Open Notification Settings…") {
+                NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.Notifications-Settings.extension")!)
+            }
         }
     }
 }

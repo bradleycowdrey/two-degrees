@@ -71,8 +71,11 @@ private struct WeatherPanelContent: View {
                     }
                     if let forecast = store.activeForecast {
                         NowTile(city: store.active, forecast: forecast)
+                        AlertsTile(city: store.active)
+                        NextHoursTile(forecast: forecast)
                         HoursTile(forecast: forecast)
                         DaysTile(forecast: forecast, open: $daysOpen)
+                        DetailsTile(city: store.active, forecast: forecast)
                     } else {
                         Tile {
                             HStack(spacing: ui.m) {
@@ -218,10 +221,19 @@ private struct WeatherPanelContent: View {
     /// The status line, the credit on its own full-width line beneath.
     private var footer: some View {
         VStack(alignment: .leading, spacing: ui.s) {
-            StatusLine()
-                .frame(maxWidth: .infinity, alignment: .leading)
+            HStack {
+                StatusLine()
+                Spacer()
+                Button { RainMap.open(store.active, unit: store.unit) } label: {
+                    Label("Rain Map ↗", systemImage: "map").font(ui.font(12, .medium))
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(Palette.textSecondary)
+                .help("Open the rain map for \(store.active.name) in your browser")
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
             Link(destination: Brand.website) {
-                Text("Made by \(Brand.author). Free. Forever. · \(Brand.websiteHost) ↗")
+                Text("Made by \(Brand.author). Free. Forever. ↗")
                     .multilineTextAlignment(.leading)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }

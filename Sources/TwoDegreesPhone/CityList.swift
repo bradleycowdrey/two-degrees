@@ -10,6 +10,7 @@ struct CityList: View {
     @State private var results: [City] = []
     @State private var searching = false
     @State private var editMode: EditMode = .inactive
+    @State private var notificationsDenied = false
 
     var body: some View {
         NavigationStack {
@@ -47,6 +48,7 @@ struct CityList: View {
             .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search for a city")
             .autocorrectionDisabled()
             .task(id: query) { await search() }
+            .task(id: store.notifySevere || store.notifyRain) { notificationsDenied = await Notifier.shared.isDenied() }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) { menu }
                 if editMode.isEditing {
@@ -101,14 +103,7 @@ struct CityList: View {
     }
 
     private var footer: some View {
-        VStack(spacing: ui.pt(6)) {
-            Text("The weather in °F and °C at once. Data: Open-Meteo, GeoNames.")
-            Text("Made by \(Brand.author) · \(Brand.websiteHost)")
-        }
-        .font(ui.font(13))
-        .foregroundStyle(.secondary)
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, ui.pt(8))
+        AppFooter(lead: nil, fetched: store.forecasts.values.map(\.fetchedAt).max(), offline: !store.failed.isEmpty)
     }
 
     private var menu: some View {
@@ -128,6 +123,20 @@ struct CityList: View {
                 Text("°F large, °C beside").tag(TempUnit.fahrenheit)
                 Text("°C large, °F beside").tag(TempUnit.celsius)
             } label: { Label("Units", systemImage: "thermometer.medium") }
+            Menu {
+                Picker("Wind", selection: $store.windUnit) { ForEach(WindUnit.allCases) { Text($0.label).tag($0) } }
+                Picker("Rain", selection: $store.rainUnit) { ForEach(RainUnit.allCases) { Text($0.label).tag($0) } }
+            } label: { Label("Wind & Rain", systemImage: "ruler") }
+            Menu {
+                Toggle(isOn: $store.notifySevere) { Label("Severe Weather", systemImage: "exclamationmark.triangle") }
+                Toggle(isOn: $store.notifyRain) { Label("Rain Starting Soon", systemImage: "cloud.rain") }
+                if notificationsDenied && (store.notifySevere || store.notifyRain) {
+                    Button { UIApplication.shared.open(URL(string: UIApplication.openSettingsURLString)!) } label: {
+                        Label("Notifications are off for Two Degrees in Settings", systemImage: "bell.slash")
+                    }
+                }
+                Text("For My Location, or your first city. Severe weather alerts: United States only, from the National Weather Service.")
+            } label: { Label("Notifications", systemImage: "bell") }
             Picker(selection: $store.uiSize) {
                 ForEach(UISize.allCases) { Text($0.label).tag($0) }
             } label: { Label("Text Size", systemImage: "textformat.size") }
@@ -176,8 +185,14 @@ struct CityCard: View {
         HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: ui.pt(2)) {
                 // As in Apple's Weather: where you are reads "My Location", with the place beneath.
-                Text(city.isCurrent ? "My Location" : city.name).font(ui.font(22, .semibold)).lineLimit(1).minimumScaleFactor(0.7)
-                Text(city.isCurrent ? city.name : forecast.map { Forecast.format($0.now.time, "jmm") } ?? city.region)
+                HStack(spacing: ui.pt(6)) {
+                    Text(store.isHere(city) ? "My Location" : city.name).font(ui.font(22, .semibold)).lineLimit(1).minimumScaleFactor(0.7)
+                    if let alert = store.alerts[city.id]?.first {
+                        Image(systemName: "exclamationmark.triangle.fill").font(ui.font(14)).foregroundStyle(Color(hex: alert.colorHex))
+                            .accessibilityLabel("\(alert.event)")
+                    }
+                }
+                Text(store.isHere(city) ? city.name : forecast.map { Forecast.format($0.now.time, "jmm") } ?? city.region)
                     .font(ui.font(14, .medium)).opacity(0.85).lineLimit(1)
                 Spacer(minLength: ui.pt(8))
                 Text(forecast.map { Condition.name($0.now.code) } ?? (store.failed.contains(city.id) ? "Offline" : "Loading…"))

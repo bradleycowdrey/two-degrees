@@ -176,3 +176,35 @@ extension Color {
         )
     }
 }
+
+/// One quiet accent colour per detail tile, used only on its icon and title and as a faint glow at the
+/// top of the tile. Some follow the reading (how warm it feels, the UV level, the air quality, how today
+/// compares with normal); the rest are fixed. Same colours on Android and the web.
+enum TileAccent {
+    static let humidity: UInt32 = 0x6FC8D6
+    static let wind: UInt32 = 0x9EDCC2
+    static let rain: UInt32 = 0x8DB4E2
+    static let sunrise: UInt32 = 0xF2C66D
+    static let sunset: UInt32 = 0xF39A72
+    static let visibility: UInt32 = 0xB4D2F0
+    static let cloud: UInt32 = 0xB9C3CF
+    static let moon: UInt32 = 0xEFE3CC
+    static let neutral: UInt32 = 0xC9C2B8
+
+    /// Blue when cold, green when mild, gold when warm, coral when hot (°C).
+    static func temperature(_ c: Double) -> UInt32 {
+        c < 5 ? 0x8CC0F5 : c < 18 ? 0x9AD3A8 : c < 27 ? 0xF2C66D : 0xF28B62
+    }
+    /// The UV level's colour: green, yellow, orange, red, violet.
+    static func uv(_ uv: Double) -> UInt32 {
+        uv < 3 ? 0x6CC24A : uv < 6 ? 0xE8D44D : uv < 8 ? 0xF0A04B : uv < 11 ? 0xE5604A : 0xB57BD0
+    }
+    /// The air quality category's colour, from its place on the scale (0–1).
+    static func air(_ position: Double) -> UInt32 {
+        position < 0.17 ? 0x6CC24A : position < 0.34 ? 0xE8D44D : position < 0.5 ? 0xF0A04B : position < 0.67 ? 0xE5604A : 0xB57BD0
+    }
+    /// Warm above normal, cool below, neutral about the same (difference in °C).
+    static func versusNormal(_ difference: Double) -> UInt32 {
+        difference >= 1.5 ? 0xF2A65A : difference <= -1.5 ? 0x8CC0F5 : neutral
+    }
+}

@@ -60,6 +60,32 @@ enum SelfTest {
             }
         }
 
+        // 0.5's details, with live data for the first city.
+        let first = store.cities[0]
+        if let f = store.forecasts[first.id] {
+            check(f.steps?.count == 8, "\(first.name): the next two hours in 15-minute steps (\(f.steps?.count ?? 0))")
+            check(f.now.pressure != nil && f.now.cloudCover != nil && f.now.visibility != nil && f.days.first?.precipitation != nil,
+                  "\(first.name): pressure, cloud cover, visibility and today's precipitation arrive")
+            let sky = SkyColour.next(f).flatMap { SkyColour.outlook(f, at: $0.time) }
+            check(sky != nil, "\(first.name): the next sunrise or sunset has a colour outlook (\(sky.map { "\($0.rating.word): \($0.reason)" } ?? "none"))")
+            check(f.hours(on: f.days[1]).count == 24 && f.hours(on: f.days[1]).allSatisfy { $0.wind != nil }, "\(first.name): a day's 24 hours, with wind, for the day detail")
+        }
+        for _ in 0..<60 where store.airQuality[first.id] == nil || store.climate[first.id] == nil { try? await Task.sleep(for: .milliseconds(500)) }
+        let reading = store.airQuality[first.id]?.reading(inUS: WeatherAlert.inUS(latitude: first.latitude, longitude: first.longitude))
+        check(reading != nil, "\(first.name): air quality \(reading.map { "\($0.value) \($0.category) (\($0.scale))" } ?? "missing")")
+        let (entry, limited) = await WeatherServices.climateForCheck(first, store: store)
+        check((entry?.normalHigh != nil && entry?.recordHighYear != nil) || (entry == nil && limited),
+              entry == nil && limited ? "\(first.name): normals and records skipped: the archive service is limiting or not answering this runner"
+              : "\(first.name): normals and records load (normal high \(entry?.normalHigh.map { TempUnit.fahrenheit.spaced(TempUnit.fahrenheit.value($0)) } ?? "none"), record from \(entry?.recordHighYear.map(String.init) ?? "none"))")
+        let alerts = try? await WeatherServices.alerts(for: City(name: "Denver", region: "", latitude: 39.74, longitude: -104.98))
+        check(alerts != nil, "National Weather Service alerts answer for Denver (\(alerts?.count ?? 0) active)")
+        check(["New Moon", "Waxing Crescent", "First Quarter", "Waxing Gibbous", "Full Moon", "Waning Gibbous", "Last Quarter", "Waning Crescent"].contains(Moon.phase(at: Date()).name),
+              "the moon: \(Moon.phase(at: Date()).name), \(Moon.phase(at: Date()).illumination)% lit")
+        store.windUnit = .ms
+        check(store.windUnit.text(36, temp: .fahrenheit).main == "10 m/s", "wind in m/s")
+        store.windUnit = .auto
+        check(store.windUnit.text(36, temp: .fahrenheit).main == "22 mph" && store.windUnit.text(36, temp: .celsius).main == "36 km/h", "wind follows the larger unit when automatic")
+
         check(!daysOpen.wrappedValue, "5-day forecast starts closed")
 
         // 2. Every size × state: base (forecast closed), forecast open, adding, editing, °C. Window must fit its content and stay on screen.
@@ -256,10 +282,12 @@ enum SelfTest {
             alert.buttons.first?.performClick(nil)
         }
         check(termsButtons == ["I Agree", "Read the Terms", "Quit"], "terms: the dialog offers I Agree, Read the Terms and Quit (\(termsButtons.joined(separator: ", ")))")
-        check(termsText.contains("bradcowdrey.com/legal") && termsText.contains("Open-Meteo"), "terms: the dialog names the terms page and where locations go")
+        check(termsText.contains("bradcowdrey.com/legal") && termsText.contains("weather services"), "terms: the dialog names the terms page and where locations go")
         check(agreed && Terms.accepted(in: termsDefaults), "terms: I Agree is remembered, so it isn't asked again")
         termsDefaults.set("an-older-version", forKey: Terms.key)
-        check(!Terms.accepted(in: termsDefaults), "terms: after the terms change, it asks again")
+        check(Terms.accepted(in: termsDefaults), "terms: a change within a month of agreeing waits (at most one ask a month)")
+        termsDefaults.set(Date().addingTimeInterval(-31 * 24 * 3600).timeIntervalSince1970, forKey: TermsSchedule.dateKey)
+        check(!Terms.accepted(in: termsDefaults), "terms: after the terms change, and a month on, it asks again")
 
         // 8b. The menu bar panel: click the menu bar item, and the panel opens centred under it.
         if let item = NSApp.windows.first(where: { $0.className.contains("StatusBarWindow") && $0.isVisible }),

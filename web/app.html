@@ -73,6 +73,7 @@
 
   /* Cities */
   .cities { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .credit .nw { white-space: nowrap; }
   .chip { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; border: 0; border-radius: 980px; cursor: pointer;
     background: var(--border); color: var(--secondary); font-size: 13px; font-weight: 500; transition: background .15s, color .15s; }
   .chip:hover { background: var(--border-strong); color: var(--text); }
@@ -102,6 +103,13 @@
   .result .sp { flex: 1; }
   .result .plus { color: var(--muted); font-size: 18px; }
   .hint { font-size: 13px; color: var(--muted); padding: 4px 12px; }
+  /* Asked once, on the first visit: Use My Location (recommended) or Not Now. */
+  .ask-loc h2 { font-size: calc(17px * var(--z, 1)); font-weight: 600; margin: 0 0 6px; }
+  .ask-loc p { font-size: calc(13px * var(--z, 1)); color: var(--muted); margin: 0 0 14px; line-height: 1.45; }
+  .ask-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .ask-actions button { height: 34px; padding: 0 16px; border: 0; border-radius: 980px; cursor: pointer; font: inherit; font-size: calc(14px * var(--z, 1)); font-weight: 600; }
+  .ask-yes { background: var(--cream); color: var(--bg); }
+  .ask-no { background: transparent; color: var(--text); }
 
   /* Tiles */
   .tile { background: var(--tile); border-radius: var(--r-tile); padding: 18px; min-width: 0; }
@@ -162,6 +170,11 @@
   .day { --lab: 46px; --pad: 8px; display: grid; grid-template-columns: 52px 32px minmax(0, 1fr); align-items: center; gap: 10px;
     min-height: 40px; padding-block: 0; border-top: 0.5px solid var(--border-strong); font-variant-numeric: tabular-nums; }
   .day:first-child { border-top: 0; }
+  /* Each row is a button: it opens that day's detail. */
+  button.day { width: 100%; margin: 0; padding-inline: 0; border-width: 0.5px 0 0; border-style: solid; border-color: var(--border-strong); border-radius: 0;
+    background: none; color: inherit; text-align: left; cursor: pointer; }
+  button.day:first-child { border-top: 0; }
+  button.day:hover .d { color: var(--cream); }
   .day .d { font-size: 15px; font-weight: 600; }
   .day .ic { position: relative; display: flex; justify-content: center; }
   .day .ic svg { width: 22px; height: 22px; }
@@ -289,7 +302,116 @@
   .wd-o { font-size: 10px; font-weight: 400; color: var(--muted); text-align: right; white-space: nowrap; }
   .w .wload { margin-top: auto; font-size: 12px; color: var(--faint); }
 
+  /* Severe weather alerts (US, from the NWS): one card per alert, above everything else, most severe first. */
+  .alerts { display: flex; flex-direction: column; gap: 8px; }
+  .alert { --sev: #E9C98A; display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; align-items: center; gap: 12px; width: 100%;
+    padding: 12px 16px; border: 0; border-radius: var(--r-tile); cursor: pointer; text-align: left;
+    background: color-mix(in srgb, var(--sev) 13%, var(--tile)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--sev) 42%, transparent); }
+  .alert:hover { background: color-mix(in srgb, var(--sev) 19%, var(--tile)); }
+  .alert > svg { width: 20px; height: 20px; color: var(--sev); }
+  .alert b { display: block; font-size: 15px; font-weight: 600; line-height: 1.25; }
+  .alert .m { display: block; font-size: 12.5px; color: var(--secondary); line-height: 1.35; margin-top: 1px; }
+  .alert .go { color: var(--muted); font-size: 20px; line-height: 1; }
+  .chip svg.warn { width: 12px; height: 12px; flex: none; margin-left: -2px; color: #E9C98A; }
+  .chip[aria-current="true"] svg.warn { color: #B4471E; }
+  .stat .s.wrap { white-space: normal; }
+
+  /* Next 2 hours: rain (or snow) in 15-minute steps, shown only when some is near. */
+  .soon-line { margin: 0 0 10px; font-size: 15px; font-weight: 600; letter-spacing: -.01em; }
+  .soon-bars { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 6px; }
+  .soon-bars .b { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+  .soon-bars .col { position: relative; height: 44px; border-radius: 5px; background: var(--raised); box-shadow: inset 0 0 0 0.5px var(--border-strong); }
+  .soon-bars .col i { position: absolute; left: 0; right: 0; bottom: 0; border-radius: 5px; background: var(--rain); }
+  .soon-bars .col.snow i { background: var(--snow); }
+  .soon-bars .t { display: flex; justify-content: center; height: 14px; font-size: 11px; font-weight: 500; line-height: 14px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .soon-bars .b:first-child .t { color: var(--cream); font-weight: 600; }
+
+  /* More detail: two across, the same card as the other tiles. */
+  .details { container-type: inline-size; }
+  .dgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .dt { display: flex; flex-direction: column; padding: 16px;
+    background-image: linear-gradient(to bottom, color-mix(in srgb, var(--acc, transparent) 16%, transparent), transparent 50%); }
+  .dt .eyebrow { color: color-mix(in srgb, var(--acc, var(--muted)) 90%, transparent); }
+  .dt.wide { grid-column: 1 / -1; }
+  .dt .eyebrow { flex-wrap: wrap; margin-bottom: 6px; }
+  .dt .eyebrow svg { width: 18px; height: 18px; flex: none; margin-left: auto; }
+  .dt .dv { font-size: 20px; font-weight: 600; letter-spacing: -.02em; line-height: 1.2; font-variant-numeric: tabular-nums; overflow-wrap: break-word; }
+  .dt .dv .cat { font-size: 15px; letter-spacing: -.01em; }
+  .dt .ds { margin-top: 2px; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; overflow-wrap: break-word; }
+  .dt .dn { margin-top: auto; padding-top: 6px; font-size: 13px; line-height: 1.35; color: var(--secondary); overflow-wrap: break-word; }
+  .aqbar { position: relative; height: 4px; margin: 8px 6px 2px 0; border-radius: 4px; }
+  .aqbar u { position: absolute; top: 50%; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%; background: var(--text); box-shadow: 0 0 0 2.5px var(--tile); }
+  /* Averages: normal low–high (muted) and today's low–high (the accent) on one scale. */
+  .rbar { position: relative; height: 6px; margin: 10px 6px 2px 0; border-radius: 3px; background: color-mix(in srgb, var(--text) 8%, transparent); }
+  .rbar i, .rbar b { position: absolute; top: 50%; border-radius: 3px; }
+  .rbar i { height: 5px; margin-top: -2.5px; background: color-mix(in srgb, var(--text) 26%, transparent); }
+  .rbar b { height: 6px; margin-top: -3px; background: var(--acc); box-shadow: 0 0 0 1.5px var(--tile); }
+  /* Sunrise and sunset: the sun's path over one day, the horizon, and where the sun is now. */
+  .sunpath { position: relative; height: 34px; margin: 10px 0 2px; }
+  .sunpath svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+  .sunpath u { position: absolute; width: 8px; height: 8px; margin: -4px 0 0 -4px; border-radius: 50%; }
+  .sunpath u.up { background: var(--acc); box-shadow: 0 0 6px 1px color-mix(in srgb, var(--acc) 60%, transparent); }
+  .sunpath u.down { background: color-mix(in srgb, var(--text) 30%, var(--tile)); }
+  /* Cloud cover: high, mid and low layers, each filled to its share. */
+  .clbars { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 4px 8px; margin: 10px 6px 2px 0; }
+  .clbars span { font-size: 11px; line-height: 13px; color: var(--muted); }
+  .clbars div { position: relative; height: 4px; border-radius: 2px; background: color-mix(in srgb, var(--text) 10%, transparent); }
+  .clbars div i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 2px; background: var(--acc); }
+  @container (max-width: 250px) { .dgrid { grid-template-columns: minmax(0, 1fr); } }
+
+  /* Rain map: opens the shared map page, at this city, in a new tab. */
+  .mapcard { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+  .mapcard .eyebrow { flex-basis: 100%; margin: 0 0 -4px; }
+  .mapcard p { flex: 1 1 180px; margin: 0; font-size: 13px; color: var(--secondary); line-height: 1.4; }
+  .mapcard .pill { flex: none; }
+  .mapcard .credit { flex-basis: 100%; margin-top: 2px; font-size: 11px; color: var(--faint); }
+
+  /* Sheets: a day's detail and an alert's full text. Over the page when the app has the window; in the
+     product page's frame (whose height follows the page) the sheet takes the panel's place instead. */
+  .sheet-back { position: fixed; inset: 0; z-index: 30; display: flex; justify-content: center; align-items: flex-start; overflow-y: auto;
+    padding: 24px 16px; background: rgba(12,11,10,.74); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); overscroll-behavior: contain; }
+  body.sheet-open { overflow: hidden; }
+  .sheet { position: relative; overflow: hidden; width: 100%; max-width: 520px; flex: none; zoom: var(--z, 1); padding: 20px 18px 20px; border-radius: var(--r-panel);
+    background: var(--bg); box-shadow: 0 0 0 0.5px var(--border-strong), 0 30px 80px rgba(0,0,0,.6); display: flex; flex-direction: column; gap: 10px; outline: none; }
+  .sheet::before { content: ""; position: absolute; inset: 0 0 auto; height: 3px; background: var(--crimson); }
+  .sheet.system, .sheet.system button { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif; }
+  html.embedded .sheet-back { position: static; padding: 0; overflow: visible; background: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+  html.embedded body.sheet-open { overflow: visible; }
+  html.embedded body.sheet-open main.panel { display: none; }
+  html.embedded .sheet { box-shadow: 0 0 0 0.5px var(--border-strong), 0 16px 32px rgba(0,0,0,.4); }
+  .sh-head { display: flex; align-items: center; gap: 8px; }
+  .sh-head h2 { flex: 1; min-width: 0; margin: 0; font-size: 19px; font-weight: 600; letter-spacing: -.02em; line-height: 1.25; }
+  .sh-head .circle:disabled { opacity: .35; cursor: default; background: var(--tile); }
+  .sh-sum { display: flex; align-items: center; gap: 14px; }
+  .sh-sum svg { width: 48px; height: 48px; flex: none; }
+  .sh-sum .cond { margin: 0; }
+  .sh-sum .hl { font-size: 14px; color: var(--secondary); font-variant-numeric: tabular-nums; }
+  .sh-sum .hl b { font-weight: 600; color: var(--text); }
+  svg.chart { display: block; width: 100%; height: auto; overflow: visible; }
+  svg.chart text { font-family: var(--font); font-size: 10.5px; font-weight: 500; fill: var(--faint); font-variant-numeric: tabular-nums; }
+  svg.chart text.now { fill: var(--cream); font-weight: 600; }
+  .legend { display: inline-flex; align-items: center; gap: 5px; }
+  .legend i { display: inline-block; width: 12px; height: 2px; border-radius: 2px; background: var(--cream); }
+  .legend i.g { background: var(--muted); opacity: .7; }
+  .facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 7px 14px; margin: 0; font-size: 14px; }
+  .facts dt { color: var(--muted); }
+  .facts dd { margin: 0; text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: break-word; }
+  .facts dd small { font-weight: 500; color: var(--muted); font-size: 13px; }
+  .al-text { margin: 0; font-size: 14px; line-height: 1.5; color: var(--secondary); white-space: pre-line; overflow-wrap: break-word; }
+  .al-text.lead { color: var(--text); font-weight: 600; }
+  .al-note { margin: 0; font-size: 12.5px; color: var(--muted); line-height: 1.45; }
+  .al-link { align-self: flex-start; }
+  .menu .opts { display: flex; flex-wrap: wrap; gap: 4px; padding: 2px 8px 6px; }
+  .menu .opts button { width: auto; padding: 4px 9px; border-radius: 980px; background: var(--border); font-size: 12px; }
+  .menu .opts button[aria-checked="true"] { background: var(--cream); color: var(--bg); font-weight: 600; }
+  .menu .opts button[aria-checked="true"]:hover, .menu .opts button[aria-checked="true"]:focus-visible { background: var(--cream); color: var(--bg); box-shadow: 0 0 0 2px #0A64D2; }
+  .menu.more { max-height: calc(100vh - 80px); overflow-y: auto; }
+
   @media (max-width: 460px) {
+    .sheet-back { padding: 0; }
+    .sheet { max-width: none; min-height: 100%; border-radius: 0; padding: 18px 14px 28px; }
+    html.embedded .sheet { min-height: 0; border-radius: 24px; }
+    .soon-bars { gap: 4px; }
     .panel { padding: 25px 14px 16px; border-radius: 24px; }
     .tile { padding: 16px; }
     /* The header fits a phone with Share in it: tighter gaps, no spacer element (its two gaps), narrower °F/°C. */
@@ -328,9 +450,13 @@
 <main class="panel" aria-labelledby="appName">
   <header class="hdr">
     <svg class="mark" viewBox="0 0 28 28" aria-hidden="true">
-      <rect width="28" height="28" rx="7.3" fill="#222018"/>
+      <defs>
+        <linearGradient id="markSky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#627A98"/><stop offset=".62" stop-color="#2C364A"/><stop offset="1" stop-color="#3A2E32"/></linearGradient>
+        <linearGradient id="markRing" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F7A870"/><stop offset="1" stop-color="#E24A7A"/></linearGradient>
+      </defs>
+      <rect width="28" height="28" rx="7.3" fill="url(#markSky)"/>
       <circle cx="10.4" cy="11.6" r="4.6" fill="none" stroke="#FFF1E5" stroke-width="2.4"/>
-      <circle cx="18.6" cy="16.4" r="3.4" fill="none" stroke="#E04A7A" stroke-width="2.2"/>
+      <circle cx="18.6" cy="16.4" r="3.4" fill="none" stroke="url(#markRing)" stroke-width="2.2"/>
     </svg>
     <h1 id="appName">Two Degrees</h1>
     <span class="sp"></span>
@@ -352,6 +478,12 @@
     </div>
   </header>
 
+  <section class="tile ask-loc" id="askLoc" hidden aria-labelledby="askLocTitle">
+    <h2 id="askLocTitle">Show the weather where you are?</h2>
+    <p>Two Degrees can put the place you’re in first in your cities and keep it up to date. Recommended. Your location is rounded to about a kilometre and used only to get its weather. You can change this anytime in the ⋯ menu.</p>
+    <div class="ask-actions"><button type="button" class="ask-yes" id="askLocYes">Use My Location</button><button type="button" class="ask-no" id="askLocNo">Not Now</button></div>
+  </section>
+
   <nav class="cities" id="cities" aria-label="Saved cities"></nav>
 
   <section class="tile search" id="search" hidden aria-label="Add a city">
@@ -362,7 +494,15 @@
     <div class="results" id="results" role="listbox" aria-label="Matching cities"></div>
   </section>
 
+  <section class="alerts" id="alerts" aria-label="Severe weather alerts" hidden></section>
+
   <section class="tile now" id="now" aria-live="polite"><div class="skeleton">Loading the forecast…</div></section>
+
+  <section class="tile soon" id="soon" aria-labelledby="soonTitle" hidden>
+    <h3 class="eyebrow" id="soonTitle">Next 2 hours<span class="sp"></span><span class="aside" id="soonAside"></span></h3>
+    <p class="soon-line" id="soonLine"></p>
+    <div class="soon-bars" id="soonBars" role="img"></div>
+  </section>
 
   <section class="tile" aria-labelledby="hoursTitle">
     <h3 class="eyebrow" id="hoursTitle">Next 24 hours<span class="sp"></span><span class="aside" id="hoursAside"></span></h3>
@@ -380,15 +520,25 @@
     <div class="days" id="days" hidden></div>
   </section>
 
+  <section class="details" id="details" aria-label="More detail" hidden><div class="dgrid" id="dgrid"></div></section>
+
+  <section class="tile mapcard" id="mapCard" aria-labelledby="mapTitle">
+    <h3 class="eyebrow" id="mapTitle">Rain map</h3>
+    <p id="mapText">Radar for the past two hours.</p>
+    <a class="pill" id="mapLink" href="https://bradleycowdrey.github.io/two-degrees/radar.html" target="_blank" rel="noopener">Open Rain Map <span aria-hidden="true">↗</span></a>
+    <span class="credit"><span class="nw">Radar © RainViewer</span> · <span class="nw">Map OpenFreeMap © OpenMapTiles</span> · <span class="nw">Data © OpenStreetMap contributors</span></span>
+  </section>
+
 
 
   <footer class="foot">
     <div class="foot-row">
     <div class="status" id="status"><span class="dot"></span><span id="statusText" title="">Loading…</span><span aria-hidden="true">·</span><a href="https://open-meteo.com/" target="_blank" rel="noopener" title="Weather data by Open-Meteo.com">Data: Open-Meteo</a></div>
     </div>
-    <a class="brand" href="https://bradcowdrey.com" target="_blank" rel="noopener">Made by Bradley Cowdrey. Free. Forever. · bradcowdrey.com ↗</a>
+    <a class="brand" href="https://bradcowdrey.com" target="_blank" rel="noopener">Made by Bradley Cowdrey. Free. Forever. ↗</a>
   </footer>
 </main>
+<div class="sheet-back" id="sheetBack" hidden><div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle" tabindex="-1"></div></div>
 <div class="toast" id="toast" role="status" hidden></div>
 <section class="wdesk" id="widgets" aria-label="Two Degrees widgets" hidden></section>
 
@@ -398,7 +548,7 @@
   const APP_URL = 'https://bradcowdrey.com/two-degrees';
   const MAC_URL = 'https://github.com/bradleycowdrey/two-degrees/releases/latest/download/TwoDegrees.dmg';
   const SHARE_TEXT = 'Two Degrees: the weather in °F and °C at once, with the next 24 hours and five days ahead. Free and open source, by Bradley Cowdrey.';
-  const MAX_CITIES = 5;
+  const MAX_CITIES = 20;   // of your own; where you are doesn't count
   const CACHE_MS = 10 * 60 * 1000;
   const inArtifact = () => !!(window.claude && typeof window.claude.use === 'function');
 
@@ -468,6 +618,31 @@
     return /-(US|LR|MM|BS|BZ|KY|PW|FM|MH)\b/.test(lang) ? 'F' : 'C';
   };
 
+  // Wind and rain: the chosen unit, and its other-system counterpart (only mph↔km/h and mm↔in have one;
+  // m/s and knots stand alone). Automatic: mph and in with °F; km/h and mm with °C.
+  const UNIT_CHOICES = {
+    wind: [['auto', 'Automatic'], ['kmh', 'km/h'], ['mph', 'mph'], ['ms', 'm/s'], ['kn', 'knots']],
+    rain: [['auto', 'Automatic'], ['mm', 'mm'], ['in', 'in']],
+  };
+  const windUnit = () => (state.windUnit !== 'auto' ? state.windUnit : state.unit === 'F' ? 'mph' : 'kmh');
+  const rainUnit = () => (state.rainUnit !== 'auto' ? state.rainUnit : state.unit === 'F' ? 'in' : 'mm');
+  const WIND = { kmh: [1, 'km/h'], mph: [0.621371, 'mph'], ms: [1 / 3.6, 'm/s'], kn: [0.539957, 'kn'] };
+  const windIn = (kmh, unit) => `${Math.round(kmh * WIND[unit][0])} ${WIND[unit][1]}`;
+  // [main, counterpart or ''] for a speed in km/h.
+  const fmtWind = (kmh) => { const w = windUnit(); return [windIn(kmh, w), w === 'mph' ? windIn(kmh, 'kmh') : w === 'kmh' ? windIn(kmh, 'mph') : '']; };
+  const rainIn = (mm, unit) => (mm === 0 ? `0 ${unit}` : unit === 'in' ? `${(mm / 25.4).toFixed(2)} in` : `${mm < 10 ? mm.toFixed(1) : Math.round(mm)} mm`);
+  const fmtRain = (mm) => { const r = rainUnit(); return [rainIn(mm, r), rainIn(mm, r === 'in' ? 'mm' : 'in')]; };
+  // Visibility follows the wind unit's system: miles with mph, kilometres otherwise.
+  // Visibility in both systems, the wind unit's first: "8 mi" and "13 km"; under a mile or a kilometre,
+  // feet and metres ("1,600 ft", "490 m"). The same rule as the apps.
+  const distance = (m, imperial) => {
+    const short = (v) => v.toFixed(1).replace(/\.0$/, '');
+    if (imperial) { const mi = m / 1609.344; return mi >= 10 ? `${Math.round(mi)} mi` : mi >= 1 ? `${short(mi)} mi` : `${(Math.round(m * 3.28084 / 100) * 100).toLocaleString('en-US')} ft`; }
+    const km = m / 1000; return km >= 10 ? `${Math.round(km)} km` : km >= 1 ? `${short(km)} km` : `${Math.round(m / 10) * 10} m`;
+  };
+  const fmtVis = (m) => distance(m, windUnit() === 'mph');
+  const fmtVisOther = (m) => distance(m, windUnit() !== 'mph');
+
   /* ---------- State ---------- */
   const EMBEDDED = window.parent !== window;   // running inside the product page's frame
   const WIDGETS = new URLSearchParams(location.search).has('widgets');   // app?widgets: just the Mac widgets, live
@@ -481,14 +656,26 @@
     // Extra large on the product page when there's room for it, unless the visitor picked a size.
     size: store.get('size', EMBEDDED && innerWidth >= 560 ? 'extraLarge' : 'medium'),
     font: store.get('font', 'inter'),
-    // Use My Location: where you are, first in the list. On unless turned off.
+    // Use My Location: where you are, first in the list. Asked once on the first visit (recommended);
+    // the answer sets it, and the ⋯ menu changes it.
     useLocation: store.get('useLocation', true),
+    locationAsked: store.get('locationAsked', false),
+    hereKey: store.get('hereKey', null),   // a saved city standing in for My Location
+    // Units for everything that isn't a temperature: Automatic follows the larger temperature unit.
+    windUnit: store.get('windUnit', 'auto'),       // auto | kmh | mph | ms | kn
+    rainUnit: store.get('rainUnit', 'auto'),       // auto | mm | in
+    // Extras beside the forecast, by city key: air quality, the normals-and-records table, NWS alerts.
+    aq: {}, normals: {}, alerts: {},
+    sheet: null,   // what the open sheet shows: { kind: 'day', i } or { kind: 'alert', id }
   };
   const SIZES = [['extraSmall', 'Extra Small', 0.82], ['small', 'Small', 0.91], ['medium', 'Medium', 1], ['large', 'Large', 1.12], ['extraLarge', 'Extra Large', 1.26]];
+  const zoomOf = () => (SIZES.find((x) => x[0] === state.size) || SIZES[2])[2];
   function applyLook() {
-    const panel = $('.panel');
-    panel.style.setProperty('--z', (SIZES.find((x) => x[0] === state.size) || SIZES[2])[2]);
-    panel.classList.toggle('system', state.font === 'system');
+    for (const el of [$('.panel'), $('#sheet')]) {
+      el.style.setProperty('--z', zoomOf());
+      el.classList.toggle('system', state.font === 'system');
+    }
+    if (state.sheet) renderSheet();
   }
 
   function citiesFromQuery() {
@@ -563,35 +750,53 @@
   const isoLocal = (d) => d.toISOString().slice(0, 16);
 
   /* ---------- Data ---------- */
+  const longDate = (s) => parseLocal(s).toLocaleDateString('en-US', { timeZone: 'UTC', weekday: 'long', month: 'short', day: 'numeric' });
+  // Every new field is optional: a missing or null value hides its tile, never fails the forecast.
+  const val = (o, k) => (o && o[k] != null ? o[k] : null);
+  const at = (o, k, i) => (o && Array.isArray(o[k]) && o[k][i] != null ? o[k][i] : null);
   async function fetchLive(city) {
     const url = 'https://api.open-meteo.com/v1/forecast?' + new URLSearchParams({
       latitude: city.lat.toFixed(4), longitude: city.lon.toFixed(4), timezone: 'auto', forecast_days: '6', wind_speed_unit: 'kmh',
-      current: 'temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,is_day',
-      hourly: 'temperature_2m,weather_code,precipitation_probability,is_day',
-      daily: 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset',
+      current: 'temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,is_day,pressure_msl,cloud_cover,wind_gusts_10m,visibility,precipitation',
+      hourly: 'temperature_2m,weather_code,precipitation_probability,is_day,precipitation,wind_speed_10m,wind_gusts_10m,cloud_cover_low,cloud_cover_mid,cloud_cover_high,visibility',
+      daily: 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset,precipitation_sum,rain_sum,snowfall_sum,wind_speed_10m_max,wind_gusts_10m_max,wind_direction_10m_dominant,uv_index_max',
+      minutely_15: 'precipitation', forecast_minutely_15: '8',
     });
     const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
     if (!res.ok) throw new Error('Open-Meteo answered ' + res.status);
     const j = await res.json();
-    const c = j.current, h = j.hourly, d = j.daily;
+    const c = j.current, h = j.hourly, d = j.daily, m = j.minutely_15;
     return {
       source: 'live', fetchedAt: Date.now(), tz: j.timezone,
-      current: { time: c.time, t: c.temperature_2m, feels: c.apparent_temperature, hum: c.relative_humidity_2m, wind: c.wind_speed_10m, code: c.weather_code, isDay: !!c.is_day },
-      hourly: h.time.map((time, i) => ({ time, t: h.temperature_2m[i], code: h.weather_code[i], pop: h.precipitation_probability[i] ?? 0, isDay: !!h.is_day[i] })),
-      daily: d.time.map((date, i) => ({ date, code: d.weather_code[i], max: d.temperature_2m_max[i], min: d.temperature_2m_min[i], pop: d.precipitation_probability_max[i] ?? 0, sunrise: d.sunrise[i], sunset: d.sunset[i] })),
+      current: { time: c.time, t: c.temperature_2m, feels: c.apparent_temperature, hum: c.relative_humidity_2m, wind: c.wind_speed_10m, code: c.weather_code, isDay: !!c.is_day,
+        pres: val(c, 'pressure_msl'), cloud: val(c, 'cloud_cover'), gust: val(c, 'wind_gusts_10m'), vis: val(c, 'visibility'), precip: val(c, 'precipitation') },
+      hourly: h.time.map((time, i) => ({ time, t: h.temperature_2m[i], code: h.weather_code[i], pop: h.precipitation_probability[i] ?? 0, isDay: !!h.is_day[i],
+        precip: at(h, 'precipitation', i), wind: at(h, 'wind_speed_10m', i), gust: at(h, 'wind_gusts_10m', i), vis: at(h, 'visibility', i),
+        lo: at(h, 'cloud_cover_low', i), mi: at(h, 'cloud_cover_mid', i), hi: at(h, 'cloud_cover_high', i) })),
+      daily: d.time.map((date, i) => ({ date, code: d.weather_code[i], max: d.temperature_2m_max[i], min: d.temperature_2m_min[i], pop: d.precipitation_probability_max[i] ?? 0, sunrise: d.sunrise[i], sunset: d.sunset[i],
+        psum: at(d, 'precipitation_sum', i), rain: at(d, 'rain_sum', i), snow: at(d, 'snowfall_sum', i), wmax: at(d, 'wind_speed_10m_max', i), gmax: at(d, 'wind_gusts_10m_max', i),
+        wdir: at(d, 'wind_direction_10m_dominant', i), uv: at(d, 'uv_index_max', i) })),
+      minutely: m && Array.isArray(m.time) ? m.time.map((time, i) => ({ time, p: at(m, 'precipitation', i) })) : null,
     };
   }
 
+  const seeded = (seed) => { let s = Math.abs(Math.round(seed)) % 2147483646 || 1; return () => (s = (s * 16807) % 2147483647) / 2147483647; };
+  const citySeed = (city) => Math.abs(Math.round(city.lat * 1000 + city.lon * 7919)) || 1;
+  // The sample's climate: -1 deep winter .. 1 high summer, by (fractional) month, 0 = January.
+  const sampleBase = (city, month) => {
+    const season = Math.cos(((month + (city.lat < 0 ? 6 : 0)) - 6.5) / 12 * 2 * Math.PI);
+    return { season, base: 27 - Math.abs(city.lat) * 0.42 + season * (Math.abs(city.lat) * 0.26) };
+  };
+
   /* A believable, clearly labelled sample for places where live data can't load (offline, sandboxed previews). */
   function sample(city) {
-    let seed = Math.abs(Math.round(city.lat * 1000 + city.lon * 7919)) || 1;
+    let seed = citySeed(city);
     const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    const r2 = seeded(citySeed(city) + 17);   // the newer fields, from their own sequence
     const nowStr = localNow(city.tz);
     const now = parseLocal(nowStr);
     const month = now.getUTCMonth();
-    const south = city.lat < 0;
-    const season = Math.cos(((month + (south ? 6 : 0)) - 6.5) / 12 * 2 * Math.PI); // -1 winter .. 1 summer
-    const base = 27 - Math.abs(city.lat) * 0.42 + season * (Math.abs(city.lat) * 0.26);
+    const { season, base } = sampleBase(city, month);
     const swing = 4 + rnd() * 3;
     const pattern = [0, 2, 61, 3, 1, 80, 2, 0];
     const daily = [], hourly = [];
@@ -603,8 +808,12 @@
       const date = isoLocal(new Date(start.getTime() + i * 864e5)).slice(0, 10);
       const rise = 6 + Math.round(rnd() * 10) / 10, set = 18 - season * 1.6;
       const at = (hrs) => `${date}T${String(Math.floor(hrs)).padStart(2, '0')}:${String(Math.round((hrs % 1) * 60)).padStart(2, '0')}`;
-      daily.push({ date, code, max: mid + swing, min: mid - swing, pop: code >= 51 ? 50 + Math.round(rnd() * 40) : Math.round(rnd() * 15), sunrise: at(rise), sunset: at(set), _mid: mid, _sw: swing, _rise: rise, _set: set });
+      const kind = codeInfo(code)[1], sky = kind === 'clear' ? 1 : kind === 'partly' ? 0.8 : 0.45;
+      const uv = Math.max(0, Math.round((9.5 - Math.abs(city.lat) * 0.1) * (0.5 + 0.5 * season) * sky));
+      daily.push({ date, code, max: mid + swing, min: mid - swing, pop: code >= 51 ? 50 + Math.round(rnd() * 40) : Math.round(rnd() * 15), sunrise: at(rise), sunset: at(set),
+        uv, wdir: Math.round(r2() * 359), _wind: 7 + r2() * 20, _mid: mid, _sw: swing, _rise: rise, _set: set });
     }
+    const p0 = 1004 + r2() * 18, slope = (r2() - 0.5) * 0.5;
     for (let i = 0; i < 24 * 6; i++) {
       const t = new Date(start.getTime() + i * 36e5);
       const day = daily[Math.floor(i / 24)], hr = i % 24;
@@ -612,30 +821,196 @@
       const mid = day._mid + (next._mid - day._mid) * (hr / 24);
       const temp = mid + day._sw * Math.sin((hr - 9) / 24 * 2 * Math.PI) + (rnd() - 0.5);
       const wet = day.code >= 51 && hr >= 12 && hr <= 18;
-      hourly.push({ time: isoLocal(t), t: temp, code: wet ? day.code : (day.code >= 51 ? 3 : day.code), pop: wet ? day.pop : Math.round(rnd() * 12), isDay: hr >= day._rise && hr < day._set });
+      const wind = Math.max(2, day._wind * (0.75 + 0.4 * Math.sin((hr - 8) / 24 * 2 * Math.PI)) + (r2() - 0.5) * 4);
+      hourly.push({ time: isoLocal(t), t: temp, code: wet ? day.code : (day.code >= 51 ? 3 : day.code), pop: wet ? day.pop : Math.round(rnd() * 12), isDay: hr >= day._rise && hr < day._set,
+        precip: wet ? Math.round((0.2 + r2() * 1.6) * 10) / 10 : 0, wind, gust: wind * 1.45 + 4 + r2() * 10,
+        pres: p0 + slope * i + 1.2 * Math.sin(i / 7), vis: wet ? 6000 + r2() * 6000 : 24140,
+        lo: wet ? 85 : day.code >= 3 ? 40 + r2() * 30 : r2() * 15, mi: day.code >= 2 ? 20 + r2() * 40 : r2() * 10, hi: day.code >= 1 ? 25 + r2() * 45 : r2() * 8 });
+    }
+    for (const [i, d] of daily.entries()) {
+      const hrs = hourly.slice(i * 24, i * 24 + 24), sum = hrs.reduce((a, h) => a + h.precip, 0);
+      const snowy = codeInfo(d.code)[1] === 'snow';
+      Object.assign(d, { psum: Math.round(sum * 10) / 10, rain: snowy ? 0 : Math.round(sum * 10) / 10, snow: snowy ? Math.round(sum * 0.7 * 10) / 10 : 0,
+        wmax: Math.max(...hrs.map((h) => h.wind)), gmax: Math.max(...hrs.map((h) => h.gust)) });
     }
     const cur = hourly[Math.min(hourly.length - 1, now.getUTCHours())];
+    const kind = codeInfo(cur.code)[1];
+    // The next two hours, in 15-minute steps: rain now if it's raining, else a passing shower for some places.
+    const step0 = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), now.getUTCHours(), Math.floor(now.getUTCMinutes() / 15) * 15));
+    const showers = r2() < 0.6, from = 1 + Math.floor(r2() * 4), len = 2 + Math.floor(r2() * 4);
+    const raining = /rain|drizzle|snow|storm/.test(kind);
+    const minutely = Array.from({ length: 8 }, (_, k) => ({ time: isoLocal(new Date(step0.getTime() + k * 9e5)),
+      p: raining ? Math.round((0.2 + r2() * 0.8) * 100) / 100 : showers && k >= from && k < from + len ? Math.round((0.12 + r2() * 0.9) * 100) / 100 : 0 }));
+    const wind = 6 + Math.round(rnd() * 18);
     return {
       source: 'sample', fetchedAt: Date.now(), tz: city.tz,
-      current: { time: nowStr, t: cur.t, feels: cur.t - 1.5, hum: 55 + Math.round(rnd() * 30), wind: 6 + Math.round(rnd() * 18), code: cur.code, isDay: cur.isDay },
-      hourly, daily: daily.map(({ _mid, _sw, _rise, _set, ...d }) => d),
+      current: { time: nowStr, t: cur.t, feels: cur.t - 1.5, hum: 55 + Math.round(rnd() * 30), wind, code: cur.code, isDay: cur.isDay,
+        pres: cur.pres, cloud: Math.min(100, Math.round(({ clear: 6, partly: 44, cloud: 92, fog: 100 }[kind] ?? 86) + r2() * 6)),
+        gust: wind + 6 + Math.round(r2() * 14), vis: kind === 'fog' ? 900 : cur.vis, precip: raining ? minutely[0].p : 0 },
+      hourly, daily: daily.map(({ _mid, _sw, _rise, _set, _wind, ...d }) => d), minutely,
     };
   }
 
+  /* ---------- Extras: air quality, normals and records, severe weather alerts ---------- */
+  // In the US: the NWS alerts and the US AQI. Elsewhere: no alerts, and the European AQI.
+  function isUS(city) {
+    const region = city.region || '';
+    if (/United States|\bUSA\b/.test(region)) return true;
+    if (/Canad|Kanad|Mexi|Méxi/i.test(region)) return false;
+    const { lat, lon } = city, inBox = (a, b, c, d) => lat >= a && lat <= b && lon >= c && lon <= d;
+    return inBox(24.4, 49.4, -125, -66.9) || inBox(51, 71.5, -180, -129.9) || inBox(18.9, 22.3, -160.3, -154.8) || inBox(17.9, 18.6, -67.3, -65.2);
+  }
+  const POLLEN = [['alder', 'Alder'], ['birch', 'Birch'], ['grass', 'Grass'], ['mugwort', 'Mugwort'], ['olive', 'Olive'], ['ragweed', 'Ragweed']];
+
+  async function fetchAQ(city) {
+    const url = 'https://air-quality-api.open-meteo.com/v1/air-quality?' + new URLSearchParams({
+      latitude: city.lat.toFixed(4), longitude: city.lon.toFixed(4), timezone: 'auto', forecast_days: '1', past_days: '1',
+      current: 'us_aqi,european_aqi,pm2_5,pm10,ozone,nitrogen_dioxide,' + POLLEN.map(([k]) => k + '_pollen').join(','),
+      hourly: 'us_aqi,european_aqi',
+    });
+    const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
+    if (!res.ok) throw new Error('Air quality answered ' + res.status);
+    const j = await res.json(), c = j.current || {}, h = j.hourly || {};
+    // Yesterday's same hour, for "better or worse than yesterday".
+    const i = (h.time || []).findIndex((t) => t.slice(0, 13) === String(c.time || '').slice(0, 13));
+    const pollen = {};
+    for (const [k] of POLLEN) if (val(c, k + '_pollen') != null) pollen[k] = c[k + '_pollen'];
+    return { us: val(c, 'us_aqi'), eu: val(c, 'european_aqi'), usY: i >= 24 ? at(h, 'us_aqi', i - 24) : null, euY: i >= 24 ? at(h, 'european_aqi', i - 24) : null,
+      pm25: val(c, 'pm2_5'), pm10: val(c, 'pm10'), o3: val(c, 'ozone'), no2: val(c, 'nitrogen_dioxide'), pollen: Object.keys(pollen).length ? pollen : null };
+  }
+  function sampleAQ(city) {
+    const r = seeded(citySeed(city) + 29), month = new Date().getUTCMonth();
+    const us = Math.round(18 + r() * 62), eu = Math.round(us * 0.5 + r() * 8);
+    const europe = city.lon > -25 && city.lon < 45 && city.lat > 34 && city.lat < 72;
+    let pollen = null;
+    if (europe && month >= 2 && month <= 8) {   // pollen season
+      pollen = { alder: month < 4 ? Math.round(r() * 60) : 0, birch: month >= 3 && month <= 4 ? Math.round(r() * 220) : 0, grass: month >= 4 ? Math.round(5 + r() * 90) : 0,
+        mugwort: month >= 6 ? Math.round(r() * 20) : 0, olive: month === 4 || month === 5 ? Math.round(r() * 40) : 0, ragweed: month >= 7 ? Math.round(r() * 15) : 0 };
+    }
+    return { sample: true, us, eu, usY: us + Math.round((r() - 0.5) * 30), euY: eu + Math.round((r() - 0.5) * 16),
+      pm25: Math.round(us * 0.22 * 10) / 10, pm10: Math.round(us * 0.4 * 10) / 10, o3: Math.round(40 + r() * 50), no2: Math.round(8 + r() * 30), pollen };
+  }
+
+  // Normals and records: a 366-entry table keyed by month-day ("11-04"): [normal high, normal low, record high,
+  // its year, record low, its year], in °C. Normals: the 1991–2020 mean over a ±3-day window. Records: that exact day.
+  const NORMALS_MS = 30 * 864e5;
+  async function fetchNormals(city) {
+    const end = new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 10);
+    const url = 'https://archive-api.open-meteo.com/v1/archive?' + new URLSearchParams({
+      latitude: city.lat.toFixed(4), longitude: city.lon.toFixed(4), start_date: '1940-01-01', end_date: end,
+      daily: 'temperature_2m_max,temperature_2m_min', timezone: 'auto',
+    });
+    const res = await fetch(url, { signal: AbortSignal.timeout(30000) });
+    if (!res.ok) throw new Error('Archive answered ' + res.status);
+    const d = (await res.json()).daily;
+    return buildNormals(d.time, d.temperature_2m_max, d.temperature_2m_min);
+  }
+  const MONTH_DAYS = Array.from({ length: 366 }, (_, i) => isoLocal(new Date(Date.UTC(2000, 0, 1) + i * 864e5)).slice(5, 10));   // a leap year: Feb 29 too
+  function buildNormals(times, maxes, mins) {
+    const index = Object.fromEntries(MONTH_DAYS.map((k, i) => [k, i]));
+    const sumHi = new Array(366).fill(0), sumLo = new Array(366).fill(0), nHi = new Array(366).fill(0), nLo = new Array(366).fill(0);
+    const rec = MONTH_DAYS.map(() => [-Infinity, 0, Infinity, 0]);
+    times.forEach((t, j) => {
+      const k = index[t.slice(5, 10)], year = +t.slice(0, 4), hi = maxes[j], lo = mins[j];
+      if (k == null) return;
+      if (hi != null && hi > rec[k][0]) { rec[k][0] = hi; rec[k][1] = year; }
+      if (lo != null && lo < rec[k][2]) { rec[k][2] = lo; rec[k][3] = year; }
+      if (year < 1991 || year > 2020) return;
+      for (let w = -3; w <= 3; w++) {   // the window wraps the year
+        const q = (k + w + 366) % 366;
+        if (hi != null) { sumHi[q] += hi; nHi[q]++; }
+        if (lo != null) { sumLo[q] += lo; nLo[q]++; }
+      }
+    });
+    const r1 = (x) => Math.round(x * 10) / 10, table = {};
+    MONTH_DAYS.forEach((k, i) => {
+      if (!nHi[i] || !nLo[i] || !isFinite(rec[i][0]) || !isFinite(rec[i][2])) return;
+      table[k] = [r1(sumHi[i] / nHi[i]), r1(sumLo[i] / nLo[i]), r1(rec[i][0]), rec[i][1], r1(rec[i][2]), rec[i][3]];
+    });
+    return table;
+  }
+  function sampleNormals(city) {
+    const r = seeded(citySeed(city) + 41), table = {};
+    MONTH_DAYS.forEach((k) => {
+      const [m, d] = k.split('-').map(Number);
+      const { base } = sampleBase(city, m - 1 + (d - 1) / 30);   // as the sample forecast's month
+      const hi = base + 5.5, lo = base - 5.5, r1 = (x) => Math.round(x * 10) / 10;
+      table[k] = [r1(hi), r1(lo), r1(hi + 8 + r() * 5), 1940 + Math.floor(r() * 84), r1(lo - 8 - r() * 5), 1940 + Math.floor(r() * 84)];
+    });
+    return { sample: true, table };
+  }
+
+  // Severe weather alerts from the US National Weather Service. Outside the US there's nothing to ask for.
+  const SEVERITY = { Extreme: 0, Severe: 1, Moderate: 2, Minor: 3, Unknown: 4 };
+  const sevColor = (s) => (s === 'Extreme' || s === 'Severe' ? '#E5484D' : s === 'Moderate' ? '#F2A65A' : '#E9C98A');
+  const activeAlerts = (list) => (list || []).filter((a) => !a.expires || Date.parse(a.expires) > Date.now())
+    .sort((a, b) => (SEVERITY[a.severity] ?? 4) - (SEVERITY[b.severity] ?? 4));
+  async function fetchAlerts(city) {
+    if (!isUS(city)) return [];
+    // A page can't set its own User-Agent: browsers send theirs, which the NWS accepts from web pages.
+    const res = await fetch(`https://api.weather.gov/alerts/active?point=${city.lat.toFixed(2)},${city.lon.toFixed(2)}`,
+      { headers: { Accept: 'application/geo+json' }, signal: AbortSignal.timeout(10000) });
+    if (!res.ok) return [];   // a point the NWS doesn't cover: no alerts here
+    const j = await res.json();
+    return (j.features || []).map((f) => f.properties || {}).filter((p) => p.event).map((p) => ({
+      id: p.id, event: p.event, severity: p.severity || 'Unknown', urgency: p.urgency, headline: p.headline, description: p.description,
+      instruction: p.instruction, effective: p.effective, expires: p.expires, senderName: p.senderName }));
+  }
+  // The sample: a windy day somewhere in the US gets the advisory it would have, marked as a sample.
+  function sampleAlerts(city, data) {
+    const today = data.daily[0];
+    if (!isUS(city) || !(today.gmax >= 50)) return [];
+    const until = new Date(Date.now() + 5 * 36e5); until.setUTCMinutes(15, 0, 0);
+    return [{ id: 'sample-' + keyOf(city), sample: true, event: 'Wind Advisory', severity: 'Moderate', urgency: 'Expected',
+      headline: 'Wind Advisory until this evening (sample)',
+      description: `* WHAT...West winds 20 to 30 mph with gusts up to ${windIn(today.gmax, 'mph')}.\n\n* WHERE...${city.name} and nearby areas.\n\n* IMPACTS...Gusty winds will blow around unsecured objects. Tree limbs could be blown down.`,
+      instruction: 'Use extra caution when driving, especially in a high-profile vehicle. Secure outdoor objects.',
+      effective: new Date().toISOString(), expires: until.toISOString(), senderName: `NWS ${city.name} (sample)` }];
+  }
+
   const keyOf = (c) => c.lat.toFixed(2) + ',' + c.lon.toFixed(2);
+  const extrasAt = {};
+  // Refreshed with the forecast; each one failing just hides its tiles. Never holds up the page.
+  function loadExtras(city, data) {
+    const key = keyOf(city);
+    if (data.source !== 'live') {   // the sample forecast comes with sample extras
+      if (!state.aq[key]) state.aq[key] = sampleAQ(city);
+      if (!state.normals[key]) state.normals[key] = sampleNormals(city);
+      if (!state.alerts[key]) state.alerts[key] = sampleAlerts(city, data);
+      return;
+    }
+    if (extrasAt[key] && Date.now() - extrasAt[key] < CACHE_MS) return;
+    extrasAt[key] = Date.now();
+    const isSample = (v) => v && (v.sample || (Array.isArray(v) && v.some((a) => a.sample)));
+    const drop = (bag) => { if (isSample(bag[key])) delete bag[key]; };
+    // Each shows as soon as it arrives: the archive is slow, and air quality shouldn't wait for it (or for the NWS).
+    fetchAQ(city).then((v) => { state.aq[key] = v; }, () => drop(state.aq)).then(render);
+    fetchAlerts(city).then((v) => { state.alerts[key] = v; }, () => drop(state.alerts)).then(render);
+    const cachedN = store.get('normals.' + key, null);
+    if (cachedN && cachedN.table && Date.now() - cachedN.at < NORMALS_MS) state.normals[key] = { table: cachedN.table };
+    else {
+      fetchNormals(city).then((table) => { state.normals[key] = { table }; store.set('normals.' + key, { at: Date.now(), table }); },
+        () => { if (cachedN && cachedN.table) state.normals[key] = { table: cachedN.table }; else drop(state.normals); }).then(render);
+    }
+  }
+
   async function load(city) {
     const key = keyOf(city);
     const cached = state.data[key] || store.get('wx.' + key, null);
-    if (cached && cached.source === 'live' && Date.now() - cached.fetchedAt < CACHE_MS) return (state.data[key] = cached);
-    try {
-      const live = await fetchLive(city);
-      if (!city.tz) city.tz = live.tz;
-      store.set('wx.' + key, live);
-      return (state.data[key] = live);
-    } catch (err) {
-      if (cached && cached.source === 'live') return (state.data[key] = { ...cached, stale: true });
-      return (state.data[key] = sample(city));
+    let data;
+    if (cached && cached.source === 'live' && Date.now() - cached.fetchedAt < CACHE_MS) data = cached;
+    else {
+      try {
+        data = await fetchLive(city);
+        if (!city.tz) city.tz = data.tz;
+        store.set('wx.' + key, data);
+      } catch (err) {
+        data = cached && cached.source === 'live' ? { ...cached, stale: true } : sample(city);
+      }
     }
+    state.data[key] = data;
+    loadExtras(city, data);
+    return data;
   }
 
   /* ---------- Rendering ---------- */
@@ -684,7 +1059,7 @@
   };
   function listControls() {
     const adding = !$('#search').hidden, editing = state.editing;
-    const canAdd = state.cities.length < MAX_CITIES, canEdit = state.cities.length > 1;
+    const canAdd = state.cities.filter((x) => !x.here).length < MAX_CITIES, canEdit = state.cities.length > 1;
     const addLabel = adding ? 'Done adding' : canAdd ? 'Add a city' : `You can track up to ${MAX_CITIES} cities`;
     const editLabel = editing ? 'Done editing' : 'Remove cities';
     return `<div class="seg list${adding || editing ? ' active' : ''}" role="group" aria-label="Manage cities">` +
@@ -698,11 +1073,241 @@
     el.innerHTML = state.cities.map((c, i) => {
       const d = state.data[keyOf(c)];
       const t = d ? `<span class="t">${deg(d.current.t, state.unit)}°</span>` : '';
-      const arrow = c.here ? `<svg class="here" viewBox="0 0 24 24" role="img" aria-label="My Location:"><path d="M21 3 3 10.5l7.5 3 3 7.5z" fill="currentColor"/></svg>` : '';
-      return `<span class="chip-wrap"><button type="button" class="chip" data-i="${i}" aria-current="${i === state.active}">${arrow}<span class="n" data-n="${esc(c.name)}">${esc(c.name)}</span>${t}</button>` +
+      const arrow = isHere(c) ? `<svg class="here" viewBox="0 0 24 24" role="img" aria-label="My Location:"><path d="M21 3 3 10.5l7.5 3 3 7.5z" fill="currentColor"/></svg>` : '';
+      const warn = alertsOf(c).length ? WARN.replace('<svg ', '<svg class="warn" role="img" aria-label="Weather alert" ').replace(' aria-hidden="true"', '') : '';
+      return `<span class="chip-wrap"><button type="button" class="chip" data-i="${i}" aria-current="${i === state.active}">${arrow}<span class="n" data-n="${esc(c.name)}">${esc(c.name)}</span>${warn}${t}</button>` +
         (state.cities.length > 1 ? `<button type="button" class="chip-x" data-x="${i}" aria-label="${c.here ? 'Stop using My Location' : 'Remove ' + esc(c.name)}">×</button>` : '') + `</span>`;
     }).join('') +
       listControls();
+  }
+
+  /* ---------- Readings for the newer tiles ---------- */
+  const both = (c) => { const u = state.unit, o = other(u); return `${deg(c, u)}°${u} · ${deg(c, o)}°${o}`; };
+  const nowIndex = (data) => { const i = data.hourly.findIndex((h) => h.time.slice(0, 13) === data.current.time.slice(0, 13)); return i < 0 ? 0 : i; };
+  const COMPASS = ['north', 'northeast', 'east', 'southeast', 'south', 'southwest', 'west', 'northwest'];
+  const fromDir = (d) => `From the ${COMPASS[Math.round(((d % 360) + 360) % 360 / 45) % 8]}`;
+  const uvLevel = (uv) => (uv <= 2 ? 'Low' : uv <= 5 ? 'Moderate' : uv <= 7 ? 'High' : uv <= 10 ? 'Very High' : 'Extreme');
+  const cloudLabel = (p) => (p <= 10 ? 'Clear' : p <= 30 ? 'Mostly clear' : p <= 60 ? 'Partly cloudy' : p <= 90 ? 'Mostly cloudy' : 'Overcast');
+  const visLabel = (m) => (m >= 10000 ? 'Clear view' : m >= 2000 ? 'Haze' : 'Fog');
+  const gustNote = (wind, gust) => (gust != null && wind != null && gust - wind >= 10 ? `Gusts to ${windIn(gust, windUnit()).replace(' ', '\u00A0')}` : '');
+
+  // Moon: computed here, from a synodic month of 29.530588853 days after the new moon of 2000-01-06 18:14 UTC.
+  const MOON_NAMES = ['New Moon', 'Waxing Crescent', 'First Quarter', 'Waxing Gibbous', 'Full Moon', 'Waning Gibbous', 'Last Quarter', 'Waning Crescent'];
+  function moonPhase(date = new Date()) {
+    const P = 29.530588853, age = (((date.getTime() - Date.UTC(2000, 0, 6, 18, 14)) / 864e5) % P + P) % P, f = age / P;
+    return { f, name: MOON_NAMES[Math.floor(f * 8 + 0.5) % 8], lit: Math.round((1 - Math.cos(2 * Math.PI * f)) / 2 * 100) };
+  }
+  // The next full or new moon, whichever comes first: "Full moon in 5 days".
+  function moonNext(f) {
+    const P = 29.530588853, toFull = ((0.5 - f + 1) % 1) * P, toNew = ((1 - f) % 1) * P;
+    const [name, days] = toFull <= toNew ? ['Full moon', toFull] : ['New moon', toNew], n = Math.round(days);
+    return n === 0 ? `${name} today.` : n === 1 ? `${name} tomorrow.` : `${name} in ${n} days.`;
+  }
+  function moonGlyph(f) {
+    const c = 12, r = 8, k = Math.cos(2 * Math.PI * f), rx = (Math.abs(k) * r).toFixed(2), waxing = f < 0.5;
+    // The lit half, then the terminator back across: it bulges toward the lit side for a crescent, away for a gibbous.
+    const lit = waxing ? `M${c} ${c - r}A${r} ${r} 0 0 1 ${c} ${c + r}A${rx} ${r} 0 0 ${k > 0 ? 0 : 1} ${c} ${c - r}z`
+      : `M${c} ${c - r}A${r} ${r} 0 0 0 ${c} ${c + r}A${rx} ${r} 0 0 ${k > 0 ? 1 : 0} ${c} ${c - r}z`;
+    return `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="${c}" cy="${c}" r="${r}" fill="var(--border-strong)"/><path d="${lit}" fill="var(--moon)"/></svg>`;
+  }
+
+  // Air quality, in the local scale: US AQI in the US, the European AQI elsewhere.
+  const AQ_SCALES = {
+    us: { name: 'US AQI', max: 350, bands: [[50, 'Good', '#6FD39C'], [100, 'Moderate', '#E9C98A'], [150, 'Unhealthy for Sensitive Groups', '#F2A65A'], [200, 'Unhealthy', '#E5484D'], [300, 'Very Unhealthy', '#A066C8'], [350, 'Hazardous', '#990F3D']] },
+    eu: { name: 'European AQI', max: 120, bands: [[20, 'Good', '#6FD39C'], [40, 'Fair', '#A8D58A'], [60, 'Moderate', '#E9C98A'], [80, 'Poor', '#F2A65A'], [100, 'Very Poor', '#E5484D'], [120, 'Extremely Poor', '#A066C8']] },
+  };
+  const aqBand = (scale, v) => scale.bands.find(([top]) => v <= top) || scale.bands[scale.bands.length - 1];
+  function aqReading(city, aq) {
+    const us = isUS(city) && aq.us != null, kind = us ? 'us' : 'eu', v = us ? aq.us : aq.eu, y = us ? aq.usY : aq.euY;
+    if (v == null) return null;
+    const scale = AQ_SCALES[kind], [, cat, color] = aqBand(scale, v);
+    let note;
+    if (y != null) note = Math.abs(v - y) <= 5 ? 'About the same as yesterday' : v < y ? 'Better than yesterday' : 'Worse than yesterday';
+    else {
+      const main = [['PM2.5', aq.pm25 / 25], ['PM10', aq.pm10 / 50], ['Ozone', aq.o3 / 100], ['Nitrogen Dioxide', aq.no2 / 40]].filter(([, x]) => isFinite(x)).sort((a, b) => b[1] - a[1])[0];
+      note = main ? `Mostly ${main[0]}` : '';
+    }
+    let prev = 0;
+    const stops = scale.bands.map(([top, , c]) => { const s = `${c} ${(prev / scale.max * 100).toFixed(1)}% ${(top / scale.max * 100).toFixed(1)}%`; prev = top; return s; }).join(',');
+    return { v: Math.round(v), cat, color, note, scale: scale.name, bar: `linear-gradient(90deg,${stops})`, at: Math.min(100, v / scale.max * 100).toFixed(1) };
+  }
+  const pollenLevel = (g) => (g < 10 ? 'Low' : g < 50 ? 'Moderate' : g < 200 ? 'High' : 'Very High');
+
+  // Normals and records for a date, or null until the table loads.
+  const normalsFor = (city, date) => { const n = state.normals[keyOf(city)]; return (n && n.table && n.table[date.slice(5, 10)]) || null; };
+  function vsNormal(high, nHi) {
+    const u = state.unit, diff = deg(high, u) - deg(nHi, u);
+    return Math.abs(diff) <= 1 ? 'About normal' : `${Math.abs(diff)}° ${diff > 0 ? 'above' : 'below'} normal`;
+  }
+
+  /* ---------- Alerts (above everything on the city's page) ---------- */
+  const WARN = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M10.3 3.9 1.9 18.1A2 2 0 0 0 3.6 21h16.8a2 2 0 0 0 1.7-2.9L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4.5M12 17h.01" stroke="var(--bg)" stroke-width="2.2" stroke-linecap="round"/></svg>';
+  const alertsOf = (city) => activeAlerts(state.alerts[keyOf(city)]);
+  const untilText = (a, tz) => {
+    if (!a.expires) return '';
+    try { return 'Until ' + new Date(a.expires).toLocaleTimeString('en-US', { timeZone: tz || undefined, hour: 'numeric', minute: '2-digit' }); }
+    catch { return 'Until ' + new Date(a.expires).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }); }
+  };
+  function renderAlerts(city, data) {
+    const list = alertsOf(city), el = $('#alerts');
+    el.hidden = !list.length;
+    el.innerHTML = list.map((a, i) => `<button type="button" class="alert" data-alert="${i}" style="--sev:${sevColor(a.severity)}" aria-haspopup="dialog">${WARN}
+      <span><b>${esc(a.event)}</b><span class="m">${esc([untilText(a, data.tz || city.tz), a.senderName].filter(Boolean).join(' · '))}</span></span><span class="go" aria-hidden="true">›</span></button>`).join('');
+  }
+
+  /* ---------- Next 2 hours, from the 15-minute forecast ---------- */
+  function soonSteps(data) {
+    const m = data.minutely;
+    if (!m || !m.length) return null;
+    let i = m.findIndex((s) => s.time > data.current.time);
+    i = i < 0 ? m.length - 1 : Math.max(0, i - 1);   // the step holding now
+    const steps = m.slice(i, i + 8).filter((s) => s.p != null);
+    return steps.length >= 2 ? steps : null;
+  }
+  const snowAt = (data, time) => { const h = data.hourly.find((x) => x.time.slice(0, 13) === time.slice(0, 13)); return codeInfo(h ? h.code : data.current.code)[1] === 'snow'; };
+  function renderSoon(data) {
+    const steps = soonSteps(data), el = $('#soon');
+    const wet = steps ? steps.map((s) => s.p >= 0.1) : [];
+    el.hidden = !wet.some(Boolean);
+    if (el.hidden) return;
+    const snowy = steps.filter((s, k) => wet[k]).filter((s) => snowAt(data, s.time)).length > wet.filter(Boolean).length / 2;
+    const word = snowy ? 'Snow' : 'Rain';
+    const changes = wet.reduce((n, w, k) => n + (k && w !== wet[k - 1] ? 1 : 0), 0);
+    const line = wet.every(Boolean) ? `${word} for the next two hours`
+      : changes === 1 && wet[0] ? `${word} stopping around ${clock(steps[wet.indexOf(false)].time)}`
+      : !wet[0] && changes <= 2 ? `${word} starting around ${clock(steps[wet.indexOf(true)].time)}`
+      : `Light ${word.toLowerCase()} on and off`;
+    $('#soonLine').textContent = line;
+    const total = steps.reduce((a, s) => a + s.p, 0), [tMain, tOther] = fmtRain(total);
+    $('#soonAside').textContent = `${tMain} · ${tOther}`;
+    $('#soonAside').title = 'Total over the next two hours';
+    const top = Math.max(1, ...steps.map((s) => s.p));
+    const bars = $('#soonBars');
+    bars.setAttribute('aria-label', line + '. ' + steps.map((s, k) => `${k ? clock(s.time) : 'Now'}: ${fmtRain(s.p)[0]}`).join(', '));
+    bars.innerHTML = steps.map((s, k) => {
+      const h = s.p > 0 ? Math.max(4, s.p / top * 100) : 0, label = k === 0 ? 'Now' : k % 2 ? '' : clock(s.time).replace(/\s?[AP]M$/, '');
+      return `<div class="b"><div class="col${snowAt(data, s.time) ? ' snow' : ''}"><i style="height:${h.toFixed(1)}%"></i></div><div class="t">${label}</div></div>`;
+    }).join('');
+  }
+
+  // How colourful a sunrise or sunset is likely to be, from the clouds forecast for that hour: high and
+  // mid-level cloud catches the colour; thick low cloud blocks it; rain and fog hide it; a clear sky
+  // gives a clean, plain glow. The same rule as the apps (design/weather-features.md, "Sky colour").
+  const SKY = [['Poor', 'Little colour expected'], ['Fair', 'Some colour possible'], ['Good', 'Good colour likely'], ['Great', 'Great colour likely']];
+  function skyRule(low, mid, high, precip, code, vis) {
+    const fog = code === 45 || code === 48;
+    if (precip >= 0.2 || fog || code >= 51) return { r: 0, why: fog ? 'Fog will likely hide it.' : 'Rain or snow will likely hide it.' };
+    if (low >= 70) return { r: 0, why: 'Low cloud will likely block it.' };
+    const canvas = Math.max(mid, high);
+    let score = 30, why;
+    if (canvas < 5) { score += 15; why = 'Clear sky: a clean, simple glow.'; }
+    else if (canvas < 20) { score += 22; why = 'A few high clouds may catch some colour.'; }
+    else if (canvas <= 80) { score += 42; why = 'High and mid-level clouds to catch the colour.'; }
+    else { score += 12; why = 'A thick cloud layer may mute it.'; }
+    score -= low * 0.5;
+    if (low >= 40) why = 'Low cloud may block some of it.';
+    if (vis != null && vis < 5000) { score -= 15; why = 'Haze may dull it.'; }
+    return { r: score >= 65 ? 3 : score >= 50 ? 2 : score >= 35 ? 1 : 0, why };
+  }
+  // The outlook at a sunrise or sunset ("2026-11-02T06:29"), from the forecast hour nearest it.
+  function skyAt(data, when) {
+    if (!when) return null;
+    const t = parseLocal(when);
+    let best = null, gap = Infinity;
+    for (const h of data.hourly) { const g = Math.abs(parseLocal(h.time) - t); if (g < gap) { gap = g; best = h; } }
+    if (!best || gap > 90 * 6e4 || best.lo == null || best.mi == null || best.hi == null) return null;
+    const o = skyRule(best.lo, best.mi, best.hi, best.precip ?? 0, best.code, best.vis);
+    return { word: SKY[o.r][0], line: SKY[o.r][1], why: o.why, r: o.r };
+  }
+
+  /* ---------- More detail tiles ---------- */
+  // Averages: one scale from the record (or normal) low to the record (or normal) high, today's range on top.
+  function rangeBar(n, lo, hi) {
+    // Just fits the normal and today's range, as in Apple's Weather, so the difference is easy to see.
+    const min = Math.min(n[1], lo), max = Math.max(n[0], hi), pad = Math.max((max - min) * 0.15, 2);
+    const at = (t) => ((t - min + pad) / (max - min + 2 * pad) * 100).toFixed(1);
+    const band = (tag, a, b) => `<${tag} style="left:${at(a)}%;width:max(5px,${(at(b) - at(a)).toFixed(1)}%)"></${tag}>`;
+    return `<div class="rbar" aria-hidden="true">${band('i', n[1], n[0])}${band('b', lo, hi)}</div>`;
+  }
+  // The sun's path over today: a cosine through sunrise and sunset, across 24 hours, with the sun at the current time.
+  function sunPath(now, rise, set) {
+    const hrs = (s) => { const d = parseLocal(s); return d.getUTCHours() + d.getUTCMinutes() / 60; };
+    const r = hrs(rise), s = hrs(set), noon = (r + s) / 2, H = 34;
+    if (!(s > r)) return '';
+    const y = (h) => H / 2 - 15 * Math.cos(2 * Math.PI * (h - noon) / 24), horizon = y(r);
+    const pts = (a, b) => { const p = []; for (let h = a; h < b; h += 0.25) p.push(`${(h / 24 * 100).toFixed(2)},${y(h).toFixed(2)}`); p.push(`${(b / 24 * 100).toFixed(2)},${y(b).toFixed(2)}`); return p.join(' '); };
+    const t = Math.min(24, Math.max(0, (parseLocal(now) - parseLocal(rise.slice(0, 10) + 'T00:00')) / 36e5)), up = t > r && t < s;
+    const line = 'fill="none" vector-effect="non-scaling-stroke" stroke-linecap="round"';
+    return `<div class="sunpath" aria-hidden="true"><svg viewBox="0 0 100 ${H}" preserveAspectRatio="none">` +
+      `<line x1="0" x2="100" y1="${horizon.toFixed(2)}" y2="${horizon.toFixed(2)}" stroke="var(--text)" stroke-opacity=".22" stroke-width="1" vector-effect="non-scaling-stroke"/>` +
+      `<polyline points="${pts(0, r)}" ${line} stroke="var(--text)" stroke-opacity=".2" stroke-width="1.5"/>` +
+      `<polyline points="${pts(s, 24)}" ${line} stroke="var(--text)" stroke-opacity=".2" stroke-width="1.5"/>` +
+      `<polygon points="${pts(r, s)}" fill="var(--acc)" fill-opacity=".12"/>` +
+      `<polyline points="${pts(r, s)}" ${line} stroke="var(--acc)" stroke-opacity=".75" stroke-width="1.5"/></svg>` +
+      `<u class="${up ? 'up' : 'down'}" style="left:${(t / 24 * 100).toFixed(1)}%;top:${y(t).toFixed(1)}px"></u></div>`;
+  }
+  // Cloud cover by height: high, mid and low, top to bottom.
+  const cloudBars = (h) => `<div class="clbars" aria-hidden="true">` +
+    [['High', h.hi], ['Mid', h.mi], ['Low', h.lo]].map(([k, v]) => `<span>${k}</span><div><i style="width:${Math.max(0, Math.min(100, v)).toFixed(0)}%"></i></div>`).join('') + '</div>';
+  function renderDetails(city, data, today) {
+    const cur = data.current, tiles = [];
+    // One quiet accent colour per tile, on its title and as a faint glow at the top (as in the apps).
+    const acc = { visibility: '#B4D2F0', precip: '#8DB4E2', cloud: '#B9C3CF', sunrise: '#F2C66D', sunset: '#F39A72', moon: '#EFE3CC', aqi: '#C9C2B8', normal: '#C9C2B8' };
+    const tile = (id, title, value, sub, note, extra = '', aside = '') => tiles.push(`<div class="tile dt" data-tile="${id}" style="--acc:${acc[id] || '#C9C2B8'}"><h3 class="eyebrow">${title}${aside}</h3>` +
+      `<div class="dv">${value}</div>${sub ? `<div class="ds">${sub}</div>` : ''}${extra}${note ? `<div class="dn">${note}</div>` : ''}</div>`);
+    // Every city shows the same eight tiles; one whose data isn't there yet shows a dash. Pollen, measured
+    // only in some places, is a line on the air quality tile.
+    const missing = (id, title) => tile(id, title, '–', '', 'Not available right now.');
+    const aq = state.aq[keyOf(city)], aqr = aq && aqReading(city, aq);
+    let pollen = '';
+    if (aq && aq.pollen) {
+      const kinds = POLLEN.filter(([k]) => aq.pollen[k] != null).map(([k, name]) => [name, aq.pollen[k]]).sort((a, b) => b[1] - a[1]);
+      if (kinds.length) pollen = ` Pollen: ${kinds[0][0].toLowerCase()} ${pollenLevel(kinds[0][1]).toLowerCase()}.`;
+    }
+    if (aqr) acc.aqi = aqr.color;   // the category's own colour
+    if (aqr) tile('aqi', 'Air Quality', `${aqr.v} <span class="cat" style="color:${aqr.color}">${esc(aqr.cat)}</span>`, aqr.scale, esc(aqr.note + (pollen ? '.' + pollen : '')),
+      `<div class="aqbar" style="background:${aqr.bar}" aria-hidden="true"><u style="left:${aqr.at}%"></u></div>`);
+    else missing('aqi', 'Air Quality');
+    const n = normalsFor(city, data.daily[0].date);
+    const nw = (t) => `<span style="white-space:nowrap">${both(t)}</span>`;
+    if (n) { const dlt = today.max - n[0]; acc.normal = dlt >= 1.5 ? '#F2A65A' : dlt <= -1.5 ? '#8CC0F5' : '#C9C2B8'; }
+    if (n) tile('normal', 'Averages', vsNormal(today.max, n[0]), '', `Normal high ${nw(n[0])}, low ${nw(n[1])}`, rangeBar(n, today.min, today.max));
+    else missing('normal', 'Averages');
+    if (cur.vis != null) tile('visibility', 'Visibility', fmtVis(cur.vis), fmtVisOther(cur.vis), visLabel(cur.vis));
+    else missing('visibility', 'Visibility');
+    if (data.daily[0].psum != null) {
+      const [v, s] = fmtRain(data.daily[0].psum);
+      const next = upcoming(data).map((h) => h.precip).filter((x) => x != null);
+      const sum = next.reduce((x, y) => x + y, 0);
+      tile('precip', 'Precipitation', v, s, !next.length ? '' : sum < 0.05 ? 'None expected' : `Expected in the next 24 hours: ${fmtRain(sum)[0]}`);
+    } else missing('precip', 'Precipitation');
+    const hNow = data.hourly[nowIndex(data)] || {};
+    const layers = hNow.lo == null || hNow.mi == null || hNow.hi == null ? ''
+      : Math.max(hNow.lo, hNow.mi, hNow.hi) < 10 ? 'No cloud at any height.'
+      : [hNow.lo, hNow.mi, hNow.hi].filter((x) => x >= 50).length >= 2 ? 'Cloud at several heights.'
+      : hNow.lo >= hNow.mi && hNow.lo >= hNow.hi ? 'Mostly low cloud.' : hNow.mi >= hNow.hi ? 'Mostly mid-level cloud.' : 'Mostly high, thin cloud.';
+    if (cur.cloud != null) tile('cloud', 'Cloud Cover', `${Math.round(cur.cloud)}%`, cloudLabel(cur.cloud), layers, layers ? cloudBars(hNow) : '');
+    else missing('cloud', 'Cloud Cover');
+    // The next sunrise and the next sunset, and how colourful each is likely to be.
+    const nowT = parseLocal(data.current.time), d0 = data.daily[0];
+    const sun = d0.sunrise && d0.sunset ? sunPath(data.current.time, d0.sunrise, d0.sunset) : '';
+    for (const [id, title, key] of [['sunrise', 'Sunrise', 'sunrise'], ['sunset', 'Sunset', 'sunset']]) {
+      const when = data.daily.map((d) => d[key]).find((x) => x && parseLocal(x) > nowT);
+      const sky = skyAt(data, when);
+      if (when) tile(id, title, clock(when), sky ? sky.line : '', sky ? sky.why : '', sun);
+      else missing(id, title);
+    }
+    const moon = moonPhase();
+    tile('moon', 'Moon', moon.name, `${moon.lit}% lit`, moonNext(moon.f), '', moonGlyph(moon.f));
+    $('#dgrid').innerHTML = tiles.join('');
+    $('#details').hidden = !tiles.length;
+  }
+
+  const RADAR_URL = 'https://bradleycowdrey.github.io/two-degrees/radar.html';
+  function renderMap(city) {
+    $('#mapLink').href = `${RADAR_URL}?lat=${city.lat.toFixed(3)}&lon=${city.lon.toFixed(3)}&z=7&units=${state.unit}`;
+    $('#mapLink').setAttribute('aria-label', `Open the rain map for ${city.name}, in a new tab`);
+    $('#mapText').textContent = navigator.onLine === false ? 'The map needs an internet connection.' : `Radar for the past two hours, around ${city.name}.`;
   }
 
   function render() {
@@ -720,6 +1325,8 @@
       $('#days').innerHTML = '';
       $('#dayTicks').innerHTML = '';
       $('#statusText').textContent = 'Loading…';
+      for (const id of ['#alerts', '#soon', '#details']) $(id).hidden = true;
+      renderMap(city);
       return;
     }
     const u = state.unit, o = other(u);
@@ -727,7 +1334,7 @@
     const [condName, kind] = codeInfo(cur.code);
     const hours = upcoming(data);
     const today = { ...data.daily[0], min: Math.min(data.daily[0].min, cur.t), max: Math.max(data.daily[0].max, cur.t) };
-    const wind = Math.round(cur.wind);
+    const [windMain, windOther] = fmtWind(cur.wind), gusts = gustNote(cur.wind, cur.gust);
 
     const now = $('#now');
     now.style.setProperty('--glow', glowFor(kind, cur.isDay));
@@ -746,7 +1353,7 @@
       <div class="stats">
         <div class="stat"><div class="k">Feels like</div><div class="v">${deg(cur.feels, u)}°${u}</div><div class="s">${deg(cur.feels, o)}°${o}</div></div>
         <div class="stat"><div class="k">Today</div><div class="v">${deg(today.min, u)}–${deg(today.max, u)}°${u}</div><div class="s">${deg(today.min, o)}–${deg(today.max, o)}°${o}</div></div>
-        <div class="stat"><div class="k">Wind</div><div class="v">${Math.round(cur.wind * 0.621371)} mph</div><div class="s">${wind} km/h</div></div>
+        <div class="stat"><div class="k">Wind</div><div class="v">${windMain}</div><div class="s${gusts ? ' wrap' : ''}">${gusts || windOther}</div></div>
         <div class="stat"><div class="k">Rain today</div><div class="v">${today.pop}%</div><div class="s">${Math.round(cur.hum)}% humid</div></div>
       </div>`;
 
@@ -789,18 +1396,22 @@
       if (at > 5 && at < 95) ticks.push([v, at]);
     }
     const tickMarks = ticks.map(([, at]) => `<s style="left:${at}%"></s>`).join('');
+    // A re-draw (late data) replaces the rows: keep keyboard focus on the same day.
+    const focusedDay = document.activeElement && document.activeElement.closest && document.activeElement.closest('#days [data-day]');
+    const keepDay = focusedDay ? focusedDay.dataset.day : null;
+    queueMicrotask(() => { if (keepDay != null && (!document.activeElement || document.activeElement === document.body)) { const el = document.querySelector(`#days [data-day="${keepDay}"]`); if (el) el.focus({ preventScroll: true }); } });
     $('#days').innerHTML = days.map((d0, i) => {
       // Today's range always includes the reading right now, so no two numbers disagree.
       const d = i === 0 ? { ...d0, min: Math.min(d0.min, cur.t), max: Math.max(d0.max, cur.t) } : d0;
       const [name] = codeInfo(d.code);
       const dot = i === 0 ? `<u style="left:${pct(cur.t)}%" title="Now ${deg(cur.t, u)}°${u}"></u>` : '';
-      return `<div class="day" role="img" aria-label="${i === 0 ? 'Today' : weekday(d.date)}: ${esc(name)}. Low ${speak(d.min)}. High ${speak(d.max)}.${d.pop >= 20 ? ' ' + d.pop + ' percent chance of rain.' : ''}">
+      return `<button type="button" class="day" data-day="${i}" aria-haspopup="dialog" aria-label="${i === 0 ? 'Today' : weekday(d.date)}: ${esc(name)}. Low ${speak(d.min)}. High ${speak(d.max)}.${d.pop >= 20 ? ' ' + d.pop + ' percent chance of rain.' : ''} Show details.">
         <span class="d">${i === 0 ? 'Today' : weekday(d.date)}</span>
         <span class="ic">${icon(d.code, true, '')}${d.pop >= 20 ? `<span class="p">${d.pop}%</span>` : ''}</span>
         <span class="track"><span class="bar">${tickMarks}<i style="left:${pct(d.min)}%;right:${(100 - pct(d.max)).toFixed(1)}%;background:linear-gradient(90deg,${tempColor(d.min)},${tempColor(d.max)})"></i>${dot}
           <span class="lo" style="right:${(100 - pct(d.min)).toFixed(1)}%"><b>${deg(d.min, u)}°</b><span>${deg(d.min, o)}°${o}</span></span>
           <span class="hi" style="left:${pct(d.max)}%"><b>${deg(d.max, u)}°</b><span>${deg(d.max, o)}°${o}</span></span></span></span>
-      </div>`;
+      </button>`;
     }).join('');
     // Closed: the five-day range in both units. Open: the bars and their scale.
     const open = state.daysOpen;
@@ -810,6 +1421,12 @@
     $('#dayTicks').innerHTML = open ? ticks.map(([v, at]) => `<span style="left:${at}%">${v}°</span>`).join('')
       : `<span class="range">${deg(dLo, u)}–${deg(dHi, u)}°${u} · ${deg(dLo, o)}–${deg(dHi, o)}°${o}</span>`;
 
+    renderAlerts(city, data);
+    renderSoon(data);
+    renderDetails(city, data, today);
+    renderMap(city);
+    if (state.sheet) renderSheet();
+
     // Status line: where the numbers came from, and how fresh they are.
     const status = $('#status');
     status.classList.toggle('live', data.source === 'live' && !data.stale);
@@ -818,6 +1435,211 @@
       ? `${data.stale ? 'Offline · from' : 'Updated'} ${new Date(data.fetchedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`
       : 'Sample forecast';
     document.title = `${deg(cur.t, u)}°${u} ${city.name} · Two Degrees`;
+  }
+
+  /* ---------- Sheets: a day's detail, an alert's full text ---------- */
+  const SVG = {
+    close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>',
+    prev: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 5-7 7 7 7"/></svg>',
+    next: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg>',
+  };
+  const niceStep = (range, target = 4) => [1, 2, 5, 10, 20, 25, 50, 100].find((s) => s >= range / target) || 100;
+  const fmt1 = (n) => String(Math.round(n));
+  let gradSeq = 0;
+
+  // Charts share one horizontal scale: hour i sits at the middle of the i-th of n slots.
+  function chartFrame(W, H, n, top, bottom) {
+    // Room either side for the widest axis label ("100%", "-10°") in any font, with a margin to spare.
+    const L = 46, R = 38, slot = (W - L - R) / n;
+    return { L, R, W, H, T: top, B: bottom, slot, x: (i) => L + (i + 0.5) * slot, plotH: H - top - bottom };
+  }
+  function hourLabels(f, hrs) {
+    return hrs.map((h, i) => [h, i]).filter(([h]) => /T(00|06|12|18):/.test(h.time))
+      .map(([h, i]) => `<text x="${f.x(i).toFixed(1)}" y="${f.H - 6}" text-anchor="middle">${hour12(h.time)}</text>`).join('');
+  }
+  const linePath = (pts) => pts.map(([x, y], i) => (i ? 'L' : 'M') + x.toFixed(1) + ' ' + y.toFixed(1)).join('');
+
+  function chartTemp(hrs, W, nowPos) {
+    const u = state.unit, o = other(u), inU = (c) => (u === 'F' ? toF(c) : c), cOf = (v) => (u === 'F' ? (v - 32) * 5 / 9 : v);
+    const toO = (v) => (u === 'F' ? (v - 32) * 5 / 9 : v * 9 / 5 + 32), fromO = (w) => (u === 'F' ? w * 9 / 5 + 32 : (w - 32) * 5 / 9);
+    const f = chartFrame(W, 156, hrs.length, 24, 22);
+    let a = Math.min(...hrs.map((h) => inU(h.t))), b = Math.max(...hrs.map((h) => inU(h.t)));
+    if (b - a < 4) { const m = (a + b) / 2; a = m - 2; b = m + 2; }
+    const step = niceStep(b - a);
+    a = Math.floor(a / step) * step; b = Math.ceil(b / step) * step;
+    const y = (v) => f.T + (1 - (v - a) / (b - a)) * f.plotH;
+    let grid = '', left = '', right = '';
+    for (let v = a; v <= b + 1e-9; v += step) {
+      grid += `<path d="M${f.L} ${y(v).toFixed(1)}H${W - f.R}" stroke="var(--border-strong)" stroke-width="0.5"/>`;
+      left += `<text x="${f.L - 6}" y="${(y(v) + 3.5).toFixed(1)}" text-anchor="end">${fmt1(v)}°</text>`;
+    }
+    const oa = Math.min(toO(a), toO(b)), ob = Math.max(toO(a), toO(b)), ostep = niceStep(ob - oa);
+    for (let w = Math.ceil(oa / ostep) * ostep; w <= ob + 1e-9; w += ostep) right += `<text x="${W - f.R + 6}" y="${(y(fromO(w)) + 3.5).toFixed(1)}">${fmt1(w)}°</text>`;
+    const pts = hrs.map((h, i) => [f.x(i), y(inU(h.t))]);
+    const path = linePath(pts), id = 'tg' + (++gradSeq);
+    const stops = [0, 0.25, 0.5, 0.75, 1].map((k) => `<stop offset="${k}" stop-color="${tempColor(cOf(b - (b - a) * k))}"/>`).join('');
+    let now = '';
+    if (nowPos != null) {
+      const nx = f.L + nowPos * (W - f.L - f.R), k = Math.min(hrs.length - 1, Math.max(0, nowPos * hrs.length - 0.5));
+      const i0 = Math.floor(k), i1 = Math.min(hrs.length - 1, i0 + 1), ny = pts[i0][1] + (pts[i1][1] - pts[i0][1]) * (k - i0);
+      now = `<path d="M${nx.toFixed(1)} ${f.T}V${f.H - f.B}" stroke="var(--cream)" stroke-width="1" stroke-dasharray="2 3" opacity=".7"/>` +
+        `<circle cx="${nx.toFixed(1)}" cy="${ny.toFixed(1)}" r="3.6" fill="var(--text)" stroke="var(--bg)" stroke-width="2"/>` +
+        `<text class="now" x="${Math.min(W - f.R - 12, Math.max(f.L + 12, nx)).toFixed(1)}" y="${f.T - 6}" text-anchor="middle">Now</text>`;
+    }
+    const lo = hrs.reduce((p, h) => (h.t < p.t ? h : p)), hi = hrs.reduce((p, h) => (h.t > p.t ? h : p));
+    const label = `Temperature through the day: low ${both(lo.t)} around ${hour12(lo.time)}, high ${both(hi.t)} around ${hour12(hi.time)}.`;
+    return `<svg class="chart" data-chart="temp" width="${W}" height="${f.H}" viewBox="0 0 ${W} ${f.H}" role="img" aria-label="${esc(label)}">
+      <defs><linearGradient id="${id}" gradientUnits="userSpaceOnUse" x1="0" y1="${y(b).toFixed(1)}" x2="0" y2="${y(a).toFixed(1)}">${stops}</linearGradient>
+      <linearGradient id="${id}f" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFF1E5" stop-opacity=".12"/><stop offset="1" stop-color="#FFF1E5" stop-opacity="0"/></linearGradient></defs>
+      ${grid}<text x="${f.L - 6}" y="${f.T - 12}" text-anchor="end">°${u}</text><text x="${W - f.R + 6}" y="${f.T - 12}">°${o}</text>${left}${right}
+      <path d="${path}L${pts[pts.length - 1][0].toFixed(1)} ${f.H - f.B}L${pts[0][0].toFixed(1)} ${f.H - f.B}Z" fill="url(#${id}f)"/>
+      <path d="${path}" fill="none" stroke="url(#${id})" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>${now}${hourLabels(f, hrs)}</svg>`;
+  }
+
+  function chartRain(hrs, W) {
+    const f = chartFrame(W, 100, hrs.length, 12, 22), y = (p) => f.T + (1 - p / 100) * f.plotH;
+    const grid = [0, 50, 100].map((p) => `<path d="M${f.L} ${y(p).toFixed(1)}H${W - f.R}" stroke="var(--border-strong)" stroke-width="0.5"/><text x="${f.L - 6}" y="${(y(p) + 3.5).toFixed(1)}" text-anchor="end">${p}%</text>`).join('');
+    const bw = Math.max(1, f.slot - 2);
+    const bars = hrs.map((h, i) => (h.pop > 0 ? `<rect x="${(f.x(i) - bw / 2).toFixed(1)}" y="${y(h.pop).toFixed(1)}" width="${bw.toFixed(1)}" height="${(f.plotH * h.pop / 100).toFixed(1)}" rx="1.5" fill="var(--rain)" opacity="${h.pop >= 50 ? 1 : 0.65}"/>` : '')).join('');
+    const top = hrs.reduce((p, h) => (h.pop > p.pop ? h : p));
+    const label = top.pop > 0 ? `Chance of rain by hour: highest ${top.pop}% around ${hour12(top.time)}.` : 'Chance of rain by hour: none.';
+    return `<svg class="chart" data-chart="rain" width="${W}" height="${f.H}" viewBox="0 0 ${W} ${f.H}" role="img" aria-label="${esc(label)}">${grid}${bars}${hourLabels(f, hrs)}</svg>`;
+  }
+
+  function chartWind(hrs, W) {
+    const unit = windUnit(), k = WIND[unit][0], f = chartFrame(W, 118, hrs.length, 24, 22);
+    const speeds = hrs.map((h) => (h.wind ?? 0) * k), gusts = hrs.map((h) => (h.gust ?? h.wind ?? 0) * k);
+    const step = niceStep(Math.max(5, ...gusts, ...speeds), 3), top = Math.max(step, Math.ceil(Math.max(...gusts, ...speeds) / step) * step);
+    const y = (v) => f.T + (1 - v / top) * f.plotH;
+    let grid = '';
+    for (let v = 0; v <= top + 1e-9; v += step) grid += `<path d="M${f.L} ${y(v).toFixed(1)}H${W - f.R}" stroke="var(--border-strong)" stroke-width="0.5"/><text x="${f.L - 6}" y="${(y(v) + 3.5).toFixed(1)}" text-anchor="end">${v}</text>`;
+    const sp = linePath(speeds.map((v, i) => [f.x(i), y(v)])), gp = linePath(gusts.map((v, i) => [f.x(i), y(v)]));
+    const maxS = Math.max(...speeds), maxG = Math.max(...gusts);
+    const label = `Wind through the day, in ${WIND[unit][1]}: up to ${Math.round(maxS)}, gusts to ${Math.round(maxG)}.`;
+    return `<svg class="chart" data-chart="wind" width="${W}" height="${f.H}" viewBox="0 0 ${W} ${f.H}" role="img" aria-label="${esc(label)}">${grid}
+      <text x="${f.L - 6}" y="${f.T - 12}" text-anchor="end">${WIND[unit][1]}</text>
+      <path d="${gp}" fill="none" stroke="var(--muted)" stroke-width="1.4" stroke-linejoin="round" opacity=".7"/>
+      <path d="${sp}" fill="none" stroke="var(--cream)" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>${hourLabels(f, hrs)}</svg>`;
+  }
+
+  // A day: its summary, the three charts, then the facts.
+  function dayDays(data) {
+    const cur = data.current;
+    return data.daily.slice(0, 5).map((d, i) => (i === 0 ? { ...d, min: Math.min(d.min, cur.t), max: Math.max(d.max, cur.t) } : d));
+  }
+  function daySheet(city, data, i, W) {
+    const days = dayDays(data), d = days[i];
+    const hrs = data.hourly.filter((h) => h.time.startsWith(d.date));
+    const isToday = i === 0 && data.current.time.startsWith(d.date);
+    const nowPos = isToday ? (parseLocal(data.current.time) - parseLocal(d.date + 'T00:00')) / 864e5 : null;
+    const fact = (k, v) => `<dt>${k}</dt><dd>${v}</dd>`;
+    const [cond] = codeInfo(d.code);
+    const sunFact = (when) => { const sky = skyAt(data, when); return when ? clock(when) + (sky ? ` · ${sky.word} colour` : '') : '–'; };
+    let facts = fact('Sunrise', sunFact(d.sunrise)) + fact('Sunset', sunFact(d.sunset));
+    if (d.uv != null) facts += fact('UV max', `${Math.round(d.uv)} · ${uvLevel(Math.round(d.uv))}`);
+    if (d.gmax != null) { const [g, go] = fmtWind(d.gmax); facts += fact('Max gust', `${g}${go ? ` <small>${go}</small>` : ''}`); }
+    const n = normalsFor(city, d.date);
+    if (n) {
+      facts += fact('Normal', `High ${both(n[0])}, low ${both(n[1])}`);
+      facts += fact('Record high', `${both(n[2])} <small>(${n[3]})</small>`) + fact('Record low', `${both(n[4])} <small>(${n[5]})</small>`);
+    }
+    const total = d.psum != null ? d.psum : hrs.some((h) => h.precip != null) ? hrs.reduce((a, h) => a + (h.precip || 0), 0) : null;
+    const [tMain, tOther] = total != null ? fmtRain(total) : ['', ''];
+    const hasWind = hrs.some((h) => h.wind != null);
+    const title = i === 0 ? `Today, ${longDate(d.date).split(', ')[1]}` : longDate(d.date);
+    return `<div class="sh-head">
+        <button type="button" class="circle" id="sheetClose" aria-label="Close" title="Close (Esc)">${SVG.close}</button>
+        <h2 id="sheetTitle">${esc(title)}</h2>
+        <button type="button" class="circle" id="sheetPrev" aria-label="Previous day" title="Previous day"${i === 0 ? ' disabled' : ''}>${SVG.prev}</button>
+        <button type="button" class="circle" id="sheetNext" aria-label="Next day" title="Next day"${i >= days.length - 1 ? ' disabled' : ''}>${SVG.next}</button>
+      </div>
+      <section class="tile sh-sum" aria-label="Summary">${icon(d.code, true, '')}<div>
+        <p class="cond">${esc(cond)}</p>
+        <div class="hl">High <b>${deg(d.max, state.unit)}°${state.unit}</b> ${deg(d.max, other(state.unit))}°${other(state.unit)} · Low <b>${deg(d.min, state.unit)}°${state.unit}</b> ${deg(d.min, other(state.unit))}°${other(state.unit)}</div>
+        <div class="hl">Rain chance ${d.pop}%</div></div></section>
+      ${hrs.length >= 2 ? `<section class="tile" aria-label="Temperature"><h3 class="eyebrow">Temperature<span class="sp"></span><span class="aside">°${state.unit} left · °${other(state.unit)} right</span></h3>${chartTemp(hrs, W, nowPos)}</section>
+      <section class="tile" aria-label="Rain"><h3 class="eyebrow">Rain<span class="sp"></span><span class="aside">${total != null ? `${esc(tMain)} · ${esc(tOther)}` : ''}</span></h3>${chartRain(hrs, W)}</section>
+      ${hasWind ? `<section class="tile" aria-label="Wind"><h3 class="eyebrow">Wind<span class="sp"></span><span class="aside">${d.wdir != null ? fromDir(d.wdir) : ''}</span></h3>${chartWind(hrs, W)}
+        <div class="eyebrow" style="margin:6px 0 0;font-weight:500"><span class="legend"><i></i>Speed</span><span class="legend"><i class="g"></i>Gusts</span></div></section>` : ''}` : ''}
+      <section class="tile" aria-label="Details"><dl class="facts">${facts}</dl></section>`;
+  }
+
+  function alertSheet(city, a) {
+    const point = `lat=${city.lat.toFixed(4)}&lon=${city.lon.toFixed(4)}`;
+    return `<div class="sh-head">
+        <button type="button" class="circle" id="sheetClose" aria-label="Close" title="Close (Esc)">${SVG.close}</button>
+        <h2 id="sheetTitle">${esc(a.event)}</h2>
+      </div>
+      <section class="tile" style="display:flex;flex-direction:column;gap:12px;box-shadow:inset 3px 0 0 ${sevColor(a.severity)}">
+        <p class="al-note">${esc([untilText(a, (state.data[keyOf(city)] || {}).tz || city.tz), a.senderName, a.severity && a.severity !== 'Unknown' ? a.severity : ''].filter(Boolean).join(' · '))}</p>
+        ${a.headline ? `<p class="al-text lead">${esc(a.headline)}</p>` : ''}
+        ${a.description ? `<p class="al-text">${esc(a.description)}</p>` : ''}
+        ${a.instruction ? `<p class="al-text">${esc(a.instruction)}</p>` : ''}
+        <a class="pill al-link" href="https://forecast.weather.gov/MapClick.php?${point}" target="_blank" rel="noopener">More at weather.gov <span aria-hidden="true">↗</span></a>
+        <p class="al-note">From the US National Weather Service. Alerts can be late or missing: follow official warnings.</p>
+      </section>`;
+  }
+
+  let sheetReturn = null;   // where focus goes back to on close
+  function chartWidth() {
+    // The tile's content width, in the sheet's own (unzoomed) pixels.
+    const probe = $('#sheet .tile');
+    if (!probe) return 320;
+    const cs = getComputedStyle(probe), w = probe.getBoundingClientRect().width / zoomOf() - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+    return Math.max(200, Math.round(w));
+  }
+  function renderSheet() {
+    const spec = state.sheet, sheet = $('#sheet');
+    if (!spec) return;
+    const city = state.cities[state.active], data = city && state.data[keyOf(city)];
+    if (!data) return closeSheet();
+    const focused = sheet.contains(document.activeElement) ? document.activeElement.id : '';
+    if (spec.kind === 'day') {
+      spec.i = Math.max(0, Math.min(spec.i, dayDays(data).length - 1));
+      sheet.innerHTML = daySheet(city, data, spec.i, 320);   // lay out once, then draw the charts at the real width
+      sheet.innerHTML = daySheet(city, data, spec.i, chartWidth());
+      sheet.setAttribute('aria-label', `${$('#sheetTitle').textContent}: the day in detail`);
+      // On a narrow screen at a large text size, "Wednesday, Nov 4" becomes "Wed, Nov 4" rather than being cut off.
+      const h = $('#sheetTitle');
+      if (h.scrollWidth > h.clientWidth + 1) h.textContent = h.textContent.replace(/^([A-Za-z]{3})[a-z]+,/, '$1,');
+    } else {
+      const a = alertsOf(city)[spec.i];
+      if (!a) return closeSheet();
+      sheet.innerHTML = alertSheet(city, a);
+      sheet.setAttribute('aria-label', a.event);
+    }
+    const back = focused && document.getElementById(focused);
+    if (back && !back.disabled) back.focus();
+    else if (focused) $('#sheetClose').focus();
+  }
+  function openSheet(spec) {
+    state.sheet = spec;
+    sheetReturn = spec.kind === 'day' ? () => `#days [data-day="${state.sheet ? state.sheet.i : spec.i}"]` : () => `#alerts [data-alert="${spec.i}"]`;
+    toggleMore(false); toggleShare(false);
+    $('#sheetBack').hidden = false;
+    document.body.classList.add('sheet-open');
+    $('.panel').inert = true;
+    renderSheet();
+    $('#sheetBack').scrollTop = 0;
+    $('#sheetClose').focus();
+    if (EMBEDDED) $('#sheet').scrollIntoView({ block: 'start' });   // in the product page: bring it into view
+  }
+  function closeSheet() {
+    const target = sheetReturn && sheetReturn();
+    state.sheet = null;
+    $('#sheetBack').hidden = true;
+    $('#sheet').innerHTML = '';
+    document.body.classList.remove('sheet-open');
+    $('.panel').inert = false;
+    const el = target && document.querySelector(target);
+    if (el) { el.focus({ preventScroll: true }); if (EMBEDDED) el.scrollIntoView({ block: 'center' }); }
+  }
+  function stepDay(by) {
+    if (!state.sheet || state.sheet.kind !== 'day') return;
+    const city = state.cities[state.active], n = dayDays(state.data[keyOf(city)]).length, i = state.sheet.i + by;
+    if (i < 0 || i >= n) return;
+    state.sheet.i = i;
+    renderSheet();
   }
 
   /* ---------- Widget mode: the Mac app's small, medium and large widgets (WidgetViews.swift) ---------- */
@@ -909,10 +1731,15 @@
       : `<div class="hint">No match for “${esc(needle)}”. Try a larger nearby city.</div>`;
   }
   function addCity(c) {
-    // Up to five of your own; where you are doesn't count.
+    // Up to 20 of your own; where you are doesn't count.
     const existing = state.cities.findIndex((x) => !x.here && keyOf(x) === keyOf(c));
     if (existing >= 0) state.active = existing;
-    else if (state.cities.filter((x) => !x.here).length < MAX_CITIES) { state.cities.push({ ...c }); state.active = state.cities.length - 1; }
+    else if (state.cities.filter((x) => !x.here).length < MAX_CITIES) {
+      state.cities.push({ ...c }); state.active = state.cities.length - 1;
+      // Added the place you're in: it becomes My Location, with no second chip.
+      const place = store.get('herePlace', null);
+      if (state.useLocation && place && samePlace(c, place)) placeHere(place);
+    }
     saveCities();
     openSearch(false);
     load(state.cities[state.active]).then(render);
@@ -972,6 +1799,9 @@
       const item = (attr, label, on, key = '') => `<button type="button" role="menuitemradio" aria-checked="${on}" ${attr}><span class="ck">${on ? '✓' : ''}</span><span>${label}</span>${key ? `<span class="k">${key}</span>` : ''}</button>`;
       menu.innerHTML = `<div class="sec">Size</div>` + SIZES.map(([id, label]) => item(`data-size="${id}"`, label, state.size === id)).join('') +
         `<hr><div class="sec">Font</div>` + item('data-font="system"', 'System (SF Pro)', state.font === 'system') + item('data-font="inter"', 'Inter (bradcowdrey.com)', state.font === 'inter') +
+        `<hr>` + [['wind', 'Wind'], ['rain', 'Rain']].map(([kind, title]) => `<div class="sec" id="sec-${kind}">${title}</div><div class="opts" role="group" aria-labelledby="sec-${kind}">` +
+          UNIT_CHOICES[kind].map(([id, label]) => `<button type="button" role="menuitemradio" aria-checked="${state[kind + 'Unit'] === id}" data-${kind}-unit="${id}"${id === 'auto' ? ` title="${{ wind: 'mph with °F, km/h with °C', rain: 'in with °F, mm with °C'}[kind]}"` : ''}>${label}</button>`).join('') + '</div>').join('') +
+        `<p>Severe weather alerts: United States only, from the National Weather Service.</p>` +
         `<hr>` + (canLocate() ? `<button type="button" role="menuitemcheckbox" aria-checked="${state.useLocation}" data-act="locate"><span class="ck">${state.useLocation ? '✓' : ''}</span><span>Use My Location</span></button>` : '') +
         `<button type="button" role="menuitem" data-act="copy"><span class="ck"></span><span>Copy Current Reading</span></button>` +
         `<button type="button" role="menuitem" data-act="terms"><span class="ck"></span><span>Terms &amp; Privacy</span></button>`;
@@ -986,13 +1816,13 @@
     copyText(`${city.name}: ${deg(d.current.t, 'F')}°F / ${deg(d.current.t, 'C')}°C, ${codeInfo(d.current.code)[0].toLowerCase()}. Via Two Degrees.`, 'Reading copied');
   }
   /* ---------- Use My Location ---------- */
-  // Where you are: first in the list, kept up to date, and never counted toward the five. Named by
+  // Where you are: first in the list, kept up to date, and never counted toward the 20. Named by
   // Open-Meteo, or else by the nearest place in the apps' city list (GeoNames), or else "My Location".
   const CITIES_URL = 'https://bradleycowdrey.github.io/two-degrees/cities.tsv';
   let cityList = null;
   async function nearestListed(lat, lon) {
     try {
-      cityList = cityList || (await (await fetch(CITIES_URL)).text()).split('\n').map((l) => l.split('\t')).filter((c) => c.length >= 6);
+      cityList = cityList || (await (await fetch(CITIES_URL, { signal: AbortSignal.timeout(8000) })).text()).split('\n').map((l) => l.split('\t')).filter((c) => c.length >= 6);
       const k = Math.cos(lat * Math.PI / 180);
       let best = null, bestD = Infinity;
       for (const c of cityList) {
@@ -1008,14 +1838,39 @@
   }
   async function nameHere(lat, lon) {
     try {
-      const r = await fetch(`https://geocoding-api.open-meteo.com/v1/reverse?latitude=${lat}&longitude=${lon}&count=1`);
+      const r = await fetch(`https://geocoding-api.open-meteo.com/v1/reverse?latitude=${lat}&longitude=${lon}&count=1`, { signal: AbortSignal.timeout(4000) });
       const g = r.ok && ((await r.json()).results || [])[0];
       if (g) return { name: g.name, region: [g.admin1, g.country].filter(Boolean).join(', '), tz: g.timezone };
     } catch {}
     return (await nearestListed(lat, lon)) || { name: 'My Location', region: '' };
   }
+  // Same place: the same name within 25 km, or anything within 2 km. Where you are and a saved city
+  // that's the same place share one chip.
+  function samePlace(a, b) {
+    const k = Math.cos(a.lat * Math.PI / 180);
+    let dx = Math.abs(a.lon - b.lon); if (dx > 180) dx = 360 - dx;
+    const km = Math.hypot(a.lat - b.lat, dx * k) * 111;
+    const fold = (t) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    return km <= 2 || (km <= 25 && fold(a.name) === fold(b.name));
+  }
+  // The saved city standing in for My Location, by key, if any.
+  const isHere = (c) => !!c.here || (state.hereKey != null && keyOf(c) === state.hereKey);
+  function setHereKey(key) { state.hereKey = key; store.set('hereKey', key); }
   function placeHere(place) {
     const here = { tz: null, ...place, here: true };
+    store.set('herePlace', here);
+    const match = state.cities.find((c) => !c.here && samePlace(c, here));
+    if (match) {
+      const firstTime = state.hereKey == null && !state.cities.some((c) => c.here);
+      const j = state.cities.findIndex((c) => c.here);
+      const showing = j >= 0 && state.active === j;
+      if (j >= 0) { state.cities.splice(j, 1); if (state.active > j) state.active--; }
+      setHereKey(keyOf(match));
+      if (firstTime || showing) state.active = state.cities.indexOf(match);
+      saveCities(); render();
+      return;
+    }
+    setHereKey(null);
     const i = state.cities.findIndex((c) => c.here);
     if (i >= 0) state.cities[i] = here;
     else { state.cities.unshift(here); state.active = 0; }   // the first time, show it
@@ -1024,6 +1879,8 @@
     render();
   }
   function removeHere() {
+    setHereKey(null);
+    store.set('herePlace', null);
     const i = state.cities.findIndex((c) => c.here);
     if (i < 0) return;
     if (state.cities.length === 1) { delete state.cities[0].here; saveCities(); render(); return; }
@@ -1044,17 +1901,25 @@
   }
   function setUseLocation(on) {
     state.useLocation = on;
+    state.locationAsked = true;   // choosing it in the menu answers the question too
     store.set('useLocation', on);
+    store.set('locationAsked', true);
+    $('#askLoc').hidden = true;
     if (on) locate(true); else removeHere();
   }
-  // At load: on its own page, ask (the browser asks once); inside the product page, only if this site
-  // is already allowed, so a visitor isn't asked for their location just for looking.
+  // At load: the first visit asks the question (the card above the cities). After Use My Location,
+  // each visit finds where you are; inside the product page only if this site is already allowed, so
+  // the browser's own prompt never appears just for looking.
   async function autoLocate() {
-    if (!state.useLocation || !canLocate() || WIDGETS) return;
+    if (!canLocate() || WIDGETS) return;
+    if (!state.locationAsked) { $('#askLoc').hidden = false; return; }   // ask first, once
+    if (!state.useLocation) return;
     let permission = 'prompt';
     try { permission = (await navigator.permissions.query({ name: 'geolocation' })).state; } catch {}
     if (permission === 'granted' || (permission === 'prompt' && !EMBEDDED)) locate(false);
   }
+  $('#askLocYes').addEventListener('click', () => setUseLocation(true));
+  $('#askLocNo').addEventListener('click', () => setUseLocation(false));
   $('#moreBtn').addEventListener('click', () => toggleMore());
   $('#daysToggle').addEventListener('click', () => { state.daysOpen = !state.daysOpen; render(); });
   $('#moreMenu').addEventListener('click', (e) => {
@@ -1062,6 +1927,10 @@
     toggleMore(false);
     if (b.dataset.size) { state.size = b.dataset.size; store.set('size', state.size); applyLook(); }
     if (b.dataset.font) { state.font = b.dataset.font; store.set('font', state.font); applyLook(); }
+    for (const kind of ['wind', 'rain']) {
+      const v = b.dataset[kind + 'Unit'];
+      if (v) { state[kind + 'Unit'] = v; store.set(kind + 'Unit', v); render(); }
+    }
     if (b.dataset.act === 'locate') setUseLocation(!state.useLocation);
     if (b.dataset.act === 'copy') copyReading();
     if (b.dataset.act === 'terms') window.open('https://bradcowdrey.com/legal', '_blank', 'noopener');
@@ -1077,10 +1946,14 @@
     if (x) {
       const i = +x.dataset.x;
       if (state.cities[i].here) { setUseLocation(false); if (state.cities.length < 2) state.editing = false; return; }   // or it would come straight back
+      const wasHere = isHere(state.cities[i]);
       state.cities.splice(i, 1);
       if (state.active >= state.cities.length || state.active > i) state.active = Math.max(0, state.active - 1);
       if (state.cities.length < 2) state.editing = false;
-      saveCities(); render(); return;
+      saveCities(); render();
+      // It stood in for My Location: bring back the separate chip for where you are.
+      if (wasHere) { setHereKey(null); const place = store.get('herePlace', null); if (state.useLocation && place) placeHere(place); }
+      return;
     }
     const chip = e.target.closest('[data-i]');
     if (chip) { state.active = +chip.dataset.i; saveCities(); load(state.cities[state.active]).then(render); render(); return; }
@@ -1108,7 +1981,44 @@
     if (!e.target.closest('.share-wrap') && !$('#shareMenu').hidden) toggleShare(false);
     if (!e.target.closest('.more-wrap') && !$('#moreMenu').hidden) toggleMore(false);
   });
+  // The day rows open that day; the alert cards open the alert.
+  $('#days').addEventListener('click', (e) => { const b = e.target.closest('[data-day]'); if (b) openSheet({ kind: 'day', i: +b.dataset.day }); });
+  $('#alerts').addEventListener('click', (e) => { const b = e.target.closest('[data-alert]'); if (b) openSheet({ kind: 'alert', i: +b.dataset.alert }); });
+  $('#sheetBack').addEventListener('click', (e) => {
+    if (e.target === e.currentTarget && !EMBEDDED) return closeSheet();   // a click on the shade outside the sheet
+    if (e.target.closest('#sheetClose')) closeSheet();
+    else if (e.target.closest('#sheetPrev')) stepDay(-1);
+    else if (e.target.closest('#sheetNext')) stepDay(1);
+  });
+  // Swipe left and right between days on a touch screen, as well as the arrows: a mostly sideways swipe
+  // of 50px or more (an up-and-down scroll or a swipe on a chart's own scroller is left alone).
+  let swipe = null;
+  $('#sheet').addEventListener('touchstart', (e) => {
+    swipe = e.touches.length === 1 && state.sheet && state.sheet.kind === 'day' ? { x: e.touches[0].clientX, y: e.touches[0].clientY } : null;
+  }, { passive: true });
+  $('#sheet').addEventListener('touchend', (e) => {
+    if (!swipe) return;
+    const t = e.changedTouches[0], dx = t.clientX - swipe.x, dy = t.clientY - swipe.y;
+    swipe = null;
+    if (Math.abs(dx) >= 50 && Math.abs(dx) > Math.abs(dy) * 1.5) stepDay(dx < 0 ? 1 : -1);
+  }, { passive: true });
+  $('#sheet').addEventListener('keydown', (e) => {
+    if (e.key === 'Tab') {   // keep focus inside the sheet
+      const items = [...$('#sheet').querySelectorAll('button:not([disabled]), a[href]')];
+      if (!items.length) return;
+      const first = items[0], last = items[items.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
+    if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && !e.altKey && !e.metaKey) { e.preventDefault(); stepDay(e.key === 'ArrowLeft' ? -1 : 1); }
+  });
+  let resizeTimer = 0;
+  addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(() => { if (state.sheet) renderSheet(); }, 120); });
+  $('#mapLink').addEventListener('click', (e) => { if (navigator.onLine === false) { e.preventDefault(); toast('The map needs an internet connection.'); } });
+  addEventListener('online', () => render());
+  addEventListener('offline', () => render());
   document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && state.sheet) { e.preventDefault(); closeSheet(); return; }
     if (e.key === 'Escape' && !$('#shareMenu').hidden) { toggleShare(false); $('#shareBtn').focus(); }
     if (e.key === 'Escape' && !$('#moreMenu').hidden) { toggleMore(false); $('#moreBtn').focus(); }
     else if (e.key === 'Escape' && $('#shareMenu').hidden && (!$('#search').hidden || state.editing)) { state.editing = false; openSearch(false); }
@@ -1135,7 +2045,11 @@
       refreshAll();
     });
   }
-  window.__twoDegreesTest = { deg };   // read by tests/web.test.js
+  // Read by tests/web.test.js. inject: put sample alerts or air quality on the city showing, as if they'd loaded.
+  window.__twoDegreesTest = {
+    deg, moonPhase, moonNext, skyRule, stepDay, distance,
+    inject(kind, value) { state[kind][keyOf(state.cities[state.active])] = value; render(); },
+  };
   applyLook();
   render();
   refreshAll();

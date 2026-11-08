@@ -361,13 +361,13 @@ final class StoreTests: XCTestCase {
         XCTAssertEqual(store.active.name, "Paris")
         store.add(City(name: "Paris", region: "France", latitude: 48.85, longitude: 2.35))
         XCTAssertEqual(store.cities.count, 4, "no duplicates")
-        store.add(City(name: "Rome", region: "Italy", latitude: 41.9, longitude: 12.5))
-        XCTAssertFalse(store.canAdd)
+        while store.canAdd { store.add(City(name: "Test \(store.cities.count)", region: "", latitude: Double(store.cities.count), longitude: 50)) }
+        XCTAssertEqual(store.cities.count, 20, "up to 20")
         store.add(City(name: "Cairo", region: "Egypt", latitude: 30, longitude: 31))
-        XCTAssertEqual(store.cities.count, 5, "the limit holds")
+        XCTAssertEqual(store.cities.count, 20, "the limit holds")
         store.remove(store.active)
         XCTAssertEqual(store.active.name, "New York", "removing the active city selects the first")
-        XCTAssertEqual(WeatherStore(defaults: defaults, autoRefresh: false).cities.count, 4, "cities persist")
+        XCTAssertEqual(WeatherStore(defaults: defaults, autoRefresh: false).cities.count, 19, "cities persist")
         while store.cities.count > 1 { store.remove(store.cities.last!) }
         store.remove(store.cities[0])
         XCTAssertEqual(store.cities.count, 1, "the last city stays")
@@ -406,6 +406,10 @@ final class StoreTests: XCTestCase {
         var place = City(name: "Denver", region: "Colorado, United States", latitude: 39.74, longitude: -104.98)
         store.locate = { .found(place) }
         await store.updateLocation()
+        XCTAssertFalse(store.cities.contains(where: \.isCurrent), "nothing until the question is answered")
+        XCTAssertTrue(store.needsLocationPrompt)
+        store.answerLocationPrompt(true)
+        await store.updateLocation()
         XCTAssertEqual(store.cities.first?.name, "Denver")
         XCTAssertEqual(store.cities.first?.isCurrent, true)
         XCTAssertEqual(store.activeID, City.currentID, "the first time, it's shown")
@@ -420,9 +424,9 @@ final class StoreTests: XCTestCase {
         XCTAssertNotEqual(store.activeID, City.currentID, "an update doesn't take you away from the city you're on")
 
         // It doesn't count toward the five; it persists; turning the setting off removes it.
-        for (i, name) in ["Paris", "Rome"].enumerated() { store.add(City(name: name, region: "", latitude: Double(i), longitude: 1)) }
-        XCTAssertFalse(store.canAdd)
-        XCTAssertEqual(store.cities.count, 6)
+        var i = 0
+        while store.canAdd { store.add(City(name: "Test \(i)", region: "", latitude: Double(i), longitude: 1)); i += 1 }
+        XCTAssertEqual(store.cities.count, WeatherStore.maxCities + 1, "where you are doesn't count toward the limit")
         XCTAssertEqual(WeatherStore(defaults: defaults, autoRefresh: false).cities.first?.isCurrent, true)
         store.useLocation = false
         try await Task.sleep(for: .milliseconds(100))
@@ -433,6 +437,7 @@ final class StoreTests: XCTestCase {
 
     func testLocationDeniedOrRemovedByHand() async throws {
         let store = WeatherStore(defaults: defaults, autoRefresh: false)
+        store.answerLocationPrompt(true)
         store.locate = { .denied }
         await store.updateLocation()
         XCTAssertEqual(store.locationStatus, .denied)
@@ -443,6 +448,59 @@ final class StoreTests: XCTestCase {
         try await Task.sleep(for: .milliseconds(100))
         XCTAssertFalse(store.useLocation, "removing where you are turns Use My Location off")
         XCTAssertFalse(store.cities.contains(where: \.isCurrent))
+    }
+
+    func testWhereYouAreSharesACardWithASavedCityThatIsThatPlace() async throws {
+        let store = WeatherStore(defaults: defaults, autoRefresh: false)
+        store.answerLocationPrompt(true)
+        var place = City(name: "London", region: "England, United Kingdom", latitude: 51.51, longitude: -0.13)
+        store.locate = { .found(place) }
+        await store.updateLocation()
+        XCTAssertEqual(store.cities.count, 3, "no second London card")
+        XCTAssertFalse(store.cities.contains(where: \.isCurrent))
+        let london = store.cities.first { $0.name == "London" }!
+        XCTAssertTrue(store.isHere(london), "London is labelled My Location")
+        XCTAssertEqual(store.activeID, london.id, "the first time, it's shown")
+
+        // Moving away brings back a separate My Location card.
+        place = City(name: "Paris", region: "France", latitude: 48.86, longitude: 2.35)
+        await store.updateLocation()
+        XCTAssertEqual(store.cities.first?.isCurrent, true)
+        XCTAssertFalse(store.isHere(london))
+        XCTAssertEqual(store.cities.count, 4)
+
+        // Adding the place you're in folds the two together.
+        store.add(City(name: "Paris", region: "Île-de-France, France", latitude: 48.8534, longitude: 2.3488))
+        XCTAssertFalse(store.cities.contains(where: \.isCurrent))
+        XCTAssertEqual(store.cities.count, 4)
+        let paris = store.cities.first { $0.name == "Paris" }!
+        XCTAssertTrue(store.isHere(paris))
+        XCTAssertTrue(WeatherStore(defaults: defaults, autoRefresh: false).isHere(paris), "remembered")
+
+        // Removing it brings My Location back as its own card.
+        store.remove(paris)
+        XCTAssertEqual(store.cities.first?.isCurrent, true)
+        XCTAssertEqual(store.cities.first?.name, "Paris")
+    }
+
+    func testSamePlace() {
+        let denver = City(name: "Denver", region: "", latitude: 39.74, longitude: -104.98)
+        XCTAssertTrue(City.samePlace(denver, City(name: "Denver", region: "CO", latitude: 39.68, longitude: -104.90)), "same name, nearby")
+        XCTAssertTrue(City.samePlace(denver, City(name: "Downtown", region: "", latitude: 39.745, longitude: -104.985)), "within 2 km")
+        XCTAssertFalse(City.samePlace(denver, City(name: "Aurora", region: "", latitude: 39.73, longitude: -104.83)), "a neighbouring city stays separate")
+        XCTAssertFalse(City.samePlace(denver, City(name: "Denver", region: "", latitude: 40.5, longitude: -104.98)), "same name, far away")
+    }
+
+    func testNotNowTurnsItOffAndIsNeverAskedAgain() async throws {
+        let store = WeatherStore(defaults: defaults, autoRefresh: false)
+        store.locate = { .found(City(name: "Denver", region: "", latitude: 39.74, longitude: -104.98)) }
+        store.answerLocationPrompt(false)
+        try await Task.sleep(for: .milliseconds(100))
+        XCTAssertFalse(store.useLocation)
+        XCTAssertFalse(store.cities.contains(where: \.isCurrent))
+        let again = WeatherStore(defaults: defaults, autoRefresh: false)
+        XCTAssertFalse(again.needsLocationPrompt, "asked once")
+        XCTAssertFalse(again.useLocation)
     }
 
     func testMenuBarText() {
@@ -572,6 +630,22 @@ final class WidgetDataTests: XCTestCase {
     }
 }
 
+/// Changed terms are asked again, but no more than once a month.
+final class TermsScheduleTests: XCTestCase {
+    func testAsksFirstTimeThenOnChangeAtMostMonthly() {
+        let now = Date()
+        let day: TimeInterval = 24 * 3600
+        XCTAssertTrue(TermsSchedule.shouldAsk(acceptedVersion: nil, acceptedAt: nil, current: "b", now: now), "first launch")
+        XCTAssertFalse(TermsSchedule.shouldAsk(acceptedVersion: "b", acceptedAt: now.addingTimeInterval(-90 * day), current: "b", now: now), "same terms")
+        XCTAssertFalse(TermsSchedule.shouldAsk(acceptedVersion: "a", acceptedAt: now.addingTimeInterval(-10 * day), current: "b", now: now), "changed, but asked 10 days ago")
+        XCTAssertTrue(TermsSchedule.shouldAsk(acceptedVersion: "a", acceptedAt: now.addingTimeInterval(-31 * day), current: "b", now: now), "changed, a month on")
+        XCTAssertTrue(TermsSchedule.shouldAsk(acceptedVersion: "a", acceptedAt: nil, current: "b", now: now), "agreed before dates were kept")
+        let defaults = UserDefaults(suiteName: "TwoDegrees.tests.schedule.\(UUID().uuidString)")!
+        TermsSchedule.agree(in: defaults, now: now)
+        XCTAssertFalse(TermsSchedule.shouldAsk(in: defaults, now: now))
+    }
+}
+
 /// Use My Location's pieces that need no device: older saved cities, and naming a spot offline.
 final class LocationTests: XCTestCase {
     func testCitiesSavedBeforeUseMyLocationStillLoad() throws {
@@ -626,5 +700,150 @@ final class OfflineCitiesTests: XCTestCase {
         XCTAssertEqual(OfflineCities.search("Portland, maine", in: list).map(\.region), ["Maine, United States"])
         XCTAssertEqual(OfflineCities.search("  ", in: list).count, 0)
         XCTAssertEqual(OfflineCities.search("Atlantis", in: list).count, 0)
+    }
+}
+
+/// 0.5's weather details: units, words, moon, air quality, normals and records, alerts, the next two hours.
+final class WeatherExtrasTests: XCTestCase {
+    private func date(_ text: String) -> Date { OpenMeteo.date(text)! }
+    /// Times read "3:30 PM" whichever space the system puts before PM (macOS uses a narrow no-break space).
+    private func plain(_ text: String?) -> String? { text?.replacingOccurrences(of: "\u{202F}", with: " ") }
+
+    private func forecast(steps: [Double], code: Int = 61, hours: [(String, Double?)] = [], pressure: Double? = nil) -> Forecast {
+        let now = date("2026-11-01T15:00")
+        let stepTimes = (0..<steps.count).map { now.addingTimeInterval(Double($0) * 900) }
+        return Forecast(
+            now: .init(time: now, temperature: 10, feelsLike: 9, humidity: 70, wind: 12, code: code, isDay: true, pressure: pressure),
+            hours: hours.map { .init(time: date($0.0), temperature: 10, code: code, rainChance: 0, isDay: true, pressure: $0.1) },
+            days: [], timeZone: "UTC", fetchedAt: now,
+            steps: zip(stepTimes, steps).map { .init(time: $0, precipitation: $1) })
+    }
+
+    func testUnits() {
+        XCTAssertEqual(WindUnit.auto.text(36, temp: .fahrenheit).main, "22 mph")
+        XCTAssertEqual(WindUnit.auto.text(36, temp: .fahrenheit).other, "36 km/h")
+        XCTAssertEqual(WindUnit.kn.text(36, temp: .celsius).main, "19 knots")
+        XCTAssertNil(WindUnit.ms.text(36, temp: .celsius).other)
+        XCTAssertEqual(RainUnit.auto.text(12.7, temp: .fahrenheit).main, "0.50 in")
+        XCTAssertEqual(RainUnit.auto.text(2.54, temp: .celsius).main, "2.5 mm")
+        XCTAssertEqual(RainUnit.format(0.05, .mm), "<0.1 mm")
+    }
+
+    func testWords() {
+        XCTAssertEqual(Details.clouds(5), "Clear")
+        XCTAssertEqual(Details.clouds(75), "Mostly cloudy")
+        XCTAssertEqual(Details.visibility(24_000, miles: false).value, "24 km")
+        XCTAssertEqual(Details.visibility(24_000, miles: false).other, "15 mi")
+        XCTAssertEqual(Details.visibility(12_875, miles: true).value, "8 mi")
+        XCTAssertEqual(Details.visibility(12_875, miles: true).other, "13 km")
+        XCTAssertEqual(Details.visibility(490, miles: true).value, "1,600 ft")
+        XCTAssertEqual(Details.visibility(490, miles: true).other, "490 m")
+        XCTAssertEqual(Details.visibility(1_000, miles: true).note, "Fog is cutting the view.")
+    }
+
+    func testCloudWordsAndMoon() {
+        XCTAssertEqual(Details.words(low: 0, mid: 5, high: 3), "No cloud at any height.")
+        XCTAssertEqual(Details.words(low: 80, mid: 10, high: 0), "Mostly low cloud.")
+        XCTAssertEqual(Details.words(low: 0, mid: 10, high: 60), "Mostly high, thin cloud.")
+        XCTAssertEqual(Details.words(low: 60, mid: 70, high: 0), "Cloud at several heights.")
+        // 2000-01-21 04:40 UTC was a full moon; a day before it, "Full moon tomorrow."
+        XCTAssertEqual(Moon.next(at: Date(timeIntervalSince1970: 948_429_600 - 86_400)), "Full moon tomorrow.")
+        XCTAssertEqual(Moon.next(at: Date(timeIntervalSince1970: 947_182_440)), "New moon today.")
+    }
+
+    func testSkyColour() {
+        let o = { (low: Double, mid: Double, high: Double) in SkyColour.outlook(low: low, mid: mid, high: high, precipitation: 0, code: 2, visibility: 24_000) }
+        XCTAssertEqual(o(0, 20, 50).rating, .great, "high and mid cloud to catch the light")
+        XCTAssertEqual(o(20, 0, 50).rating, .good)
+        XCTAssertEqual(o(0, 0, 0).rating, .fair, "clear: a clean, plain glow")
+        XCTAssertEqual(o(0, 95, 95).rating, .fair, "a thick layer mutes it")
+        XCTAssertEqual(o(80, 30, 30).rating, .poor, "low cloud blocks the horizon")
+        XCTAssertEqual(SkyColour.outlook(low: 0, mid: 40, high: 40, precipitation: 1.2, code: 61, visibility: nil).rating, .poor)
+        XCTAssertEqual(SkyColour.outlook(low: 0, mid: 40, high: 40, precipitation: 0, code: 45, visibility: 400).reason, "Fog will likely hide it.")
+        XCTAssertEqual(SkyColour.outlook(low: 0, mid: 40, high: 40, precipitation: 0, code: 2, visibility: 3000).rating, .good, "haze dulls it a step")
+    }
+
+    func testNextTwoHours() {
+        XCTAssertNil(NextHours.sentence(forecast(steps: [0, 0, 0, 0, 0, 0, 0, 0])), "dry: no card")
+        XCTAssertEqual(plain(NextHours.sentence(forecast(steps: [0, 0, 0.4, 0.6, 0.6, 0.6, 0.6, 0.6]))), "Rain starting around 3:30 PM")
+        XCTAssertEqual(plain(NextHours.sentence(forecast(steps: [0.5, 0.4, 0.2, 0, 0, 0, 0, 0]))), "Rain stopping around 3:45 PM")
+        XCTAssertEqual(NextHours.sentence(forecast(steps: Array(repeating: 0.5, count: 8))), "Rain for the next two hours")
+        XCTAssertEqual(NextHours.sentence(forecast(steps: [0.3, 0, 0.3, 0, 0, 0.2, 0, 0])), "Light rain on and off")
+        XCTAssertEqual(NextHours.sentence(forecast(steps: Array(repeating: 0.5, count: 8), code: 73)), "Snow for the next two hours")
+        XCTAssertNotNil(Notifier.rainSoon(forecast(steps: [0, 0.3, 0.5, 0, 0, 0, 0, 0])), "rain in 15 minutes")
+        XCTAssertNil(Notifier.rainSoon(forecast(steps: [0, 0, 0, 0.5, 0, 0, 0, 0])), "not within half an hour")
+        XCTAssertNil(Notifier.rainSoon(forecast(steps: [0.4, 0.5, 0.5, 0, 0, 0, 0, 0])), "already raining")
+    }
+
+    func testMoon() {
+        XCTAssertEqual(Moon.phase(at: ISO8601DateFormatter().date(from: "2025-01-29T12:36:00Z")!).name, "New Moon")
+        let full = Moon.phase(at: ISO8601DateFormatter().date(from: "2025-01-13T22:27:00Z")!)
+        XCTAssertEqual(full.name, "Full Moon")
+        XCTAssertGreaterThan(full.illumination, 97)
+        XCTAssertEqual(Moon.phase(at: ISO8601DateFormatter().date(from: "2025-01-21T20:31:00Z")!).name, "Last Quarter")
+    }
+
+    func testAirQualityAndPollen() throws {
+        XCTAssertEqual(AirQuality.usCategory(42), "Good")
+        XCTAssertEqual(AirQuality.usCategory(120), "Unhealthy for Sensitive Groups")
+        XCTAssertEqual(AirQuality.europeanCategory(45), "Moderate")
+        XCTAssertEqual(AirQuality.pollenLevel(60), "High")
+        let json = #"{"current":{"time":"2026-11-01T15:00","us_aqi":58,"european_aqi":31,"pm2_5":14.2,"pm10":20,"ozone":60,"nitrogen_dioxide":12,"alder_pollen":null,"birch_pollen":3,"grass_pollen":22,"mugwort_pollen":null,"olive_pollen":null,"ragweed_pollen":null},"hourly":{"time":"#
+            + "[" + (0..<48).map { "\"2026-10-31T\(String(format: "%02d", $0 % 24)):00\"".replacingOccurrences(of: "2026-10-31", with: $0 < 24 ? "2026-10-31" : "2026-11-01") }.joined(separator: ",") + "]"
+            + #","us_aqi":["# + (0..<48).map { $0 == 15 ? "80" : "50" }.joined(separator: ",") + #"],"european_aqi":["# + (0..<48).map { _ in "30" }.joined(separator: ",") + "]}}"
+        let air = try WeatherServices.parseAirQuality(Data(json.utf8))
+        let us = try XCTUnwrap(air.reading(inUS: true))
+        XCTAssertEqual(us.value, 58)
+        XCTAssertEqual(us.category, "Moderate")
+        XCTAssertEqual(us.note, "Better than yesterday.", "80 at the same hour yesterday")
+        XCTAssertEqual(air.reading(inUS: false)?.note, "About the same as yesterday.")
+        XCTAssertEqual(air.pollenSummary?.top, "Grass")
+        XCTAssertEqual(air.pollenSummary?.level, "Moderate")
+    }
+
+    func testNormalsAndRecords() {
+        var dates: [String] = [], highs: [Double?] = [], lows: [Double?] = []
+        for year in [1950, 1995, 2000, 2024] {
+            for day in 1...5 {
+                dates.append(String(format: "%d-11-%02d", year, day))
+                highs.append(Double(year == 1950 ? 30 : 15 + day))
+                lows.append(Double(year == 2024 ? -5 : 5))
+            }
+        }
+        let table = Climate.build(dates: dates, highs: highs, lows: lows)
+        let entry = table.days["11-03"]!
+        XCTAssertEqual(entry.recordHigh, 30)
+        XCTAssertEqual(entry.recordHighYear, 1950)
+        XCTAssertEqual(entry.recordLowYear, 2024)
+        XCTAssertEqual(entry.normalLow, 5, "only 1991–2020 counts toward normals")
+        XCTAssertEqual(entry.normalHigh!, 18, accuracy: 0.01, "the ±3-day window around Nov 3 covers Nov 1–5 here")
+        XCTAssertEqual(Climate.comparison(high: 22, normal: 18, unit: .celsius), "4° above normal")
+        XCTAssertEqual(Climate.comparison(high: 18.4, normal: 18, unit: .fahrenheit), "About normal")
+        XCTAssertEqual(Climate.key(OpenMeteo.date("2028-02-29")!), "02-29")
+    }
+
+    func testAlerts() {
+        let json = #"""
+        {"features":[
+          {"id":"a1","properties":{"id":"a1","event":"Winter Weather Advisory","severity":"Minor","headline":"Snow","description":"d","expires":"2099-01-01T00:00:00Z","senderName":"NWS Boulder CO"}},
+          {"id":"a2","properties":{"id":"a2","event":"Tornado Warning","severity":"Extreme","headline":"Take cover","description":"d","instruction":"Go to a basement","expires":"2099-01-01T00:00:00Z","senderName":"NWS Boulder CO"}},
+          {"id":"a3","properties":{"id":"a3","event":"Old","severity":"Severe","headline":"h","description":"d","expires":"2001-01-01T00:00:00Z"}}
+        ]}
+        """#
+        let alerts = WeatherAlert.parseNWS(Data(json.utf8))
+        XCTAssertEqual(alerts.map(\.event), ["Tornado Warning", "Winter Weather Advisory"], "most severe first; expired ones dropped")
+        XCTAssertTrue(alerts[0].notifies)
+        XCTAssertFalse(alerts[1].notifies)
+        XCTAssertEqual(alerts[0].colorHex, 0xE5484D)
+        XCTAssertTrue(WeatherAlert.inUS(latitude: 39.74, longitude: -104.98))
+        XCTAssertTrue(WeatherAlert.inUS(latitude: 21.3, longitude: -157.8), "Honolulu")
+        XCTAssertFalse(WeatherAlert.inUS(latitude: 51.5, longitude: -0.13), "London")
+    }
+
+    func testOlderSavedForecastsStillLoad() throws {
+        let old = #"{"now":{"time":0,"temperature":10,"feelsLike":9,"humidity":70,"wind":12,"code":3,"isDay":true},"hours":[],"days":[],"timeZone":"UTC","fetchedAt":0}"#
+        let f = try JSONDecoder().decode(Forecast.self, from: Data(old.utf8))
+        XCTAssertNil(f.steps)
+        XCTAssertNil(f.now.pressure)
     }
 }

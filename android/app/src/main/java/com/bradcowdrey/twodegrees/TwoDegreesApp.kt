@@ -10,5 +10,6 @@ class TwoDegreesApp : Application() {
         val store = WeatherStore.get(this)
         store.onCitiesChanged = { WidgetUpdates.redraw(this) }
         WidgetUpdates.schedule(this)
+        Notifier.createChannel(this)
     }
 }

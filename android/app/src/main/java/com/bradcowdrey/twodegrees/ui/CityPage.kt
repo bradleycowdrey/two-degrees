@@ -17,6 +17,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -52,6 +54,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -75,7 +78,15 @@ import com.bradcowdrey.twodegrees.City
 import com.bradcowdrey.twodegrees.Condition
 import com.bradcowdrey.twodegrees.Forecast
 import com.bradcowdrey.twodegrees.Meteo
+import com.bradcowdrey.twodegrees.Air
+import com.bradcowdrey.twodegrees.Detail
+import com.bradcowdrey.twodegrees.Moon
+import com.bradcowdrey.twodegrees.NextHours
+import com.bradcowdrey.twodegrees.Normals
+import com.bradcowdrey.twodegrees.Pollen
+import com.bradcowdrey.twodegrees.Units
 import com.bradcowdrey.twodegrees.Speech
+import com.bradcowdrey.twodegrees.SkyColour
 import com.bradcowdrey.twodegrees.Summary
 import com.bradcowdrey.twodegrees.TempUnit
 import com.bradcowdrey.twodegrees.WeatherStore
@@ -88,17 +99,27 @@ import kotlinx.coroutines.delay
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CityPage(city: City, state: WeatherStore.State, store: WeatherStore, scrollTo: String?, bottomInset: Dp) {
+fun CityPage(city: City, state: WeatherStore.State, store: WeatherStore, scrollTo: String?, bottomInset: Dp, onOpen: (Overlay) -> Unit = {}) {
     val ui = LocalMetrics.current
     val forecast = state.forecasts[city.id]
+    val alerts = state.alerts[city.id].orEmpty()
+    val nextHours = forecast != null && NextHours.shows(forecast)
     val list = rememberLazyListState()
     val collapsed by remember { derivedStateOf { list.firstVisibleItemIndex > 0 || list.firstVisibleItemScrollOffset > 420 } }
 
     LaunchedEffect(scrollTo, forecast != null) {
         if (scrollTo != null && forecast != null && city.id == state.activeID) {
             delay(2500)
-            list.animateScrollToItem(if (scrollTo == "days") 2 else 3)
+            // Header, alerts, next 2 hours, 24 hours, days, map, tiles, more tiles.
+            val days = 2 + (if (alerts.isNotEmpty()) 1 else 0) + (if (nextHours) 1 else 0)
+            list.animateScrollToItem(when (scrollTo) { "days" -> days; "more" -> days + 3; else -> days + 2 })
         }
+    }
+
+    // Swiping to another city puts this one back at the top, so it starts there when you return.
+    val showing = city.id == state.activeID
+    LaunchedEffect(showing) {
+        if (!showing && (list.firstVisibleItemIndex > 0 || list.firstVisibleItemScrollOffset > 0)) list.scrollToItem(0)
     }
 
     // The spinner shows only for a pull, not for the app's own refreshes.
@@ -112,11 +133,15 @@ fun CityPage(city: City, state: WeatherStore.State, store: WeatherStore, scrollT
                 contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = bottomInset + 24.dp),
                 verticalArrangement = Arrangement.spacedBy(ui.dp(10f)),
             ) {
-                item { Header(city, forecast, state.unit, store, Modifier.statusBarsPadding().padding(top = ui.dp(36f), bottom = ui.dp(26f))) }
+                item { Header(city, state.isHere(city), forecast, state.unit, store, Modifier.statusBarsPadding().padding(top = ui.dp(36f), bottom = ui.dp(26f))) }
                 if (forecast != null) {
+                    if (alerts.isNotEmpty()) item { AlertCards(city, alerts, forecast, onOpen) }
+                    if (nextHours) item { NextHoursCard(forecast, state.units) }
                     item { HourlyCard(forecast, state.unit) }
-                    item { DailyCard(forecast, state.unit) }
-                    item { DetailTiles(forecast, state.unit) }
+                    item { DailyCard(forecast, state.unit) { i -> onOpen(Overlay.Day(city.id, i)) } }
+                    item { MapCard(city, onOpen) }
+                    item { DetailTiles(forecast, state.units) }
+                    item { MoreTiles(city, forecast, state) }
                     item { Footer(city, forecast, offline = city.id in state.failed) }
                 } else {
                     item {
@@ -150,11 +175,11 @@ fun reading(value: Int, unit: TempUnit) = buildAnnotatedString {
 private fun Float.em() = androidx.compose.ui.unit.TextUnit(this, androidx.compose.ui.unit.TextUnitType.Em)
 
 @Composable
-private fun Header(city: City, forecast: Forecast?, unit: TempUnit, store: WeatherStore, modifier: Modifier) {
+private fun Header(city: City, isHere: Boolean, forecast: Forecast?, unit: TempUnit, store: WeatherStore, modifier: Modifier) {
     val ui = LocalMetrics.current
     val other = unit.other
     Column(modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(ui.dp(2f))) {
-        if (city.isCurrent) {
+        if (isHere) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.alpha(0.8f)) {
                 Icon(Icons.Filled.NearMe, null, tint = Color.White, modifier = Modifier.size(ui.dp(13f)))
                 Text("MY LOCATION", style = ui.text(13f, FontWeight.SemiBold))
@@ -257,7 +282,7 @@ private fun HourlyCard(forecast: Forecast, unit: TempUnit) {
 }
 
 @Composable
-private fun DailyCard(forecast: Forecast, unit: TempUnit) {
+private fun DailyCard(forecast: Forecast, unit: TempUnit, onDay: (Int) -> Unit) {
     val days = forecast.days.take(10)
     val now = forecast.now.temperature
     val low = minOf(now, days.minOfOrNull { it.low } ?: now)
@@ -266,18 +291,18 @@ private fun DailyCard(forecast: Forecast, unit: TempUnit) {
         Column {
             days.forEachIndexed { i, day ->
                 HorizontalDivider(color = Color.White.copy(alpha = 0.2f))
-                DailyRow(if (i == 0) day.including(now) else day, i == 0, low, high, if (i == 0) now else null, unit)
+                DailyRow(if (i == 0) day.including(now) else day, i == 0, low, high, if (i == 0) now else null, unit, Modifier.clickable { onDay(i) })
             }
         }
     }
 }
 
 @Composable
-private fun DailyRow(day: Forecast.Day, isToday: Boolean, scaleLow: Double, scaleHigh: Double, now: Double?, unit: TempUnit) {
+private fun DailyRow(day: Forecast.Day, isToday: Boolean, scaleLow: Double, scaleHigh: Double, now: Double?, unit: TempUnit, modifier: Modifier) {
     val ui = LocalMetrics.current
     val name = if (isToday) "Today" else Forecast.weekday(day.date)
     Row(
-        Modifier.fillMaxWidth().heightIn(min = ui.dp(48f)).semantics(mergeDescendants = true) {
+        modifier.fillMaxWidth().heightIn(min = ui.dp(48f)).semantics(mergeDescendants = true) {
             contentDescription = "$name: ${Condition.name(day.code)}. Low ${Speech.temperature(day.low)}. High ${Speech.temperature(day.high)}." +
                 if (day.rainChance >= 20) " ${day.rainChance} percent chance of rain." else ""
         },
@@ -328,47 +353,329 @@ private fun DayBar(day: Forecast.Day, scaleLow: Double, scaleHigh: Double, now: 
 }
 
 @Composable
-private fun DetailTiles(forecast: Forecast, unit: TempUnit) {
-    val ui = LocalMetrics.current
+private fun DetailTiles(forecast: Forecast, units: Units) {
     val now = forecast.now
+    val unit = units.temperature
     val other = unit.other
     val today = forecast.days.firstOrNull()?.including(now.temperature)
     val dew = Meteo.dewPoint(now.temperature, now.humidity)
-    val kmh = now.wind.roundHalfUp()
+    val (wind, windOther) = units.wind(now.wind)
     val tiles = listOf<@Composable (Modifier) -> Unit>(
-        { DetailTile("Feels like", unit.spaced(now.feelsLike), other.spaced(now.feelsLike), feelsNote(forecast), it) },
-        { DetailTile("Humidity", "${now.humidity.roundHalfUp()}%", null, "The dew point is ${unit.spaced(dew)} · ${other.spaced(dew)} right now.", it) },
-        {
-            DetailTile(
-                "Wind",
-                if (unit == TempUnit.FAHRENHEIT) "${Meteo.mph(now.wind)} mph" else "$kmh km/h",
-                if (unit == TempUnit.FAHRENHEIT) "$kmh km/h" else "${Meteo.mph(now.wind)} mph",
-                windNote(forecast), it,
-            )
-        },
-        { DetailTile("Rain", "${today?.rainChance ?: 0}%", "chance today", Summary.rainNote(forecast), it) },
+        { DetailTile("Feels like", unit.spaced(now.feelsLike), other.spaced(now.feelsLike), feelsNote(forecast), it, accent = TileAccent.temperature(now.feelsLike)) },
+        { DetailTile("Humidity", "${now.humidity.roundHalfUp()}%", null, "The dew point is ${unit.spaced(dew)} · ${other.spaced(dew)} right now.", it, accent = TileAccent.HUMIDITY) },
+        { DetailTile("Wind", wind, windOther, listOfNotNull(windNote(forecast), Detail.gustNote(now, units)?.let { "$it." }).joinToString(" "), it, accent = TileAccent.WIND) { WindCompass(now.windDirection) } },
+        { DetailTile("Rain", "${today?.rainChance ?: 0}%", "chance today", Summary.rainNote(forecast), it, accent = TileAccent.RAIN) },
         { mod ->
-            val sunset = today?.sunset
-            if (sunset != null && now.time < sunset) {
-                DetailTile("Sunset", Forecast.clock(sunset), null, "Sunrise: ${today?.sunrise?.let(Forecast::clock) ?: "–"}", mod)
+            // The next sunrise or sunset, how colourful it's likely to be, and the other one's time.
+            val next = SkyColour.next(forecast)
+            // Today's sun path, whichever one the tile shows.
+            val day = forecast.days.firstOrNull()
+            val rise = day?.sunrise
+            val set = day?.sunset
+            val path: @Composable (Long) -> Unit = { accent -> if (day != null && rise != null && set != null) SunPathCurve(day.date, rise, set, now.time, accent) }
+            if (next != null) {
+                val (isSunset, time) = next
+                val outlook = SkyColour.outlook(forecast, time)
+                val other = if (isSunset) forecast.days.mapNotNull { it.sunrise }.firstOrNull { it > time }
+                            else forecast.days.firstOrNull { it.date == time.toLocalDate() }?.sunset
+                DetailTile(if (isSunset) "Sunset" else "Sunrise", Forecast.clock(time), outlook?.rating?.line,
+                    listOfNotNull(outlook?.reason, "${if (isSunset) "Sunrise" else "Sunset"} ${other?.let(Forecast::clock) ?: "–"}.").joinToString(" "), mod, accent = if (isSunset) TileAccent.SUNSET else TileAccent.SUNRISE) {
+                    path(if (isSunset) TileAccent.SUNSET else TileAccent.SUNRISE)
+                }
             } else {
-                val tomorrow = forecast.days.getOrNull(1)
-                DetailTile("Sunrise", tomorrow?.sunrise?.let(Forecast::clock) ?: "–", null, "Sunset: ${tomorrow?.sunset?.let(Forecast::clock) ?: "–"}", mod)
+                DetailTile("Sunset", today?.sunset?.let(Forecast::clock) ?: "–", null, "Sunrise ${today?.sunrise?.let(Forecast::clock) ?: "–"}.", mod, accent = TileAccent.SUNSET) { path(TileAccent.SUNSET) }
             }
         },
         { mod ->
             val uv = today?.uvIndex
             if (uv != null) DetailTile("UV index", "${uv.roundHalfUp()}", Meteo.uvLevel(uv),
-                if (uv >= 3) "Use sun protection around midday." else "Low for the rest of the day.", mod)
-            else DetailTile("UV index", "–", null, "Pull down to refresh.", mod)
+                if (uv >= 3) "Use sun protection around midday." else "Low for the rest of the day.", mod, accent = TileAccent.uv(uv)) { UvBar(uv) }
+            else DetailTile("UV index", "–", null, "Pull down to refresh.", mod, accent = TileAccent.NEUTRAL)
         },
     )
+    TileGrid(tiles)
+}
+
+/** Two across, each row as tall as its taller tile; an odd one out keeps its half width. */
+@Composable
+private fun TileGrid(tiles: List<@Composable (Modifier) -> Unit>) {
+    val ui = LocalMetrics.current
     Column(verticalArrangement = Arrangement.spacedBy(ui.dp(10f))) {
         tiles.chunked(2).forEach { row ->
-            Row(horizontalArrangement = Arrangement.spacedBy(ui.dp(10f))) {
-                row.forEach { tile -> tile(Modifier.weight(1f)) }
+            Row(Modifier.height(IntrinsicSize.Max), horizontalArrangement = Arrangement.spacedBy(ui.dp(10f))) {
+                row.forEach { tile -> tile(Modifier.weight(1f).fillMaxHeight()) }
+                if (row.size == 1) Spacer(Modifier.weight(1f))
             }
         }
+    }
+}
+
+/**
+ * The tiles after the first six: air quality (with pollen where it's measured), averages, visibility,
+ * precipitation, cloud cover and the moon. Every city shows all six, so every city has the same twelve
+ * tiles; one whose data isn't there yet shows a dash instead of disappearing.
+ */
+@Composable
+private fun MoreTiles(city: City, forecast: Forecast, state: WeatherStore.State) {
+    val units = state.units
+    val unit = units.temperature
+    val now = forecast.now
+    val today = forecast.days.firstOrNull()
+    val missing = "Not available right now."
+    val tiles = mutableListOf<@Composable (Modifier) -> Unit>()
+
+    val air = state.air[city.id]
+    val scale = Air.scale(city)
+    val aqi = air?.let { Air.value(it, scale) }
+    if (air != null && aqi != null) {
+        val pollen = Pollen.summary(air)?.let { " Pollen: ${it.type.lowercase()} ${it.level.lowercase()}." } ?: ""
+        tiles.add {
+            DetailTile("Air quality", "${aqi.roundHalfUp()}", Air.category(aqi, scale), listOfNotNull(Air.note(air, scale)?.let { n -> "$n." }, pollen.trim().ifEmpty { null }).joinToString(" "), it, accent = TileAccent.air(Air.position(aqi, scale))) {
+                AirScaleBar(aqi, scale)
+                Text(scale.title, style = LocalMetrics.current.text(11f), modifier = Modifier.alpha(0.6f))
+            }
+        }
+    } else {
+        tiles.add { DetailTile("Air quality", "–", null, missing, it, accent = TileAccent.NEUTRAL) }
+    }
+    val normal = today?.let { state.normals(city)?.of(it.date) }
+    if (today != null && normal?.normalHigh != null) {
+        val accent = TileAccent.versusNormal(today.high - normal.normalHigh)
+        tiles.add { DetailTile("Averages", Normals.versus(today.high, normal.normalHigh, unit), null, Normals.normalLine(normal, unit), it, accent = accent) { AveragesBar(today.low, today.high, normal, accent) } }
+    } else {
+        tiles.add { DetailTile("Averages", "–", null, missing, it, accent = TileAccent.NEUTRAL) }
+    }
+    val m = now.visibility
+    tiles.add { if (m != null) DetailTile("Visibility", units.visibility(m), units.visibilityOther(m), Detail.visibilityWord(m), it, accent = TileAccent.VISIBILITY) else DetailTile("Visibility", "–", null, missing, it, accent = TileAccent.VISIBILITY) }
+    val mm = today?.precipitationSum
+    if (mm != null) {
+        val (main, other) = units.rain(mm)
+        val next = Detail.next24Hours(forecast)
+        val note = when {
+            next == null -> null
+            next >= 0.05 -> "Expected in the next 24 hours: ${units.rain.text(next)}"
+            else -> "None expected"
+        }
+        tiles.add { DetailTile("Precipitation", main, other?.let { "$it today" } ?: "today", note, it, accent = TileAccent.RAIN) }
+    } else {
+        tiles.add { DetailTile("Precipitation", "–", null, missing, it, accent = TileAccent.RAIN) }
+    }
+    val pct = now.cloudCover
+    val layers = Detail.cloudLayerValues(forecast)
+    tiles.add { if (pct != null) DetailTile("Cloud cover", "${pct.roundHalfUp()}%", Detail.cloudWord(pct), Detail.cloudLayers(forecast), it, accent = TileAccent.CLOUD) { if (layers != null) CloudLayerBars(layers) } else DetailTile("Cloud cover", "–", null, missing, it, accent = TileAccent.CLOUD) }
+    val moon = Moon.phase(java.time.Instant.ofEpochMilli(System.currentTimeMillis()))
+    val nextMoon = Moon.next(java.time.Instant.now())
+    tiles.add { DetailTile("Moon", moon.name, "${moon.illumination}% lit", nextMoon, it, accent = TileAccent.MOON) { MoonDisc(moon.fraction) } }
+    TileGrid(tiles)
+}
+
+/** A thin bar in the scale's colours, with a dot at the value. */
+@Composable
+private fun AirScaleBar(value: Double, scale: Air.Scale) {
+    val ui = LocalMetrics.current
+    androidx.compose.foundation.Canvas(Modifier.fillMaxWidth().height(ui.dp(10f))) {
+        val h = 4.dp.toPx()
+        val y = size.height / 2
+        val w = size.width / scale.bands.size
+        scale.bands.forEachIndexed { i, band ->
+            drawRect(Color(band.color), androidx.compose.ui.geometry.Offset(i * w, y - h / 2), androidx.compose.ui.geometry.Size(w, h))
+        }
+        val x = (size.width * Air.position(value, scale).toFloat()).coerceIn(size.height / 2, size.width - size.height / 2)
+        drawCircle(Color.White, size.height / 2, androidx.compose.ui.geometry.Offset(x, y))
+        drawCircle(Color.Black.copy(alpha = 0.4f), size.height / 2, androidx.compose.ui.geometry.Offset(x, y), style = androidx.compose.ui.graphics.drawscope.Stroke(1.dp.toPx()))
+    }
+}
+
+/** UV on its scale (0 to 11+), green to violet, with a dot at today's peak. */
+@Composable
+private fun UvBar(uv: Double) {
+    val ui = LocalMetrics.current
+    val colors = listOf(0xFF3EA72D, 0xFFFFF300, 0xFFF18B00, 0xFFE53210, 0xFFB567A4).map { Color(it) }
+    androidx.compose.foundation.Canvas(Modifier.fillMaxWidth().padding(top = ui.dp(4f)).height(ui.dp(10f))) {
+        val h = 4.dp.toPx()
+        val y = size.height / 2
+        drawRoundRect(androidx.compose.ui.graphics.Brush.horizontalGradient(colors), androidx.compose.ui.geometry.Offset(0f, y - h / 2),
+            androidx.compose.ui.geometry.Size(size.width, h), androidx.compose.ui.geometry.CornerRadius(h / 2))
+        val x = (size.width * (uv / 11).coerceIn(0.0, 1.0).toFloat()).coerceIn(size.height / 2, size.width - size.height / 2)
+        drawCircle(Color.White, size.height / 2, androidx.compose.ui.geometry.Offset(x, y))
+        drawCircle(Color.Black.copy(alpha = 0.4f), size.height / 2, androidx.compose.ui.geometry.Offset(x, y), style = androidx.compose.ui.graphics.drawscope.Stroke(1.dp.toPx()))
+    }
+}
+
+/** A small compass with an arrow the way the wind is blowing, its tail on the side it comes from. No arrow without a direction. */
+@Composable
+private fun WindCompass(direction: Double?) {
+    val ui = LocalMetrics.current
+    val letter = ui.text(9f, FontWeight.Medium)
+    Box(Modifier.fillMaxWidth().padding(top = ui.dp(4f)).clearAndSetSemantics {}, contentAlignment = Alignment.Center) {
+        Box(Modifier.size(ui.dp(56f))) {
+            androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
+                val stroke = 1.dp.toPx()
+                val r = size.minDimension / 2 - stroke
+                val c = center
+                drawCircle(Color.White.copy(alpha = 0.25f), r, c, style = androidx.compose.ui.graphics.drawscope.Stroke(stroke))
+                // Ticks every 30°, leaving room for the letters at N, E, S and W.
+                for (deg in 0 until 360 step 30) {
+                    if (deg % 90 == 0) continue
+                    val a = Math.toRadians(deg.toDouble())
+                    val dx = kotlin.math.sin(a).toFloat()
+                    val dy = -kotlin.math.cos(a).toFloat()
+                    val inner = r - 4.dp.toPx()
+                    drawLine(Color.White.copy(alpha = 0.35f), androidx.compose.ui.geometry.Offset(c.x + dx * inner, c.y + dy * inner),
+                        androidx.compose.ui.geometry.Offset(c.x + dx * r, c.y + dy * r), stroke, androidx.compose.ui.graphics.StrokeCap.Round)
+                }
+                if (direction != null) {
+                    // Wind direction is where it comes from; the arrow points where it's going.
+                    val a = Math.toRadians(direction + 180)
+                    val dx = kotlin.math.sin(a).toFloat()
+                    val dy = -kotlin.math.cos(a).toFloat()
+                    val len = r * 0.62f
+                    val head = 6.dp.toPx()
+                    val tip = androidx.compose.ui.geometry.Offset(c.x + dx * len, c.y + dy * len)
+                    val tail = androidx.compose.ui.geometry.Offset(c.x - dx * len, c.y - dy * len)
+                    val neck = androidx.compose.ui.geometry.Offset(tip.x - dx * head, tip.y - dy * head)
+                    val accent = Color(TileAccent.WIND)
+                    drawLine(accent, tail, neck, 1.5.dp.toPx(), androidx.compose.ui.graphics.StrokeCap.Round)
+                    drawCircle(accent, 2.dp.toPx(), tail)
+                    val half = head * 0.55f
+                    drawPath(androidx.compose.ui.graphics.Path().apply {
+                        moveTo(tip.x, tip.y)
+                        lineTo(neck.x - dy * half, neck.y + dx * half)
+                        lineTo(neck.x + dy * half, neck.y - dx * half)
+                        close()
+                    }, accent)
+                }
+            }
+            val inset = Modifier.padding(ui.dp(3f)).alpha(0.55f)
+            Text("N", style = letter, modifier = Modifier.align(Alignment.TopCenter).then(inset))
+            Text("E", style = letter, modifier = Modifier.align(Alignment.CenterEnd).then(inset))
+            Text("S", style = letter, modifier = Modifier.align(Alignment.BottomCenter).then(inset))
+            Text("W", style = letter, modifier = Modifier.align(Alignment.CenterStart).then(inset))
+        }
+    }
+}
+
+/**
+ * Today's sun path across the day, midnight to midnight: above a thin horizon between sunrise and
+ * sunset, faintly below it otherwise, with a dot for the sun now.
+ */
+@Composable
+private fun SunPathCurve(date: java.time.LocalDate, sunrise: java.time.LocalDateTime, sunset: java.time.LocalDateTime, now: java.time.LocalDateTime, accent: Long) {
+    val ui = LocalMetrics.current
+    val rise = Detail.dayFraction(sunrise, date)
+    val set = Detail.dayFraction(sunset, date)
+    val sun = Detail.dayFraction(now, date)
+    androidx.compose.foundation.Canvas(Modifier.fillMaxWidth().padding(top = ui.dp(4f)).height(ui.dp(34f)).clearAndSetSemantics {}) {
+        val dot = 3.5.dp.toPx()
+        val pad = dot + 2.dp.toPx()
+        val k = Detail.sunCurveShift(rise, set)
+        // Heights run from 1 - k at the top to -1 - k at the bottom.
+        fun y(h: Double) = (pad + (1 - k - h) / 2 * (size.height - 2 * pad)).toFloat()
+        val horizon = y(0.0)
+        val steps = 96
+        val curve = androidx.compose.ui.graphics.Path()
+        val fill = androidx.compose.ui.graphics.Path().apply { moveTo(0f, horizon) }
+        for (s in 0..steps) {
+            val x = s.toDouble() / steps
+            val px = (x * size.width).toFloat()
+            val py = y(Detail.sunHeight(x, rise, set))
+            if (s == 0) curve.moveTo(px, py) else curve.lineTo(px, py)
+            fill.lineTo(px, py)
+        }
+        fill.lineTo(size.width, horizon)
+        fill.close()
+        val line = androidx.compose.ui.graphics.drawscope.Stroke(1.5.dp.toPx(), cap = androidx.compose.ui.graphics.StrokeCap.Round)
+        val color = Color(accent)
+        // Below the horizon: faint white.
+        clipRect(top = horizon) { drawPath(curve, Color.White.copy(alpha = 0.2f), style = line) }
+        // Above it: the accent, with a soft fill down to the horizon.
+        clipRect(bottom = horizon) {
+            drawPath(fill, color.copy(alpha = 0.12f))
+            drawPath(curve, color.copy(alpha = 0.6f), style = line)
+        }
+        drawLine(Color.White.copy(alpha = 0.3f), androidx.compose.ui.geometry.Offset(0f, horizon), androidx.compose.ui.geometry.Offset(size.width, horizon), 1.dp.toPx())
+        val at = androidx.compose.ui.geometry.Offset((sun * size.width).toFloat().coerceIn(dot, size.width - dot), y(Detail.sunHeight(sun, rise, set)))
+        if (sun in rise..set) {
+            drawCircle(color.copy(alpha = 0.25f), dot * 2, at)
+            drawCircle(color, dot, at)
+        } else {
+            drawCircle(Color.White.copy(alpha = 0.35f), dot, at)
+        }
+    }
+}
+
+/** Today's low to high (accent) over the normal low to high (muted), on one scale out to the records. */
+@Composable
+private fun AveragesBar(todayLow: Double, todayHigh: Double, normal: Normals.Entry, accent: Long) {
+    val ui = LocalMetrics.current
+    val (low, high) = Detail.averagesScale(todayLow, todayHigh, normal)
+    androidx.compose.foundation.Canvas(Modifier.fillMaxWidth().padding(top = ui.dp(6f)).height(ui.dp(10f)).clearAndSetSemantics {}) {
+        val y = size.height / 2
+        fun x(c: Double) = (size.width * ((c - low) / (high - low))).toFloat()
+        fun band(from: Double, to: Double, h: Float, color: Color) {
+            val start = x(from)
+            drawRoundRect(color, androidx.compose.ui.geometry.Offset(start, y - h / 2),
+                androidx.compose.ui.geometry.Size(maxOf(x(to) - start, h), h), androidx.compose.ui.geometry.CornerRadius(h / 2))
+        }
+        band(low, high, 3.dp.toPx(), Color.White.copy(alpha = 0.08f))
+        val nLow = normal.normalLow
+        val nHigh = normal.normalHigh
+        if (nLow != null && nHigh != null) band(nLow, nHigh, 7.dp.toPx(), Color.White.copy(alpha = 0.22f))
+        band(todayLow, todayHigh, 5.dp.toPx(), Color(accent))
+    }
+}
+
+/** High, mid and low cloud, top to bottom, each filled to its %. */
+@Composable
+private fun CloudLayerBars(layers: Triple<Double, Double, Double>) {
+    val ui = LocalMetrics.current
+    val (low, mid, high) = layers
+    Column(Modifier.fillMaxWidth().padding(top = ui.dp(4f)).clearAndSetSemantics {}, verticalArrangement = Arrangement.spacedBy(ui.dp(2f))) {
+        listOf("High" to high, "Mid" to mid, "Low" to low).forEach { (label, pct) ->
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(label, style = ui.text(10f), maxLines = 1, softWrap = false, modifier = Modifier.widthIn(min = ui.dp(30f)).alpha(0.55f))
+                androidx.compose.foundation.Canvas(Modifier.weight(1f).height(ui.dp(4f))) {
+                    val h = size.height
+                    val corner = androidx.compose.ui.geometry.CornerRadius(h / 2)
+                    drawRoundRect(Color.White.copy(alpha = 0.12f), size = size, cornerRadius = corner)
+                    val w = (size.width * (pct / 100).coerceIn(0.0, 1.0)).toFloat()
+                    if (w > 0f) drawRoundRect(Color(TileAccent.CLOUD), size = androidx.compose.ui.geometry.Size(maxOf(w, h), h), cornerRadius = corner)
+                }
+            }
+        }
+    }
+}
+
+/** The moon's lit part: 0 new, 0.5 full; waxing lit on the right, as seen from the north. */
+@Composable
+private fun MoonDisc(fraction: Double) {
+    val ui = LocalMetrics.current
+    androidx.compose.foundation.Canvas(Modifier.padding(top = ui.dp(4f)).size(ui.dp(30f))) {
+        val r = size.minDimension / 2
+        val c = center
+        drawCircle(Color.White.copy(alpha = 0.15f), r, c)
+        // The terminator is an ellipse whose width follows the phase.
+        val k = kotlin.math.cos(2 * Math.PI * fraction).toFloat()   // 1 new, -1 full
+        val waxing = fraction < 0.5
+        val path = androidx.compose.ui.graphics.Path().apply {
+            val steps = 48
+            for (s in 0..steps) {
+                val a = Math.PI * s / steps - Math.PI / 2   // top to bottom
+                val y = c.y + r * kotlin.math.sin(a).toFloat()
+                val edge = r * kotlin.math.cos(a).toFloat()
+                val x = if (waxing) c.x + edge else c.x - edge
+                if (s == 0) moveTo(x, y) else lineTo(x, y)
+            }
+            for (s in steps downTo 0) {
+                val a = Math.PI * s / steps - Math.PI / 2
+                val y = c.y + r * kotlin.math.sin(a).toFloat()
+                val edge = r * kotlin.math.cos(a).toFloat() * k
+                val x = if (waxing) c.x + edge else c.x - edge
+                lineTo(x, y)
+            }
+            close()
+        }
+        drawPath(path, Color(0xFFF3EEDF))
     }
 }
 
@@ -395,33 +702,73 @@ private fun windNote(forecast: Forecast): String {
 }
 
 @Composable
-private fun DetailTile(title: String, value: String, sub: String?, note: String, modifier: Modifier) {
+private fun DetailTile(title: String, value: String, sub: String?, note: String?, modifier: Modifier, accent: Long = TileAccent.NEUTRAL, extra: @Composable () -> Unit = {}) {
     val ui = LocalMetrics.current
+    // A reading in words ("Waxing Gibbous · 78%", "4° above normal") is set smaller, on up to two lines.
+    val words = value.length > 7
     Column(
         modifier.heightIn(min = ui.dp(160f)).clip(RoundedCornerShape(ui.dp(16f))).background(Palette.card)
+            // The tile's own colour (TileAccent), as a faint glow at the top.
+            .background(androidx.compose.ui.graphics.Brush.verticalGradient(0f to Color(accent).copy(alpha = 0.16f), 0.5f to Color(accent).copy(alpha = 0f)))
             .border(1.dp, Palette.cardStroke, RoundedCornerShape(ui.dp(16f))).padding(ui.dp(14f))
             .semantics(mergeDescendants = true) {},
         verticalArrangement = Arrangement.spacedBy(ui.dp(4f)),
     ) {
-        Text(title.uppercase(), style = ui.text(12f, FontWeight.SemiBold), modifier = Modifier.alpha(0.6f))
-        Text(value, style = ui.text(30f, FontWeight.Medium), maxLines = 1, modifier = Modifier.padding(top = ui.dp(4f)))
-        if (sub != null) Text(sub, style = ui.text(15f), modifier = Modifier.alpha(0.7f), maxLines = 1)
+        Text(title.uppercase(), style = ui.text(12f, FontWeight.SemiBold).copy(color = Color(accent)), modifier = Modifier.alpha(0.9f))
+        Text(value, style = ui.text(if (words) 21f else 30f, FontWeight.Medium), maxLines = if (words) 2 else 1, modifier = Modifier.padding(top = ui.dp(4f)))
+        if (sub != null) Text(sub, style = ui.text(15f), modifier = Modifier.alpha(0.7f), maxLines = 2)
+        extra()
         Spacer(Modifier.weight(1f, fill = false).height(ui.dp(4f)))
-        Text(note, style = ui.text(13f), modifier = Modifier.alpha(0.85f))
+        if (!note.isNullOrEmpty()) Text(note, style = ui.text(13f), modifier = Modifier.alpha(0.85f))
     }
 }
 
 @Composable
-private fun Footer(city: City, forecast: Forecast, offline: Boolean) {
+private fun Footer(city: City, forecast: Forecast, offline: Boolean) = AppFooter("Weather for ${city.name}", forecast.fetchedAt, offline)
+
+/**
+ * The footer every screen ends with, in one style: where the weather comes from (linked), when it was
+ * updated (or that it's offline), and the sign-off. [lead] is null on the city list, which credits the
+ * city search too.
+ */
+@Composable
+fun AppFooter(lead: String?, fetchedAt: Long?, offline: Boolean) {
     val ui = LocalMetrics.current
     val uri = LocalUriHandler.current
-    val time = java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT).format(java.util.Date(forecast.fetchedAt))
+    val link = ui.text(13f).copy(textDecoration = TextDecoration.Underline)
     Column(Modifier.fillMaxWidth().padding(top = 8.dp).alpha(0.6f), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Row {
-            Text("Weather for ${city.name} · ", style = ui.text(13f))
-            Text("Open-Meteo", style = ui.text(13f).copy(textDecoration = TextDecoration.Underline), modifier = Modifier.clickable { uri.openUri(Brand.DATA_CREDIT) })
+            if (lead != null) {
+                Text("$lead · ", style = ui.text(13f))
+                Text("Open-Meteo", style = link, modifier = Modifier.clickable { uri.openUri(Brand.DATA_CREDIT) })
+            } else {
+                Text("Weather by ", style = ui.text(13f))
+                Text("Open-Meteo", style = link, modifier = Modifier.clickable { uri.openUri(Brand.DATA_CREDIT) })
+                Text(" · Places by ", style = ui.text(13f))
+                Text("GeoNames", style = link, modifier = Modifier.clickable { uri.openUri("https://www.geonames.org") })
+            }
         }
-        Text(if (offline) "Offline · from $time" else "Updated $time", style = ui.text(13f))
+        if (fetchedAt != null) {
+            val time = java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT).format(java.util.Date(fetchedAt))
+            Text(if (offline) "Offline · from $time" else "Updated $time", style = ui.text(13f))
+        }
         Text("Made by ${Brand.AUTHOR}. Free. Forever.", style = ui.text(13f), modifier = Modifier.clickable { uri.openUri(Brand.WEBSITE) })
     }
+}
+
+/**
+ * One quiet accent colour per detail tile, on its title and as a faint glow at the top. Some follow
+ * the reading (how warm it feels, the UV level, the air quality, today against normal); the rest are
+ * fixed. The same colours as the iPhone (TileAccent in Palette.swift) and the web.
+ */
+object TileAccent {
+    const val HUMIDITY = 0xFF6FC8D6; const val WIND = 0xFF9EDCC2; const val RAIN = 0xFF8DB4E2
+    const val SUNRISE = 0xFFF2C66D; const val SUNSET = 0xFFF39A72; const val VISIBILITY = 0xFFB4D2F0
+    const val CLOUD = 0xFFB9C3CF; const val MOON = 0xFFEFE3CC; const val NEUTRAL = 0xFFC9C2B8
+
+    /** Blue when cold, green when mild, gold when warm, coral when hot (°C). */
+    fun temperature(c: Double): Long = if (c < 5) 0xFF8CC0F5 else if (c < 18) 0xFF9AD3A8 else if (c < 27) 0xFFF2C66D else 0xFFF28B62
+    fun uv(uv: Double): Long = if (uv < 3) 0xFF6CC24A else if (uv < 6) 0xFFE8D44D else if (uv < 8) 0xFFF0A04B else if (uv < 11) 0xFFE5604A else 0xFFB57BD0
+    fun air(position: Double): Long = if (position < 0.17) 0xFF6CC24A else if (position < 0.34) 0xFFE8D44D else if (position < 0.5) 0xFFF0A04B else if (position < 0.67) 0xFFE5604A else 0xFFB57BD0
+    fun versusNormal(difference: Double): Long = if (difference >= 1.5) 0xFFF2A65A else if (difference <= -1.5) 0xFF8CC0F5 else NEUTRAL
 }

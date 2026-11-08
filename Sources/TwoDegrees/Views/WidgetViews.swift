@@ -99,16 +99,13 @@ private struct NowBlock: View {
 
     var body: some View {
         let now = entry.forecast.now, unit = entry.unit, other = entry.unit.other
+        // As in Apple's Weather: the city with the reading right under it, the sky and the day's range
+        // at the foot, so the space sits between the two groups instead of above the reading.
         VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .center, spacing: 6) {
-                Text(entry.city.name)
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(Palette.textPrimary)
-                    .lineLimit(1)
-                Spacer(minLength: 4)
-                WeatherSymbol(code: now.code, isDay: now.isDay, size: 15)
-            }
-            Spacer(minLength: 2)
+            Text(entry.city.name)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(Palette.textPrimary)
+                .lineLimit(1)
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Reading.text(unit.value(now.temperature), unit, size: big, weight: .semibold)
                     .tracking(-big * 0.03)
@@ -123,6 +120,9 @@ private struct NowBlock: View {
             .minimumScaleFactor(0.7)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("\(Speech.temperature(now.temperature))")
+            Spacer(minLength: 2)
+            WeatherSymbol(code: now.code, isDay: now.isDay, size: 15)
+                .padding(.bottom, 3)
             Text(Condition.name(now.code))
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(Palette.textSecondary)
@@ -141,6 +141,8 @@ private struct NowBlock: View {
                     .minimumScaleFactor(0.8)
             }
         }
+        // Hug the leading edge: without this the column shrinks to its text and centres in the widget.
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
     }
 }
 

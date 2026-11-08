@@ -48,7 +48,7 @@ version is on [Releases](https://github.com/bradleycowdrey/two-degrees/releases)
 - **Next 24 hours**: a scrolling strip with a temperature line, icons, and rain chance when it's 20% or more.
 - **5-day forecast**: lows and highs in both units, on range bars drawn to one shared, labelled scale (ticks every 10°F / 5°C), with a dot for right now.
 - **One plain sentence**: "Rain likely around 3 PM (60%)" or "Warming to 68°F / 20°C by 2 PM".
-- **Up to five cities**: search any place on Earth; switch with one click; Add | Edit works just like Meridian's.
+- **Up to 20 cities**: search any place on Earth; switch with one click; Add | Edit works just like Meridian's.
 - **Share**: the same Share button as Meridian and Cowdrey.MD.
 - **The details**: open at login, `F` / `C` keys to swap units, VoiceOver reads both units.
 - **Automatic updates** from GitHub Releases, SHA-256 verified, one click to install.

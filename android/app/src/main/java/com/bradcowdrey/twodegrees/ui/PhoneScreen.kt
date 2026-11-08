@@ -1,6 +1,7 @@
 package com.bradcowdrey.twodegrees.ui
 
 import android.content.Intent
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -44,9 +45,18 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.bradcowdrey.twodegrees.Brand
 import com.bradcowdrey.twodegrees.WeatherStore
+import kotlinx.coroutines.delay
 
 /** What the self-test asks the screen to show (CI screenshots). */
-data class ShowOptions(val scrollTo: String? = null, val list: Boolean = false)
+data class ShowOptions(
+    val scrollTo: String? = null,
+    val list: Boolean = false,
+    val locationPrompt: Boolean = false,
+    /** Open tomorrow's day detail. */
+    val day: Boolean = false,
+    /** Open the ⋮ menu in the city list: "main", "units" or "notifications". */
+    val menu: String? = null,
+)
 
 /**
  * The app's layout, after the iPhone's: one full-screen page per city that you swipe between, on that
@@ -64,11 +74,17 @@ fun PhoneScreen(
     val tablet = LocalConfiguration.current.screenWidthDp >= 600
     val metrics = Metrics.of(state.textSize.scale * if (tablet) 1.3f else 1f, state.font)
     var showingList by rememberSaveable { mutableStateOf(show.list) }
+    var overlay by remember { mutableStateOf<Overlay?>(null) }
     var agreed by remember { mutableStateOf(skipTerms || store.termsAccepted) }
 
     LaunchedEffect(agreed) { if (agreed) onReady() }
-    if (!agreed) {
+    if (!agreed && !show.locationPrompt) {
         TermsScreen(onAgree = { store.termsAccepted = true; agreed = true })
+        return
+    }
+    // Right after the terms, once: "Show the weather where you are?"
+    if (show.locationPrompt || (!skipTerms && !state.locationAsked)) {
+        LocationPromptScreen(onAnswer = { yes -> store.answerLocationPrompt(yes); if (yes) onLocationSetting() })
         return
     }
     CompositionLocalProvider(LocalMetrics provides metrics) {
@@ -86,12 +102,30 @@ fun PhoneScreen(
                     store.current.cities.getOrNull(page)?.let { if (it.id != store.current.activeID) store.select(it) }
                 }
             }
-            HorizontalPager(pager, Modifier.fillMaxSize(), key = { state.cities.getOrNull(it)?.id ?: it }) { page ->
-                state.cities.getOrNull(page)?.let { CityPage(it, state, store, show.scrollTo, bottomInset = 64.dp) }
+            // Pages go by position, not by city: with keys, adding My Location in front would keep the pager
+            // on the city it was showing (now one page later) and select that instead of where you are.
+            HorizontalPager(pager, Modifier.fillMaxSize()) { page ->
+                state.cities.getOrNull(page)?.let { CityPage(it, state, store, show.scrollTo, bottomInset = 64.dp, onOpen = { o -> overlay = o }) }
             }
             BottomBar(state, onList = { showingList = true }, modifier = Modifier.align(Alignment.BottomCenter))
         }
-        if (showingList) CityList(store, onDismiss = { showingList = false }, onLocationSetting = onLocationSetting)
+        // A day, an alert or the rain map, full screen over the pages; Back closes it.
+        LaunchedEffect(show.day, state.activeForecast != null) {
+            if (show.day && state.activeForecast != null && overlay == null) { delay(1500); overlay = Overlay.Day(state.activeID, 1) }
+        }
+        BackHandler(enabled = overlay != null) { overlay = null }
+        when (val o = overlay) {
+            is Overlay.Day -> {
+                val city = state.cities.firstOrNull { it.id == o.cityID }
+                val forecast = state.forecasts[o.cityID]
+                if (city != null && forecast != null) DayDetail(city, forecast, state, o.index, onClose = { overlay = null })
+                else LaunchedEffect(o) { overlay = null }
+            }
+            is Overlay.AlertText -> AlertPage(o, onClose = { overlay = null })
+            is Overlay.RainMap -> RainMapPage(o.city, state.unit, onClose = { overlay = null })
+            null -> {}
+        }
+        if (showingList) CityList(store, onDismiss = { showingList = false }, onLocationSetting = onLocationSetting, openMenu = show.menu)
     }
 }
 
@@ -113,11 +147,11 @@ private fun BottomBar(state: WeatherStore.State, onList: () -> Unit, modifier: M
                     val i = state.cities.indexOfFirst { it.id == state.activeID } + 1
                     contentDescription = "${state.active.name}, city $i of ${state.cities.size}"
                 },
-                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+                horizontalArrangement = Arrangement.spacedBy(if (state.cities.size > 12) 5.dp else 8.dp, Alignment.CenterHorizontally),
             ) {
                 state.cities.forEach { city ->
                     val alpha = if (city.id == state.activeID) 1f else 0.35f
-                    if (city.isCurrent) {
+                    if (state.isHere(city)) {
                         // Where you are gets an arrow, as on the iPhone.
                         Icon(Icons.Filled.NearMe, null, tint = Color.White.copy(alpha = alpha), modifier = Modifier.size(9.dp))
                     } else {
