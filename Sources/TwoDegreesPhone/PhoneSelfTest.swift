@@ -109,6 +109,7 @@ enum PhoneSelfTest {
             check(store.cities.count == before, "remove Denver")
             if locate { check(store.cities.first?.isCurrent == true, "removing it brings back My Location as its own card") }
         }
+        widgetLinks(store)
 
         // 4. The widget's data path, as the widget runs it, and every size drawn.
         let defaults = UserDefaults(suiteName: "TwoDegrees.selftest.widget") ?? .standard
@@ -138,6 +139,20 @@ enum PhoneSelfTest {
 
         lines.insert("\(failures == 0 ? "ALL PASSED" : "\(failures) FAILED") (\(lines.filter { $0.hasPrefix("PASS") }.count) passed)", at: 0)
         try? lines.joined(separator: "\n").write(to: dir.appendingPathComponent("report.txt"), atomically: true, encoding: .utf8)
+    }
+
+    /// Tapping a widget: a saved city's link shows that city; a new city's link adds it and shows it.
+    private static func widgetLinks(_ store: WeatherStore) {
+        let saved = store.cities[store.cities.count - 1]
+        store.select(store.cities[0])
+        if let url = WidgetLink.url(for: saved), let city = WidgetLink.city(from: url) { store.openFromWidget(city) }
+        check(store.activeID == saved.id, "a widget for \(saved.name) opens \(saved.name)")
+        let before = store.cities.count
+        let lima = City(name: "Lima", region: "Peru", latitude: -12.0464, longitude: -77.0428)
+        if let url = WidgetLink.url(for: lima), let city = WidgetLink.city(from: url) { store.openFromWidget(city) }
+        check(store.cities.count == before + 1 && store.activeID == lima.id, "a widget for a city not in the list adds it and opens it")
+        if let added = store.cities.first(where: { $0.id == lima.id }) { store.remove(added) }
+        store.select(store.cities[0])
     }
 
     /// A widget as the system shows it: Home Screen sizes on the widget background, Lock Screen

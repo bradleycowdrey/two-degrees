@@ -105,3 +105,39 @@ enum SharedCities {
         return snapshot.cities.first { $0.id == choice } ?? active
     }
 }
+
+/// A tap on a widget opens Two Degrees on that widget's city:
+/// twodegrees://city?name=..&region=..&lat=..&lon=..&here=0|1. The whole city travels in the link, since
+/// a widget's own city may not be saved in the app.
+enum WidgetLink {
+    static let scheme = "twodegrees"
+
+    static func url(for city: City) -> URL? {
+        // Escape everything but letters, digits and -._~, so "&", "=" and "+" in a name read back as typed.
+        let allowed = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._~")
+        let escape = { (text: String) in text.addingPercentEncoding(withAllowedCharacters: allowed) ?? "" }
+        var parts = URLComponents()
+        parts.scheme = scheme
+        parts.host = "city"
+        parts.percentEncodedQuery = [
+            "name=" + escape(city.name),
+            "region=" + escape(city.region),
+            "lat=" + String(city.latitude),
+            "lon=" + String(city.longitude),
+            "here=" + (city.isCurrent ? "1" : "0"),
+        ].joined(separator: "&")
+        return parts.url
+    }
+
+    /// The city in a widget link, or nil for anything else or anything malformed.
+    static func city(from url: URL) -> City? {
+        guard let parts = URLComponents(url: url, resolvingAgainstBaseURL: false),
+              parts.scheme?.lowercased() == scheme, parts.host?.lowercased() == "city" else { return nil }
+        var values: [String: String] = [:]
+        for item in parts.queryItems ?? [] where values[item.name] == nil { values[item.name] = item.value ?? "" }
+        guard let name = values["name"], !name.isEmpty,
+              let lat = values["lat"].flatMap({ Double($0) }), let lon = values["lon"].flatMap({ Double($0) }),
+              (-90...90).contains(lat), (-180...180).contains(lon) else { return nil }
+        return City(name: name, region: values["region"] ?? "", latitude: lat, longitude: lon, isCurrent: values["here"] == "1")
+    }
+}

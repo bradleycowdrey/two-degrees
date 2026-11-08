@@ -26,7 +26,14 @@ struct TwoDegreesApp: App {
                 .environmentObject(store)
                 .environmentObject(updater)
                 .background(WindowConfigurator(floatOnTop: store.floatOnTop))
+                // A tapped widget: its city, in this window, brought forward.
+                .onOpenURL { url in
+                    guard let city = WidgetLink.city(from: url) else { return }
+                    store.openFromWidget(city)
+                    NSApp.activate(ignoringOtherApps: true)
+                }
         }
+        .handlesExternalEvents(matching: [WidgetLink.scheme])
         .windowStyle(.hiddenTitleBar)
         .windowResizability(.contentSize)
         .defaultPosition(.topTrailing)

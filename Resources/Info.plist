@@ -32,6 +32,17 @@
     <string>Two Degrees uses your approximate location to show the weather where you are, first in your cities. It’s rounded to about a kilometre and used only to get the forecast, alerts and rain map for that place. You can turn Use My Location off anytime in Two Degrees.</string>
     <key>NSLocationWhenInUseUsageDescription</key>
     <string>Two Degrees uses your approximate location to show the weather where you are, first in your cities. It’s rounded to about a kilometre and used only to get the forecast, alerts and rain map for that place. You can turn Use My Location off anytime in Two Degrees.</string>
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleURLName</key>
+            <string>com.bradcowdrey.twodegrees.widget-link</string>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>twodegrees</string>
+            </array>
+        </dict>
+    </array>
     <key>NSHumanReadableCopyright</key>
     <string>© 2026 Bradley Cowdrey · bradcowdrey.com</string>
 </dict>

@@ -315,6 +315,28 @@ final class MoreLogicTests: XCTestCase {
         XCTAssertEqual(SharedCities.load(from: defaults), snapshot)
     }
 
+    func testWidgetLinkRoundTrip() throws {
+        let cities = [
+            City(name: "São Paulo", region: "São Paulo, Brazil", latitude: -23.5475, longitude: -46.63611),
+            City(name: "A&B = C+D?", region: "50% / #1", latitude: 0.0001, longitude: -179.99),
+            City(name: "Denver", region: "", latitude: 39.74, longitude: -104.98, isCurrent: true),
+        ]
+        for city in cities {
+            let url = try XCTUnwrap(WidgetLink.url(for: city))
+            XCTAssertEqual(url.scheme, "twodegrees")
+            XCTAssertEqual(url.host, "city")
+            XCTAssertEqual(WidgetLink.city(from: url), city, url.absoluteString)
+        }
+        // Anything else, or anything malformed, is ignored.
+        for link in ["https://city?name=X&lat=1&lon=1", "twodegrees://other?name=X&lat=1&lon=1", "twodegrees://city?lat=1&lon=1",
+                     "twodegrees://city?name=X&lat=91&lon=1", "twodegrees://city?name=X&lat=1", "twodegrees://city?name=X&lat=nan&lon=1",
+                     "twodegrees://city?name=X&lat=abc&lon=1", "twodegrees://city"] {
+            XCTAssertNil(WidgetLink.city(from: URL(string: link)!), link)
+        }
+        let plain = WidgetLink.city(from: URL(string: "twodegrees://city?name=Oslo&lat=59.91&lon=10.75")!)
+        XCTAssertEqual(plain, City(name: "Oslo", region: "", latitude: 59.91, longitude: 10.75), "region and here are optional")
+    }
+
     func testWeatherTerms() {
         // Magnus formula: 20 °C at 50 % → about 9.3 °C; saturated air → the temperature itself.
         XCTAssertEqual(Meteo.dewPoint(celsius: 20, humidity: 50), 9.3, accuracy: 0.1)
@@ -489,6 +511,53 @@ final class StoreTests: XCTestCase {
         XCTAssertTrue(City.samePlace(denver, City(name: "Downtown", region: "", latitude: 39.745, longitude: -104.985)), "within 2 km")
         XCTAssertFalse(City.samePlace(denver, City(name: "Aurora", region: "", latitude: 39.73, longitude: -104.83)), "a neighbouring city stays separate")
         XCTAssertFalse(City.samePlace(denver, City(name: "Denver", region: "", latitude: 40.5, longitude: -104.98)), "same name, far away")
+    }
+
+    func testTappingAWidgetShowsItsCity() async throws {
+        let store = WeatherStore(defaults: defaults, autoRefresh: false)
+        // A saved city: by its ID, or the same place under another name or coordinates.
+        store.openFromWidget(City(name: "Tokyo", region: "Japan", latitude: 35.6762, longitude: 139.6503))
+        XCTAssertEqual(store.activeID, store.cities[2].id)
+        store.openFromWidget(City(name: "London", region: "UK", latitude: 51.509, longitude: -0.118))
+        XCTAssertEqual(store.activeID, store.cities[1].id, "the same place selects the saved city")
+        XCTAssertEqual(store.cities.count, 3)
+
+        // A city not in the list is added and shown.
+        let oslo = City(name: "Oslo", region: "Norway", latitude: 59.91, longitude: 10.75)
+        store.openFromWidget(oslo)
+        XCTAssertEqual(store.cities.count, 4)
+        XCTAssertEqual(store.activeID, oslo.id)
+
+        // My Location with Use My Location off: the first city.
+        store.useLocation = false
+        let here = City(name: "Denver", region: "", latitude: 39.74, longitude: -104.98, isCurrent: true)
+        store.openFromWidget(here)
+        XCTAssertEqual(store.activeID, store.cities[0].id)
+        XCTAssertEqual(store.cities.count, 4, "where you are is never added as a city")
+
+        // With it on: the My Location card, or the saved city standing in for it.
+        store.locate = { .found(City(name: "Denver", region: "", latitude: 39.74, longitude: -104.98)) }
+        store.answerLocationPrompt(true)
+        await store.updateLocation()
+        try await Task.sleep(for: .milliseconds(100))
+        XCTAssertEqual(store.cities.first?.isCurrent, true)
+        store.select(store.cities[2])
+        store.openFromWidget(here)
+        XCTAssertEqual(store.activeID, City.currentID)
+        store.locate = { .found(City(name: "Oslo", region: "", latitude: 59.91, longitude: 10.75)) }
+        await store.updateLocation()
+        XCTAssertEqual(store.hereID, oslo.id, "Oslo now stands in for My Location")
+        store.select(store.cities[0])
+        store.openFromWidget(here)
+        XCTAssertEqual(store.activeID, oslo.id)
+
+        // The list full: nothing changes.
+        var i = 0
+        while store.canAdd { store.add(City(name: "Test \(i)", region: "", latitude: Double(i), longitude: 1)); i += 1 }
+        let shown = store.activeID, count = store.cities.count
+        store.openFromWidget(City(name: "Lima", region: "Peru", latitude: -12.05, longitude: -77.04))
+        XCTAssertEqual(store.activeID, shown)
+        XCTAssertEqual(store.cities.count, count)
     }
 
     func testNotNowTurnsItOffAndIsNeverAskedAgain() async throws {

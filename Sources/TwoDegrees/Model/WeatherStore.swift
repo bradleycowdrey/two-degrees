@@ -178,6 +178,20 @@ final class WeatherStore: ObservableObject {
         if isStale(city) { Task { await load(city) } }
     }
 
+    /// A tap on a widget: show that widget's city. My Location shows where you are (or the first city
+    /// when Use My Location is off); a saved city that's the same place is shown; any other city is
+    /// added while there's room. With the list full, nothing changes.
+    func openFromWidget(_ city: City) {
+        if city.isCurrent || city.id == City.currentID {
+            if let here = cities.first(where: isHere) { select(here) } else if !useLocation { select(cities[0]) }
+        } else if let saved = cities.first(where: { !$0.isCurrent && $0.id == city.id })
+                    ?? cities.first(where: { !$0.isCurrent && City.samePlace($0, city) }) {
+            select(saved)
+        } else if canAdd {
+            add(city)
+        }
+    }
+
     func toggleUnit() { unit = unit.other }
 
     func stepSize(_ delta: Int) {

@@ -127,6 +127,8 @@ struct WidgetView: View {
         .shadow(color: .black.opacity(0.18), radius: 4, y: 1)
         #endif
         .redacted(reason: entry.isPlaceholder ? .placeholder : [])
+        // A tap opens Two Degrees on this widget's city.
+        .widgetURL(entry.isPlaceholder ? nil : WidgetLink.url(for: entry.city))
     }
 }
 

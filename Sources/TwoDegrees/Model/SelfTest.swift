@@ -141,6 +141,16 @@ enum SelfTest {
             store.remove(denver)
             check(store.cities.count == before && store.activeID != denver.id, "remove Denver")
         }
+        // Tapping a widget: a saved city's link shows that city; a new city's link adds it and shows it.
+        let saved = store.cities[store.cities.count - 1]
+        store.select(store.cities[0])
+        if let url = WidgetLink.url(for: saved), let city = WidgetLink.city(from: url) { store.openFromWidget(city) }
+        check(store.activeID == saved.id, "a widget for \(saved.name) opens \(saved.name)")
+        let lima = City(name: "Lima", region: "Peru", latitude: -12.0464, longitude: -77.0428)
+        if let url = WidgetLink.url(for: lima), let city = WidgetLink.city(from: url) { store.openFromWidget(city) }
+        check(store.cities.count == before + 1 && store.activeID == lima.id, "a widget for a city not in the list adds it and opens it")
+        if let added = store.cities.first(where: { $0.id == lima.id }) { store.remove(added) }
+        store.select(store.cities[0])
         while store.canAdd { store.add(City(name: "Test \(store.cities.count)", region: "", latitude: Double(store.cities.count), longitude: 0)) }
         check(store.cities.count == WeatherStore.maxCities && !store.canAdd, "city limit is \(WeatherStore.maxCities)")
         for city in store.cities where city.name.hasPrefix("Test ") { store.remove(city) }

@@ -43,6 +43,12 @@ struct PhoneView: View {
                 LocationPromptView { store.answerLocationPrompt($0) }
             }
         }
+        // A tapped widget: its city's page, with the city list out of the way.
+        .onOpenURL { url in
+            guard let city = WidgetLink.city(from: url) else { return }
+            store.openFromWidget(city)
+            showingList = false
+        }
         .task {
             if PhoneSelfTest.isActive { await PhoneSelfTest.run(store: store) }
         }
