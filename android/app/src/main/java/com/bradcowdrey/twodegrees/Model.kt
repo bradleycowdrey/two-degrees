@@ -40,6 +40,48 @@ data class City(
     }
 }
 
+/**
+ * Tapping a widget opens the app on that widget's city. The city rides in the launch intent as JSON
+ * (extra [KEY]); which page it opens follows the same rule as on the Mac and iPhone.
+ */
+object WidgetTap {
+    const val KEY = "widgetCity"
+
+    fun encode(city: City): String = Codec.city(city).toString()
+
+    /** The city, or null for anything missing or malformed. */
+    fun decode(text: String?): City? {
+        val city = text?.let { runCatching { Codec.city(org.json.JSONObject(it)) }.getOrNull() } ?: return null
+        val ok = city.name.isNotBlank() && city.latitude in -90.0..90.0 && city.longitude in -180.0..180.0
+        return city.takeIf { ok }
+    }
+
+    sealed interface Target {
+        data class Select(val id: String) : Target
+        data class Add(val city: City) : Target
+        /** The list is full: nothing changes. */
+        data object Stay : Target
+    }
+
+    /**
+     * Where a tap goes: My Location's card (or the saved city standing in for it; the first city when
+     * Use My Location is off); else the saved city that's the same place; else the city, added if
+     * there's room; else nowhere new.
+     */
+    fun target(city: City, cities: List<City>, hereID: String?, canAdd: Boolean): Target {
+        if (city.isCurrent) {
+            val here = cities.firstOrNull { it.isCurrent } ?: cities.firstOrNull { it.id == hereID } ?: cities.firstOrNull()
+            return here?.let { Target.Select(it.id) } ?: Target.Stay
+        }
+        val saved = cities.firstOrNull { !it.isCurrent && (it.id == city.id || City.samePlace(it, city)) }
+        return when {
+            saved != null -> Target.Select(saved.id)
+            canAdd -> Target.Add(city)
+            else -> Target.Stay
+        }
+    }
+}
+
 enum class TempUnit(val letter: String) {
     FAHRENHEIT("F"), CELSIUS("C");
 

@@ -1,6 +1,7 @@
 package com.bradcowdrey.twodegrees
 
 import android.Manifest
+import android.content.Intent
 import android.os.Bundle
 import android.text.format.DateFormat
 import androidx.activity.ComponentActivity
@@ -8,6 +9,9 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.lifecycleScope
 import com.bradcowdrey.twodegrees.ui.PhoneScreen
 import com.bradcowdrey.twodegrees.ui.ShowOptions
@@ -21,6 +25,8 @@ import kotlinx.coroutines.launch
 class MainActivity : ComponentActivity() {
     private val store by lazy { WeatherStore.get(this) }
     private var ready = false
+    /** Counts widget taps, so the screen closes the list each time. */
+    private var widgetTaps by mutableIntStateOf(0)
 
     /** Asks for approximate location once; after that, Android's own settings decide. */
     private val askLocation = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { store.locateNow() }
@@ -32,6 +38,9 @@ class MainActivity : ComponentActivity() {
         val selfTest = intent.getBooleanExtra("selftest", false)
         val show = intent.getStringExtra("show")
         store.locate = { PhoneLocation.currentCity(applicationContext) }
+        // Not again when the activity is recreated, or reopened from Recents.
+        val fromHistory = (intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY) != 0
+        if (savedInstanceState == null && !fromHistory) openWidgetCity(intent)
         setContent {
             PhoneScreen(
                 store,
@@ -46,9 +55,23 @@ class MainActivity : ComponentActivity() {
                 // Use My Location starts once the terms are agreed (the self-test checks it itself).
                 onReady = { if (!selfTest) { ready = true; useLocation() } },
                 onLocationSetting = ::useLocation,
+                widgetTaps = widgetTaps,
             )
         }
         if (selfTest) lifecycleScope.launch { SelfTest.run(this@MainActivity, store, locate = intent.getBooleanExtra("locate", false)) }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        openWidgetCity(intent)
+    }
+
+    /** A widget tap: opens its city's page, over anything open (the list, a day). */
+    private fun openWidgetCity(intent: Intent) {
+        val city = WidgetTap.decode(intent.getStringExtra(WidgetTap.KEY)) ?: return
+        store.openFromWidget(city)
+        widgetTaps++
     }
 
     /** Finds where you are, asking for permission the first time. */

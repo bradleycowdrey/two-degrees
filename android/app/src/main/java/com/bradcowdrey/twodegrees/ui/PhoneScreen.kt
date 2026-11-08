@@ -69,6 +69,8 @@ fun PhoneScreen(
     skipTerms: Boolean,
     onReady: () -> Unit = {},
     onLocationSetting: () -> Unit = {},
+    /** Goes up with each widget tap: the city's page shows, over the list or a day. */
+    widgetTaps: Int = 0,
 ) {
     val state by store.state.collectAsStateWithLifecycle()
     val tablet = LocalConfiguration.current.screenWidthDp >= 600
@@ -78,6 +80,7 @@ fun PhoneScreen(
     var agreed by remember { mutableStateOf(skipTerms || store.termsAccepted) }
 
     LaunchedEffect(agreed) { if (agreed) onReady() }
+    LaunchedEffect(widgetTaps) { if (widgetTaps > 0) { showingList = false; overlay = null } }
     if (!agreed && !show.locationPrompt) {
         TermsScreen(onAgree = { store.termsAccepted = true; agreed = true })
         return

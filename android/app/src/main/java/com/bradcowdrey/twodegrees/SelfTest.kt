@@ -156,6 +156,19 @@ object SelfTest {
         check(own.city == paris && own.forecast != null && !own.offline, "widget with its own city shows Paris")
         WidgetData.forget(context, intArrayOf(9001, 9002))
 
+        // 6. A widget tap opens its city: a saved one is selected, a new one added (and removed again).
+        val back = store.current.active
+        val saved = store.current.cities.last { !it.isCurrent }
+        store.openFromWidget(WidgetTap.decode(WidgetTap.encode(saved))!!)
+        check(store.current.activeID == saved.id, "a widget tap for ${saved.name} selects it")
+        if (store.current.canAdd && store.current.cities.none { City.samePlace(it, paris) }) {
+            val before = store.current.cities.size
+            store.openFromWidget(WidgetTap.decode(WidgetTap.encode(paris))!!)
+            check(store.current.cities.size == before + 1 && store.current.activeID == paris.id, "a widget tap for Paris adds it and selects it")
+            store.remove(paris)
+        }
+        store.current.cities.firstOrNull { it.id == back.id }?.let { store.select(it) }
+
         store.termsAccepted = true   // so the later screenshots (the city list) open without the terms
         val header = if (failures == 0) "ALL PASSED (${lines.size} passed)" else "FAILED ($failures of ${lines.size} failed)"
         File(context.filesDir, "report.txt").writeText((listOf(header) + lines).joinToString("\n") + "\n")
