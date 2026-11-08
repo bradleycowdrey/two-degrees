@@ -148,7 +148,7 @@ enum PhoneSelfTest {
             .padding(home ? 16 : 0)
             .frame(width: size.width, height: size.height)
             .foregroundStyle(.white)
-            .background { if home { WidgetBackground() } else { Color(white: 0.12) } }
+            .background { if home { WidgetBackground(sky: entry.unavailable ? nil : entry.forecast.sky) } else { Color(white: 0.12) } }
             .clipShape(RoundedRectangle(cornerRadius: home ? 22 : (family == .accessoryCircular ? 38 : 10), style: .continuous))
     }
 

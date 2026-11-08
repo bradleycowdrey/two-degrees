@@ -15,14 +15,42 @@ struct WeatherEntry: TimelineEntry {
 }
 
 /// Warm near-black with the crimson rule; the rule steps aside in tinted and clear modes.
+/// Text tones over the widget's background: white at the app's opacities over the iPhone's sky (as on the
+/// city pages), the panel's warm greys on the Mac.
+enum WidgetTone {
+    #if os(iOS)
+    static let secondary = Color.white.opacity(0.78)
+    static let muted = Color.white.opacity(0.6)
+    static let faint = Color.white.opacity(0.4)
+    static let divider = Color.white.opacity(0.18)
+    #else
+    static let secondary = Palette.textSecondary
+    static let muted = Palette.textMuted
+    static let faint = Palette.textFaint
+    static let divider = Palette.borderStrong
+    #endif
+}
+
+/// Behind each widget, as behind the app it belongs to: on iPhone and iPad, the city's sky for its weather
+/// and time of day, as on the city pages; on the Mac, the panel's warm black with its crimson line.
 struct WidgetBackground: View {
     @Environment(\.widgetRenderingMode) private var mode
+    /// The weather to draw the sky for (iPhone and iPad); nil for the neutral evening sky.
+    var sky: (code: Int, isDay: Bool)? = nil
 
     var body: some View {
+        #if os(iOS)
+        if mode == .fullColor {
+            SkyBackground(code: sky?.code ?? 3, isDay: sky?.isDay ?? false)
+        } else {
+            Color.clear
+        }
+        #else
         ZStack(alignment: .top) {
             Palette.bg
             if mode == .fullColor { Palette.crimson.frame(height: 3) }
         }
+        #endif
     }
 }
 
@@ -113,7 +141,7 @@ private struct NowBlock: View {
                     .widgetAccentable()
                 Text(other.spaced(other.value(now.temperature)))
                     .font(.system(size: big * 0.45, weight: .medium))
-                    .foregroundStyle(Palette.textMuted)
+                    .foregroundStyle(WidgetTone.muted)
             }
             .monospacedDigit()
             .lineLimit(1)
@@ -125,18 +153,18 @@ private struct NowBlock: View {
                 .padding(.bottom, 3)
             Text(Condition.name(now.code))
                 .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(Palette.textSecondary)
+                .foregroundStyle(WidgetTone.secondary)
                 .lineLimit(1)
             if entry.failed && !entry.isPlaceholder {
                 Text("Offline · from \(entry.forecast.fetchedAt.formatted(date: .omitted, time: .shortened))")
                     .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(Palette.textMuted)
+                    .foregroundStyle(WidgetTone.muted)
                     .lineLimit(1)
             } else if let today = entry.forecast.days.first?.including(now.temperature) {
                 Text("\(unit.value(today.low))–\(unit.value(today.high))\(unit.symbol) · \(other.value(today.low))–\(other.value(today.high))\(other.symbol)")
                     .font(.system(size: 11, weight: .medium))
                     .monospacedDigit()
-                    .foregroundStyle(Palette.textMuted)
+                    .foregroundStyle(WidgetTone.muted)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
             }
@@ -159,14 +187,14 @@ private struct UnavailableView: View {
             Spacer(minLength: 2)
             Image(systemName: "icloud.slash")
                 .font(.system(size: 20, weight: .medium))
-                .foregroundStyle(Palette.textMuted)
+                .foregroundStyle(WidgetTone.muted)
             Text("Couldn’t load the weather")
                 .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(Palette.textSecondary)
+                .foregroundStyle(WidgetTone.secondary)
                 .fixedSize(horizontal: false, vertical: true)
             Text("Trying again in a few minutes")
                 .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(Palette.textMuted)
+                .foregroundStyle(WidgetTone.muted)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
@@ -187,7 +215,7 @@ private struct MediumView: View {
         HStack(spacing: 14) {
             NowBlock(entry: entry)
                 .frame(width: 128)
-            Rectangle().fill(Palette.borderStrong).frame(width: 0.5)
+            Rectangle().fill(WidgetTone.divider).frame(width: 0.5)
             HoursRow(entry: entry, count: 5)
         }
     }
@@ -200,9 +228,9 @@ private struct LargeView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             LargeNow(entry: entry)
-            Rectangle().fill(Palette.borderStrong).frame(height: 0.5)
+            Rectangle().fill(WidgetTone.divider).frame(height: 0.5)
             HoursRow(entry: entry, count: 6)
-            Rectangle().fill(Palette.borderStrong).frame(height: 0.5)
+            Rectangle().fill(WidgetTone.divider).frame(height: 0.5)
             DaysList(entry: entry, count: 6)
         }
     }
@@ -229,7 +257,7 @@ private struct LargeNow: View {
                         .widgetAccentable()
                     Text(other.spaced(other.value(now.temperature)))
                         .font(.system(size: big * 0.45, weight: .medium))
-                        .foregroundStyle(Palette.textMuted)
+                        .foregroundStyle(WidgetTone.muted)
                 }
                 .monospacedDigit()
                 .lineLimit(1)
@@ -239,7 +267,7 @@ private struct LargeNow: View {
                 if entry.failed && !entry.isPlaceholder {
                     Text("Offline · from \(entry.forecast.fetchedAt.formatted(date: .omitted, time: .shortened))")
                         .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(Palette.textMuted)
+                        .foregroundStyle(WidgetTone.muted)
                         .lineLimit(1)
                 }
             }
@@ -249,7 +277,7 @@ private struct LargeNow: View {
                     .frame(height: 44)
                 Text(Condition.name(now.code))
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(Palette.textSecondary)
+                    .foregroundStyle(WidgetTone.secondary)
                     .multilineTextAlignment(.trailing)
                     .lineLimit(2)
             }
@@ -270,7 +298,7 @@ private struct HoursRow: View {
                 VStack(spacing: 3) {
                     Text(index == 0 ? "Now" : Forecast.format(hour.time, "j"))
                         .font(.system(size: 10, weight: index == 0 ? .semibold : .medium))
-                        .foregroundStyle(index == 0 ? Palette.cream : Palette.textMuted)
+                        .foregroundStyle(index == 0 ? Palette.cream : WidgetTone.muted)
                     WeatherSymbol(code: hour.code, isDay: hour.isDay, size: 14)
                         .frame(height: 18)
                     Text("\(unit.value(hour.temperature))°")
@@ -278,7 +306,7 @@ private struct HoursRow: View {
                         .foregroundStyle(Palette.textPrimary)
                     Text("\(other.value(hour.temperature))\(other.symbol)")
                         .font(.system(size: 10))
-                        .foregroundStyle(Palette.textMuted)
+                        .foregroundStyle(WidgetTone.muted)
                 }
                 .monospacedDigit()
                 .lineLimit(1)
@@ -334,7 +362,7 @@ private struct DaysList: View {
                             }
                             Text("\(unit.value(day.low))°")
                                 .font(.system(size: 12, weight: .semibold))
-                                .foregroundStyle(Palette.textSecondary)
+                                .foregroundStyle(WidgetTone.secondary)
                                 .fixedSize()
                                 .padding(.trailing, gap)
                                 .frame(width: x(day.low), alignment: .trailing)
@@ -351,7 +379,7 @@ private struct DaysList: View {
                     .frame(height: 16)
                     Text("\(other.value(day.low))–\(other.value(day.high))\(other.symbol)")
                         .font(.system(size: 10))
-                        .foregroundStyle(Palette.textMuted)
+                        .foregroundStyle(WidgetTone.muted)
                         .frame(width: 52, alignment: .trailing)
                 }
                 .monospacedDigit()

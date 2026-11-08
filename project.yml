@@ -80,6 +80,7 @@ targets:
       - path: Sources/TwoDegrees/Views/Palette.swift
       - path: Sources/TwoDegrees/Views/PanelParts.swift
       - path: Sources/TwoDegrees/Views/DayCharts.swift
+      - path: Sources/TwoDegrees/Views/Sky.swift
       - path: Sources/TwoDegrees/Views/WeatherSymbol.swift
       - path: Sources/TwoDegrees/Views/WidgetViews.swift
       - path: Resources/iOS/Assets.xcassets
@@ -113,6 +114,7 @@ targets:
       - path: Resources/Cities.tsv
         buildPhase: resources
       - path: Sources/TwoDegrees/Views/Palette.swift
+      - path: Sources/TwoDegrees/Views/Sky.swift
       - path: Sources/TwoDegrees/Views/WeatherSymbol.swift
       - path: Sources/TwoDegrees/Views/WidgetViews.swift
       - path: Resources/iOS/PrivacyInfo.xcprivacy

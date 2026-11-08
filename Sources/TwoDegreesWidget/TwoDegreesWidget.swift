@@ -16,7 +16,7 @@ struct TwoDegreesWidget: Widget {
     var body: some WidgetConfiguration {
         AppIntentConfiguration(kind: "TwoDegreesWidget", intent: WidgetSettings.self, provider: Provider()) { entry in
             WidgetView(entry: entry)
-                .containerBackground(for: .widget) { WidgetBackground() }
+                .containerBackground(for: .widget) { WidgetBackground(sky: entry.unavailable ? nil : entry.forecast.sky) }
         }
         .configurationDisplayName("Two Degrees")
         .description("The weather in °F and °C at once.")
