@@ -16,6 +16,8 @@ import androidx.glance.GlanceModifier
 import androidx.glance.Image
 import androidx.glance.ImageProvider
 import androidx.glance.LocalSize
+import androidx.glance.action.ActionParameters
+import androidx.glance.action.actionParametersOf
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetManager
@@ -51,6 +53,7 @@ import com.bradcowdrey.twodegrees.Forecast
 import com.bradcowdrey.twodegrees.MainActivity
 import com.bradcowdrey.twodegrees.Speech
 import com.bradcowdrey.twodegrees.TempUnit
+import com.bradcowdrey.twodegrees.WidgetTap
 import com.bradcowdrey.twodegrees.ui.Glyphs
 import com.bradcowdrey.twodegrees.ui.Sky
 
@@ -107,6 +110,8 @@ private fun Glyph(code: Int, isDay: Boolean, size: Int) {
     Image(ImageProvider(Glyphs.bitmap(Condition.glyph(code, isDay), size * 3)), Condition.name(code), GlanceModifier.size(size.dp))
 }
 
+private val widgetCity = ActionParameters.Key<String>(WidgetTap.KEY)
+
 @Composable
 fun WidgetContent(entry: WidgetEntry) {
     val size = LocalSize.current
@@ -114,7 +119,8 @@ fun WidgetContent(entry: WidgetEntry) {
     Box(
         GlanceModifier.fillMaxSize().cornerRadius(22.dp)
             .background(ImageProvider(skyBitmap(now?.code ?: 3, now?.isDay ?: true)), ContentScale.FillBounds)
-            .clickable(actionStartActivity<MainActivity>()),
+            // A tap opens the app on this widget's city.
+            .clickable(actionStartActivity<MainActivity>(actionParametersOf(widgetCity to WidgetTap.encode(entry.city)))),
     ) {
         Box(GlanceModifier.fillMaxSize().padding(14.dp)) {
             when {

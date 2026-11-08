@@ -170,6 +170,16 @@ class WeatherStore private constructor(context: Context) {
         if (isStale(city)) launchLoad(city)
     }
 
+    /** Opens the page for a widget's city (see [WidgetTap.target]). */
+    fun openFromWidget(city: City) {
+        val s = current
+        when (val t = WidgetTap.target(city, s.cities, s.hereID, s.canAdd)) {
+            is WidgetTap.Target.Select -> s.cities.firstOrNull { it.id == t.id }?.let(::select)
+            is WidgetTap.Target.Add -> add(t.city)
+            WidgetTap.Target.Stay -> {}
+        }
+    }
+
     private fun setActive(id: String) = saveCities(current.cities, id)
 
     private fun saveCities(cities: List<City>, activeID: String) {

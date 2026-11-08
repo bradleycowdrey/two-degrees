@@ -338,4 +338,41 @@ class WeatherTest {
         assertTrue(!Region.isUS(City("Toronto", "Ontario, Canada", 43.65, -79.38)))
         assertTrue(Region.isUS(City("My Location", "", 39.74, -104.98)))
     }
+
+    @Test fun widgetTapCityRoundTrips() {
+        val odd = City("Saint-Étienne & \"Co\" ?=/", "Auvergne-Rhône-Alpes, France", 45.4339, 4.39, isCurrent = false)
+        assertEquals(odd, WidgetTap.decode(WidgetTap.encode(odd)))
+        val here = City("Denver", "Colorado, United States", 39.74, -104.98, isCurrent = true)
+        assertEquals(here, WidgetTap.decode(WidgetTap.encode(here)))
+        // Anything missing or malformed is ignored.
+        assertNull(WidgetTap.decode(null))
+        assertNull(WidgetTap.decode(""))
+        assertNull(WidgetTap.decode("not json"))
+        assertNull(WidgetTap.decode("{\"name\":\"X\"}"))
+        assertNull(WidgetTap.decode("{\"name\":\"\",\"latitude\":1,\"longitude\":2}"))
+        assertNull(WidgetTap.decode("{\"name\":\"X\",\"latitude\":91,\"longitude\":2}"))
+        assertNull(WidgetTap.decode("{\"name\":\"X\",\"latitude\":1,\"longitude\":\"east\"}"))
+    }
+
+    @Test fun widgetTapOpensItsCity() {
+        val tokyo = City("Tokyo", "Japan", 35.6762, 139.6503)
+        val here = City("Boulder", "Colorado, United States", 40.015, -105.27, isCurrent = true)
+        val cities = listOf(here, newYork, london)
+        fun target(city: City, list: List<City> = cities, hereID: String? = null, canAdd: Boolean = true) =
+            WidgetTap.target(city, list, hereID, canAdd)
+
+        // My Location: its card; else the saved city standing in for it; else (Use My Location off) the first city.
+        assertEquals(WidgetTap.Target.Select("here"), target(here.copy(name = "Elsewhere", latitude = 1.0)))
+        assertEquals(WidgetTap.Target.Select(london.id), target(here, listOf(newYork, london), hereID = london.id))
+        assertEquals(WidgetTap.Target.Select(newYork.id), target(here, listOf(newYork, london)))
+        // A saved city: by ID (coordinates to 2 decimals), or the same place.
+        assertEquals(WidgetTap.Target.Select(london.id), target(london.copy(name = "Londres", latitude = 51.5049)))
+        assertEquals(WidgetTap.Target.Select(newYork.id), target(City("New York", "NY", 40.75, -73.99)))
+        // A saved city isn't matched to the My Location card, even nearby.
+        assertEquals(WidgetTap.Target.Add(City("Boulder", "CO", 40.02, -105.27)), target(City("Boulder", "CO", 40.02, -105.27)))
+        // A new city: added if there's room, else nothing changes.
+        assertEquals(WidgetTap.Target.Add(tokyo), target(tokyo))
+        assertEquals(WidgetTap.Target.Stay, target(tokyo, canAdd = false))
+        assertEquals(WidgetTap.Target.Select(london.id), target(london, canAdd = false))
+    }
 }
