@@ -51,6 +51,7 @@ targets:
         buildPhase: resources
       - path: Sources/TwoDegrees/Views/Palette.swift
       - path: Sources/TwoDegrees/Views/WeatherSymbol.swift
+      - path: Sources/TwoDegrees/Views/Sky.swift
       - path: Sources/TwoDegrees/Views/WidgetViews.swift
     settings:
       base:

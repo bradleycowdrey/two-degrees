@@ -23,11 +23,17 @@ enum WidgetTone {
     static let muted = Color.white.opacity(0.6)
     static let faint = Color.white.opacity(0.4)
     static let divider = Color.white.opacity(0.18)
+    static let now = Color.white
+    static let track = Color.white.opacity(0.15)
+    static let dotRing = Color.black.opacity(0.35)
     #else
     static let secondary = Palette.textSecondary
     static let muted = Palette.textMuted
     static let faint = Palette.textFaint
     static let divider = Palette.borderStrong
+    static let now = Palette.cream
+    static let track = Color.clear
+    static let dotRing = Palette.bg
     #endif
 }
 
@@ -116,6 +122,10 @@ struct WidgetView: View {
             }
         }
         .environment(\.colorScheme, .dark)
+        #if os(iOS)
+        // The city page's soft shadow, so small white text stays clear on the brightest skies (snow by day).
+        .shadow(color: .black.opacity(0.18), radius: 4, y: 1)
+        #endif
         .redacted(reason: entry.isPlaceholder ? .placeholder : [])
     }
 }
@@ -298,7 +308,7 @@ private struct HoursRow: View {
                 VStack(spacing: 3) {
                     Text(index == 0 ? "Now" : Forecast.format(hour.time, "j"))
                         .font(.system(size: 10, weight: index == 0 ? .semibold : .medium))
-                        .foregroundStyle(index == 0 ? Palette.cream : WidgetTone.muted)
+                        .foregroundStyle(index == 0 ? WidgetTone.now : WidgetTone.muted)
                     WeatherSymbol(code: hour.code, isDay: hour.isDay, size: 14)
                         .frame(height: 18)
                     Text("\(unit.value(hour.temperature))°")
@@ -350,13 +360,15 @@ private struct DaysList: View {
                         let width = max(proxy.size.width - 2 * room, 1), span = max(high - low, 1)
                         let x = { (t: Double) in room + CGFloat((t - low) / span) * width }
                         ZStack(alignment: .leading) {
+                            // A faint track under every bar, as in the app's ten-day list.
+                            Capsule().fill(WidgetTone.track).frame(width: width, height: 5).offset(x: room)
                             Capsule()
                                 .fill(LinearGradient(colors: [Palette.temperature(day.low), Palette.temperature(day.high)], startPoint: .leading, endPoint: .trailing))
                                 .frame(width: max(x(day.high) - x(day.low), 5), height: 5)
                                 .offset(x: x(day.low))
                             if index == 0 {
                                 Circle().fill(Color.white)
-                                    .overlay(Circle().stroke(Palette.bg, lineWidth: 2))
+                                    .overlay(Circle().stroke(WidgetTone.dotRing, lineWidth: 1.5))
                                     .frame(width: 8, height: 8)
                                     .offset(x: x(now) - 4)
                             }
