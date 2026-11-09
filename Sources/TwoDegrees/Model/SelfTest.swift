@@ -184,7 +184,7 @@ enum SelfTest {
         try? await Task.sleep(for: .seconds(0.6))
         snapshot(host: host, dir: dir, name: "update-2-downloading.png")
         let newest = updater.latest?.version ?? "?"
-        updater.selfTestShow(phase: .upToDate, notice: "You’re up to date. Two Degrees \(newest) is the newest version.", clearLatest: true)
+        updater.selfTestShow(phase: .upToDate, notice: "Two Degrees \(newest) is up to date.", clearLatest: true)
         try? await Task.sleep(for: .seconds(0.6))
         snapshot(host: host, dir: dir, name: "update-3-up-to-date.png")
         updater.selfTestShow(phase: .failed("x"), notice: "Couldn’t check for updates. GitHub didn’t respond.", error: true)

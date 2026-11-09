@@ -174,7 +174,7 @@ private fun DayPage(city: City, forecast: Forecast, day: Forecast.Day, isToday: 
 
 private val CHART_LEFT = 40.dp
 private val CHART_RIGHT = 40.dp
-private val CHART_BOTTOM = 22.dp
+private val CHART_BOTTOM = 26.dp
 
 /**
  * A chart's frame: grid lines and labels at fractions of the height (0 at the bottom), hour labels
@@ -192,7 +192,7 @@ private fun Chart(
     val measurer = rememberTextMeasurer()
     val style = TextStyle(fontFamily = ui.family, fontSize = ui.sp(11f), color = Color.White.copy(alpha = 0.7f), fontWeight = FontWeight.Medium)
     val ticks = listOf(0, 6, 12, 18).mapNotNull { h -> hours.firstOrNull { it.time.hour == h }?.let { h to Forecast.hour(it.time) } }
-    Canvas(Modifier.fillMaxWidth().height(ui.dp(150f)).semantics { contentDescription = description }) {
+    Canvas(Modifier.fillMaxWidth().height(ui.dp(154f)).semantics { contentDescription = description }) {
         val rect = Rect(CHART_LEFT.toPx(), 6.dp.toPx(), size.width - CHART_RIGHT.toPx(), size.height - CHART_BOTTOM.toPx())
         for ((f, text) in left) {
             val y = rect.bottom - rect.height * f
@@ -208,7 +208,7 @@ private fun Chart(
         for ((h, text) in ticks) {
             val x = rect.left + rect.width * h / 23f
             val m = measurer.measure(text, style)
-            drawText(m, topLeft = Offset((x - m.size.width / 2).coerceIn(rect.left - 4.dp.toPx(), size.width - m.size.width.toFloat()), rect.bottom + 4.dp.toPx()))
+            drawText(m, topLeft = Offset((x - m.size.width / 2).coerceIn(rect.left - 4.dp.toPx(), size.width - m.size.width.toFloat()), rect.bottom + 8.dp.toPx()))
         }
         plot(rect)
     }

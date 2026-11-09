@@ -301,11 +301,12 @@ private struct UpdateBanner: View {
                         Image(systemName: notice.isError ? "exclamationmark.circle.fill" : "checkmark.circle.fill")
                             .font(ui.font(14, .semibold))
                             .foregroundStyle(notice.isError ? Palette.crimson : Palette.cream)
-                            .padding(.top, ui.pt(1))
+                            .padding(.top, ui.pt(6))
                         Text(notice.text)
                             .font(ui.meta)
                             .foregroundStyle(Palette.textSecondary)
                             .fixedSize(horizontal: false, vertical: true)
+                            .padding(.top, ui.pt(5))   // level with the dismiss button beside it
                             .frame(maxWidth: .infinity, alignment: .leading)
                         IconButton(symbol: "xmark", help: "Dismiss", small: true) { updater.dismissNotice() }
                     }

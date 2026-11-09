@@ -633,7 +633,7 @@ private fun CloudLayerBars(layers: Triple<Double, Double, Double>) {
     Column(Modifier.fillMaxWidth().padding(top = ui.dp(4f)).clearAndSetSemantics {}, verticalArrangement = Arrangement.spacedBy(ui.dp(2f))) {
         listOf("High" to high, "Mid" to mid, "Low" to low).forEach { (label, pct) ->
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(label, style = ui.text(10f), maxLines = 1, softWrap = false, modifier = Modifier.widthIn(min = ui.dp(30f)).alpha(0.55f))
+                Text(label, style = ui.text(10f), maxLines = 1, softWrap = false, modifier = Modifier.widthIn(min = ui.dp(30f)).alpha(0.7f))
                 androidx.compose.foundation.Canvas(Modifier.weight(1f).height(ui.dp(4f))) {
                     val h = size.height
                     val corner = androidx.compose.ui.geometry.CornerRadius(h / 2)

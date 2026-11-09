@@ -63,6 +63,8 @@ struct DockTileView: View {
                 .monospacedDigit()
                 .lineLimit(1)
                 .frame(width: s * 0.74)
+                // Nudged down so the stack is centred in the plate below the crimson rule.
+                .offset(y: s * 0.03)
             }
             .frame(width: proxy.size.width, height: proxy.size.height)
         }

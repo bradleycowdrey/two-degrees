@@ -620,7 +620,7 @@ struct CloudBars: View {
         HStack(spacing: ui.pt(6)) {
             Text(name)
                 .font(ui.font(10))
-                .opacity(0.55)
+                .opacity(0.7)
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
                 .frame(width: ui.pt(26), alignment: .leading)

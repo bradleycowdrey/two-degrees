@@ -136,7 +136,7 @@ fun PhoneScreen(
 @Composable
 private fun BottomBar(state: WeatherStore.State, onList: () -> Unit, modifier: Modifier) {
     val context = LocalContext.current
-    Box(modifier.fillMaxWidth().background(Color(0x99101216)).navigationBarsPadding()) {
+    Box(modifier.fillMaxWidth().background(Color(0xE6101216)).navigationBarsPadding()) {
         HorizontalDivider(color = Color.White.copy(alpha = 0.15f))
         Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = {

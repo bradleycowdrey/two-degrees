@@ -317,7 +317,7 @@ private fun SettingsMenu(store: WeatherStore, state: WeatherStore.State, onEdit:
                                 .putExtra(android.content.Intent.EXTRA_TEXT, "${Brand.SHARE_MESSAGE} ${Brand.PRODUCT_PAGE}")
                             context.startActivity(android.content.Intent.createChooser(send, "Share Two Degrees"))
                         })
-                        DropdownMenuItem(text = { Text("Get Two Degrees for Mac and iPhone") }, onClick = { open = false; uri.openUri(Brand.PRODUCT_PAGE) })
+                        DropdownMenuItem(text = { Text("Mac and iPhone Apps") }, onClick = { open = false; uri.openUri(Brand.PRODUCT_PAGE) })
                         DropdownMenuItem(text = { Text("Terms & Privacy") }, onClick = { open = false; uri.openUri(Brand.LEGAL) })
                         DropdownMenuItem(text = { Text("Report an Issue") }, onClick = { open = false; uri.openUri(Brand.ISSUES) })
                     }
@@ -329,13 +329,13 @@ private fun SettingsMenu(store: WeatherStore, state: WeatherStore.State, onEdit:
 
 @Composable
 private fun MenuLabel(text: String) {
-    Text(text.uppercase(), style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.6f), modifier = Modifier.padding(16.dp, 8.dp, 16.dp, 2.dp))
+    Text(text.uppercase(), style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.6f), modifier = Modifier.padding(12.dp, 8.dp, 12.dp, 2.dp))
 }
 
 /** A line of explanation in the menu, too long for an item. */
 @Composable
 private fun MenuNote(text: String) {
-    Text(text, style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.7f), modifier = Modifier.widthIn(max = 260.dp).padding(16.dp, 6.dp, 16.dp, 8.dp))
+    Text(text, style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.7f), modifier = Modifier.widthIn(max = 260.dp).padding(12.dp, 6.dp, 12.dp, 8.dp))
 }
 
 /** One city in the list: name, local time and condition on the left; both temperatures and today's range on the right; its own sky behind. */

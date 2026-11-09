@@ -241,6 +241,8 @@ private struct HourlyCard: View {
     var body: some View {
         let unit = store.unit, other = unit.other
         let hours = forecast.upcomingHours
+        // The chance line is kept or dropped for every column together, so they stay aligned.
+        let showsChance = hours.contains { $0.rainChance >= 20 }
         Card(title: "Next 24 hours", icon: "clock") {
             let summary = Summary.line(forecast, unit: unit)
             if !summary.isEmpty {
@@ -257,9 +259,11 @@ private struct HourlyCard: View {
                             VStack(spacing: ui.pt(1)) {
                                 WeatherSymbol(code: index == 0 ? forecast.now.code : hour.code, isDay: hour.isDay, size: ui.pt(22))
                                     .frame(height: ui.pt(26))
-                                Text(hour.rainChance >= 20 ? "\(hour.rainChance)%" : " ")
-                                    .font(ui.font(11, .semibold))
-                                    .foregroundStyle(Palette.rain)
+                                if showsChance {
+                                    Text(hour.rainChance >= 20 ? "\(hour.rainChance)%" : " ")
+                                        .font(ui.font(11, .semibold))
+                                        .foregroundStyle(Palette.rain)
+                                }
                             }
                             Text("\(unit.value(temperature))°").font(ui.font(18, .medium))
                             Text("\(other.value(temperature))\(other.symbol)").font(ui.font(13)).opacity(0.6)
@@ -341,7 +345,7 @@ private struct DailyRow: View {
                 }
             }
             .frame(width: ui.pt(36))
-            temperature(day.low, alignment: .trailing).opacity(0.65)
+            temperature(day.low, alignment: .trailing, primary: 0.65)
             bar
             temperature(day.high, alignment: .leading)
         }
@@ -351,9 +355,9 @@ private struct DailyRow: View {
         .accessibilityLabel("\(name): \(Condition.name(day.code)). Low \(Speech.temperature(day.low)). High \(Speech.temperature(day.high)).\(day.rainChance >= 20 ? " \(day.rainChance) percent chance of rain." : "")")
     }
 
-    private func temperature(_ celsius: Double, alignment: HorizontalAlignment) -> some View {
+    private func temperature(_ celsius: Double, alignment: HorizontalAlignment, primary: Double = 1) -> some View {
         VStack(alignment: alignment, spacing: 0) {
-            Text("\(store.unit.value(celsius))°").font(ui.font(17, .medium))
+            Text("\(store.unit.value(celsius))°").font(ui.font(17, .medium)).opacity(primary)
             Text("\(store.unit.other.value(celsius))\(store.unit.other.symbol)").font(ui.font(11)).opacity(0.6)
         }
         .lineLimit(1)

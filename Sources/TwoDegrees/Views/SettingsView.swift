@@ -75,7 +75,7 @@ private struct CitiesSettings: View {
                 .onMove { store.move(from: $0, to: $1) }
             }
             .listStyle(.bordered)
-            Text("Drag to reorder. Click a name to rename it. Add cities with + Add city in the panel (up to \(WeatherStore.maxCities)).")
+            Text("Drag to reorder. Click a name to rename it. Add cities with + in the panel (up to \(WeatherStore.maxCities)).")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }

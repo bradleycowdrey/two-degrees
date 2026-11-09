@@ -121,7 +121,7 @@
   .now { position: relative; overflow: hidden; isolation: isolate; }
   .now::after { content: ""; position: absolute; z-index: -1; width: 320px; height: 320px; right: -110px; top: -150px; border-radius: 50%;
     background: radial-gradient(circle, var(--glow, rgba(244,184,96,.16)), transparent 68%); }
-  .place { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+  .place { display: flex; align-items: baseline; gap: 0 8px; flex-wrap: wrap; }
   .place h2 { margin: 0; font-size: 21px; font-weight: 600; letter-spacing: -.02em; }
   .place .local { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
   .reading { display: flex; align-items: center; gap: 14px; margin: 6px 0 4px; }
@@ -329,7 +329,7 @@
   /* More detail: two across, the same card as the other tiles. */
   .details { container-type: inline-size; }
   .dgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-  .dt { display: flex; flex-direction: column; padding: 16px;
+  .dt { display: flex; flex-direction: column; padding: 16px 18px;
     background-image: linear-gradient(to bottom, color-mix(in srgb, var(--acc, transparent) 16%, transparent), transparent 50%); }
   .dt .eyebrow { color: color-mix(in srgb, var(--acc, var(--muted)) 90%, transparent); }
   .dt.wide { grid-column: 1 / -1; }
@@ -362,7 +362,7 @@
   /* Rain map: opens the shared map page, at this city, in a new tab. */
   .mapcard { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
   .mapcard .eyebrow { flex-basis: 100%; margin: 0 0 -4px; }
-  .mapcard p { flex: 1 1 180px; margin: 0; font-size: 13px; color: var(--secondary); line-height: 1.4; }
+  .mapcard p { flex: 1 1 180px; margin: 0; font-size: 13px; color: var(--secondary); line-height: 1.4; text-wrap: balance; }
   .mapcard .pill { flex: none; }
   .mapcard .credit { flex-basis: 100%; margin-top: 2px; font-size: 11px; color: var(--faint); }
 
@@ -414,6 +414,7 @@
     .soon-bars { gap: 4px; }
     .panel { padding: 25px 14px 16px; border-radius: 24px; }
     .tile { padding: 16px; }
+    .dt { padding: 16px; }
     /* The header fits a phone with Share in it: tighter gaps, no spacer element (its two gaps), narrower °F/°C. */
     .hdr { gap: 6px; }
     .hdr .sp { display: none; }
@@ -1265,9 +1266,9 @@
       if (kinds.length) pollen = ` Pollen: ${kinds[0][0].toLowerCase()} ${pollenLevel(kinds[0][1]).toLowerCase()}.`;
     }
     if (aqr) acc.aqi = aqr.color;   // the category's own colour
-    if (aqr) tile('aqi', 'Air Quality', `${aqr.v} <span class="cat" style="color:${aqr.color}">${esc(aqr.cat)}</span>`, aqr.scale, esc(aqr.note + (pollen ? '.' + pollen : '')),
+    if (aqr) tile('aqi', 'Air quality', `${aqr.v} <span class="cat" style="color:${aqr.color}">${esc(aqr.cat)}</span>`, aqr.scale, esc(aqr.note + (pollen ? '.' + pollen : '')),
       `<div class="aqbar" style="background:${aqr.bar}" aria-hidden="true"><u style="left:${aqr.at}%"></u></div>`);
-    else missing('aqi', 'Air Quality');
+    else missing('aqi', 'Air quality');
     const n = normalsFor(city, data.daily[0].date);
     const nw = (t) => `<span style="white-space:nowrap">${both(t)}</span>`;
     if (n) { const dlt = today.max - n[0]; acc.normal = dlt >= 1.5 ? '#F2A65A' : dlt <= -1.5 ? '#8CC0F5' : '#C9C2B8'; }
@@ -1286,8 +1287,8 @@
       : Math.max(hNow.lo, hNow.mi, hNow.hi) < 10 ? 'No cloud at any height.'
       : [hNow.lo, hNow.mi, hNow.hi].filter((x) => x >= 50).length >= 2 ? 'Cloud at several heights.'
       : hNow.lo >= hNow.mi && hNow.lo >= hNow.hi ? 'Mostly low cloud.' : hNow.mi >= hNow.hi ? 'Mostly mid-level cloud.' : 'Mostly high, thin cloud.';
-    if (cur.cloud != null) tile('cloud', 'Cloud Cover', `${Math.round(cur.cloud)}%`, cloudLabel(cur.cloud), layers, layers ? cloudBars(hNow) : '');
-    else missing('cloud', 'Cloud Cover');
+    if (cur.cloud != null) tile('cloud', 'Cloud cover', `${Math.round(cur.cloud)}%`, cloudLabel(cur.cloud), layers, layers ? cloudBars(hNow) : '');
+    else missing('cloud', 'Cloud cover');
     // The next sunrise and the next sunset, and how colourful each is likely to be.
     const nowT = parseLocal(data.current.time), d0 = data.daily[0];
     const sun = d0.sunrise && d0.sunset ? sunPath(data.current.time, d0.sunrise, d0.sunset) : '';

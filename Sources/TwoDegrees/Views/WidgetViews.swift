@@ -24,7 +24,7 @@ enum WidgetTone {
     static let faint = Color.white.opacity(0.4)
     static let divider = Color.white.opacity(0.18)
     static let now = Color.white
-    static let track = Color.white.opacity(0.15)
+    static let track = Color.clear
     static let dotRing = Color.black.opacity(0.35)
     #else
     static let secondary = Palette.textSecondary
@@ -362,7 +362,7 @@ private struct DaysList: View {
                         let width = max(proxy.size.width - 2 * room, 1), span = max(high - low, 1)
                         let x = { (t: Double) in room + CGFloat((t - low) / span) * width }
                         ZStack(alignment: .leading) {
-                            // A faint track under every bar, as in the app's ten-day list.
+                            // The track is clear: a visible one would run through the low and high beside each bar.
                             Capsule().fill(WidgetTone.track).frame(width: width, height: 5).offset(x: room)
                             Capsule()
                                 .fill(LinearGradient(colors: [Palette.temperature(day.low), Palette.temperature(day.high)], startPoint: .leading, endPoint: .trailing))
@@ -435,7 +435,7 @@ private struct CircularAccessory: View {
         ZStack {
             AccessoryWidgetBackground()
             VStack(spacing: -1) {
-                Reading.text(unit.value(now.temperature), unit, size: 22, weight: .semibold)
+                Reading.text(unit.value(now.temperature), unit, size: 22, weight: .semibold, unitWeight: .semibold)
                     .widgetAccentable()
                 Text(other.spaced(other.value(now.temperature)))
                     .font(.system(size: 11, weight: .medium))
@@ -462,7 +462,7 @@ private struct RectangularAccessory: View {
             }
             .font(.system(size: 13, weight: .semibold))
             HStack(alignment: .firstTextBaseline, spacing: 5) {
-                Reading.text(unit.value(now.temperature), unit, size: 22, weight: .semibold)
+                Reading.text(unit.value(now.temperature), unit, size: 22, weight: .semibold, unitWeight: .semibold)
                     .widgetAccentable()
                 Text(other.spaced(other.value(now.temperature)))
                     .font(.system(size: 14, weight: .medium))

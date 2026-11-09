@@ -119,7 +119,7 @@ final class Updater: ObservableObject {
             } else {
                 latest = nil
                 phase = .upToDate
-                if announce { post("You’re up to date. Two Degrees \(currentVersion) is the newest version.") }
+                if announce { post("Two Degrees \(currentVersion) is up to date.") }
             }
         } catch {
             // A failed re-check never hides an update that was already found.
