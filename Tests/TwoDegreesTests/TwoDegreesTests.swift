@@ -93,12 +93,29 @@ final class WeatherTests: XCTestCase {
 }
 
 final class PanelLogicTests: XCTestCase {
-    func testTicks() {
-        // 0–25°C is 32–77°F: ticks at 40, 50, 60, 70°F.
-        XCTAssertEqual(Ticks.make(low: 0, high: 25, unit: .fahrenheit).map(\.label), [40, 50, 60, 70])
-        XCTAssertEqual(Ticks.make(low: 0, high: 25, unit: .celsius).map(\.label), [5, 10, 15, 20])
-        // Ticks within 5% of either end are dropped so they never sit on a bar's cap.
-        XCTAssertFalse(Ticks.make(low: 10, high: 20, unit: .celsius).map(\.label).contains(10))
+    func testTenDayScale() throws {
+        let forecast = try OpenMeteo.decodeForecast(Data(Fixtures.forecast.utf8))
+        // The card lists up to ten days; the fixture has six.
+        let days = DailyCard.days(forecast)
+        XCTAssertEqual(days.count, 6)
+        // One scale for every bar: the coldest low (1.2°C) to the warmest high (23°C)...
+        let scale = DailyCard.scale(days, now: forecast.now.temperature)
+        XCTAssertEqual(scale.low, 1.2, accuracy: 0.001)
+        XCTAssertEqual(scale.high, 23.0, accuracy: 0.001)
+        // ...stretched to take in right now, so today's dot is never off the end of its bar.
+        XCTAssertEqual(DailyCard.scale(days, now: 30).high, 30)
+        XCTAssertEqual(DailyCard.scale(days, now: -5).low, -5)
+        XCTAssertEqual(DailyCard.scale([], now: 12).low, 12)
+        XCTAssertEqual(DailyCard.scale([], now: 12).high, 12)
+    }
+
+    func testCityChipSaysWhereAndWhen() throws {
+        let forecast = try OpenMeteo.decodeForecast(Data(Fixtures.forecast.utf8))
+        let city = City(name: "New York", region: "New York, United States", latitude: 40.7128, longitude: -74.006)
+        // The chip's tooltip: the region, then the city's own time.
+        XCTAssertEqual(CityChips.about(city, forecast), "New York, United States · " + Forecast.format(forecast.now.time, "jmm"))
+        XCTAssertEqual(CityChips.about(city, nil), "New York, United States")
+        XCTAssertEqual(CityChips.about(City(name: "Test", region: "", latitude: 1, longitude: 2), nil), "")
     }
 
     func testSummaryMentionsRainFirst() throws {

@@ -1,7 +1,8 @@
 import SwiftUI
 import AppKit
 
-/// The whole app in one panel: header, cities, now, next 24 hours, five days, footer.
+/// The whole app in one panel, on the city's sky: the header's controls and the cities, then the same city
+/// page as the iPhone (the reading, the next 24 hours, 10 days, the detail tiles) and the footer.
 /// Used by both the menu bar popover and the Dock app's window.
 struct WeatherPanel: View {
     @EnvironmentObject private var store: WeatherStore
@@ -23,90 +24,118 @@ private struct WeatherPanelContent: View {
     let compact: Bool
     @State private var adding = false
     @State private var editing = false
-    /// The five-day forecast starts closed every time the app opens.
-    @State private var daysOpen = false
+    /// The day shown in detail (click a row of the 10-day forecast).
+    @State private var day: Date?
+    /// The part of the page the self-test has scrolled to ("top", "days", "tiles"), to photograph all of it.
+    @State private var shown = "top"
     @State private var contentHeight: CGFloat = 0
-    /// Height of the window's hidden title bar. The panel draws under it (so the crimson rule
-    /// is at the very top), and SwiftUI still adds it to the window height, so it's subtracted
+    /// Height of the window's hidden title bar. The panel draws under it (so the sky and the header
+    /// reach the very top), and SwiftUI still adds it to the window height, so it's subtracted
     /// at the bottom to keep the window exactly the size of the panel.
     @State private var titleBarInset: CGFloat = 0
     @State private var host = HostWindow()
 
-    /// Tallest the scrolling body may be so the whole panel stays on screen at any size.
+    /// Tallest the scrolling page may be: about a phone's worth of it, and never more than the screen
+    /// has room for at any size. The rest scrolls.
     private var maxBodyHeight: CGFloat {
         let screen = NSScreen.main?.visibleFrame.height ?? 800
-        let chrome = 3 + ui.pt(compact ? 21 : 34) + ui.pt(32) + ui.pt(10)   // crimson rule + header
-        return max(ui.pt(320), screen - chrome - ui.pt(compact ? 32 : 64))
+        let chrome = ui.pt(compact ? 21 : 34) + ui.pt(32)   // the header
+        return max(ui.pt(320), min(ui.pt(700), screen - chrome - ui.pt(compact ? 32 : 64)))
     }
+
+    /// The sky behind the panel: the active city's, or a plain overcast one until its forecast arrives.
+    private var sky: (code: Int, isDay: Bool) { store.activeForecast?.sky ?? (code: 3, isDay: true) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Crimson rule and header together act as the window's title bar: drag anywhere
-            // that isn't a button to move the window.
-            VStack(alignment: .leading, spacing: 0) {
-                // bradcowdrey.com's signature crimson rule.
-                Palette.crimson.frame(height: 3)
+            // The header acts as the window's title bar: drag anywhere that isn't a button to move
+            // the window.
+            header
+                .padding(.horizontal, ui.pt(16))
+                // The window's traffic lights sit in the band above the header.
+                .padding(.top, compact ? ui.pt(21) : ui.pt(34))
+                // Window: drag to move. Menu bar panel (which macOS pins under its icon): drag to
+                // tear it off into a movable window at the same spot.
+                .background(WindowDragHandle(onTearOff: compact ? { tearOff() } : nil))
+                .help(compact ? "Drag to detach into a window" : "")
 
-                header
-                    .padding(.horizontal, ui.pt(18))
-                    // The window's traffic lights sit in the band above the header.
-                    .padding(.top, compact ? ui.pt(21) : ui.pt(34))
-                    .padding(.bottom, ui.pt(10))
-            }
-            // Window: drag to move. Menu bar panel (which macOS pins under its icon): drag to
-            // tear it off into a movable window at the same spot.
-            .background(WindowDragHandle(onTearOff: compact ? { tearOff() } : nil))
-            .help(compact ? "Drag to detach into a window" : "")
-
-            ScrollView(.vertical) {
-                VStack(alignment: .leading, spacing: ui.pt(10)) {
-                    // Only takes space when there's something to say.
-                    if updater.latest != nil || updater.notice != nil || updater.userChecking {
-                        UpdateBanner()
-                    }
-                    CityChips(adding: $adding, editing: $editing)
-                    if adding {
-                        Tile { CitySearchField(adding: $adding) }
-                            .transition(.move(edge: .top).combined(with: .opacity))
-                    }
-                    if let forecast = store.activeForecast {
-                        NowTile(city: store.active, forecast: forecast)
-                        AlertsTile(city: store.active)
-                        NextHoursTile(forecast: forecast)
-                        HoursTile(forecast: forecast)
-                        DaysTile(forecast: forecast, open: $daysOpen)
-                        DetailsTile(city: store.active, forecast: forecast)
-                    } else {
-                        Tile {
-                            HStack(spacing: ui.m) {
-                                if store.isOffline {
-                                    Image(systemName: "wifi.exclamationmark").foregroundStyle(Palette.textMuted)
-                                    Text("Couldn’t reach Open-Meteo. Check your connection, then press Refresh.")
-                                } else {
-                                    ProgressView().controlSize(.small)
-                                    Text("Loading the forecast for \(store.active.name)…")
-                                }
-                            }
-                            .font(ui.meta)
-                            .foregroundStyle(Palette.textSecondary)
-                            .frame(maxWidth: .infinity, alignment: .leading)
+            ScrollViewReader { reader in
+                ScrollView(.vertical) {
+                    VStack(alignment: .leading, spacing: ui.pt(10)) {
+                        // Only takes space when there's something to say.
+                        if updater.latest != nil || updater.notice != nil || updater.userChecking {
+                            UpdateBanner()
                         }
+                        CityChips(adding: $adding, editing: $editing)
+                        if adding {
+                            CitySearchField(adding: $adding)
+                                .padding(ui.pt(14))
+                                .background { Frost(radius: ui.pt(16)) }
+                                .transition(.move(edge: .top).combined(with: .opacity))
+                        }
+                        // From here down, the iPhone's city page.
+                        CityHeader(city: store.active, forecast: store.activeForecast, detail: CityChips.about(store.active, store.activeForecast))
+                            .padding(.top, ui.pt(18))
+                            .padding(.bottom, ui.pt(22))
+                            // Where the reading ends on the page, for the self-test's layout check.
+                            .onGeometryChange(for: CGFloat.self) { proxy in proxy.frame(in: .named("page")).maxY } action: { bottom in
+                                if SelfTest.isActive && !compact { SelfTest.readingMeasured(bottom: bottom) }
+                            }
+                        if let forecast = store.activeForecast {
+                            AlertCards(city: store.active)
+                            NextHoursCard(forecast: forecast)
+                            HourlyCard(forecast: forecast)
+                            DailyCard(forecast: forecast, city: store.active, selected: $day).id("days")
+                            RainMapCard(arrow: "arrow.up.right") { RainMap.open(store.active, unit: store.unit) }
+                                .help("Open the rain map for \(store.active.name) in your browser")
+                            DetailTiles(forecast: forecast, city: store.active).id("tiles")
+                        } else {
+                            Card(title: "Forecast", icon: "clock") {
+                                HStack(spacing: ui.m) {
+                                    if store.isOffline {
+                                        Image(systemName: "wifi.exclamationmark")
+                                        Text("Couldn’t reach Open-Meteo. Check your connection, then press Refresh.")
+                                    } else {
+                                        ProgressView().controlSize(.small)
+                                        Text("Loading the forecast for \(store.active.name)…")
+                                    }
+                                }
+                                .font(ui.font(15))
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                        }
+                        AppFooter(lead: "Weather for \(store.active.name)", fetched: store.activeForecast?.fetchedAt, offline: store.isOffline)
                     }
-                    footer
+                    .padding(.horizontal, ui.pt(16))
+                    .padding(.top, ui.pt(10))
+                    .padding(.bottom, ui.l)
+                    .coordinateSpace(name: "page")
+                    .id("top")
+                    .background(
+                        GeometryReader { proxy in
+                            Color.clear.preference(key: ContentHeightKey.self, value: proxy.size.height)
+                        }
+                    )
                 }
-                .padding(.horizontal, ui.pt(18))
-                .padding(.bottom, ui.l)
-                .background(
-                    GeometryReader { proxy in
-                        Color.clear.preference(key: ContentHeightKey.self, value: proxy.size.height)
+                .scrollBounceBehavior(.basedOnSize)
+                // The page fades out under the header as it scrolls, instead of ending at a hard line.
+                .mask {
+                    VStack(spacing: 0) {
+                        LinearGradient(colors: [.clear, .black], startPoint: .top, endPoint: .bottom).frame(height: ui.pt(10))
+                        Color.black
                     }
-                )
-            }
-            .scrollBounceBehavior(.basedOnSize)
-            .frame(height: contentHeight > 0 ? min(contentHeight, maxBodyHeight) : nil)
-            .onPreferenceChange(ContentHeightKey.self) { height in
-                contentHeight = height
-                if SelfTest.isActive && !compact { SelfTest.panelMeasured(content: height, maxBody: maxBodyHeight, width: ui.panelWidth + 2 * ui.xl) }
+                }
+                .frame(height: contentHeight > 0 ? min(contentHeight, maxBodyHeight) : nil)
+                .onPreferenceChange(ContentHeightKey.self) { height in
+                    contentHeight = height
+                    if SelfTest.isActive && !compact { SelfTest.panelMeasured(content: height, maxBody: maxBodyHeight, width: ui.panelWidth + 2 * ui.xl) }
+                }
+                // Another city starts at the top of its page, with no day left open.
+                .onChange(of: store.activeID) { _, _ in
+                    day = nil
+                    reader.scrollTo("top", anchor: .top)
+                }
+                .onChange(of: shown) { _, part in reader.scrollTo(part, anchor: part == "tiles" ? .bottom : .top) }
             }
         }
         // Watch the panel's own size and fit the hosting window to it.
@@ -114,23 +143,27 @@ private struct WeatherPanelContent: View {
             fitWindow(to: size)
         }
         .padding(.bottom, -titleBarInset)
-        .background(Palette.bg)
-        // Use the full window: the crimson rule sits at the very top, under the hidden title bar.
+        // Use the full window: the sky reaches the very top, under the hidden title bar.
         .ignoresSafeArea()
-        .background(Palette.bg.ignoresSafeArea())
+        .background(
+            SkyBackground(code: sky.code, isDay: sky.isDay)
+                .animation(.easeInOut(duration: 0.6), value: store.activeID)
+                .ignoresSafeArea()
+        )
         .background(HostWindowReader(box: { host.isDesktop = !compact; return host }()) { window in
             guard !compact else { return }
-            window.backgroundColor = NSColor(Palette.bg)
+            tintWindow()
             let inset = max(0, window.frame.height - window.contentLayoutRect.height)
             if abs(inset - titleBarInset) > 0.5 { titleBarInset = inset }
         })
+        .onChange(of: [sky.code, sky.isDay ? 1 : 0]) { _, _ in tintWindow() }
         .environment(\.colorScheme, .dark)
         .animation(.snappy, value: adding)
         .animation(.snappy, value: editing)
         .onAppear { Task { await updater.checkIfDue() } }
         .task {
             if !compact && SelfTest.isActive {
-                await SelfTest.run(store: store, adding: $adding, editing: $editing, daysOpen: $daysOpen, host: host)
+                await SelfTest.run(store: store, adding: $adding, editing: $editing, shown: $shown, host: host)
             }
         }
         .focusable()
@@ -153,13 +186,20 @@ private struct WeatherPanelContent: View {
         }
     }
 
+    /// The window's own colour, behind the panel: the foot of the sky, so nothing else shows through
+    /// for the moment it takes the window to resize.
+    private func tintWindow() {
+        guard !compact, let window = host.window else { return }
+        window.backgroundColor = NSColor(Sky.colors(code: sky.code, isDay: sky.isDay).bottom)
+    }
+
     private var header: some View {
         HStack(spacing: ui.m) {
             AppMark(size: ui.pt(28))
             Text(Brand.appName)
                 .font(ui.title)
                 .tracking(-0.2)
-                .foregroundStyle(Palette.textPrimary)
+                .foregroundStyle(.white)
                 .lineLimit(1)
                 .fixedSize()
                 .layoutPriority(1)
@@ -218,31 +258,6 @@ private struct WeatherPanelContent: View {
         host.window?.close()             // the panel goes away in the same beat
     }
 
-    /// The status line, the credit on its own full-width line beneath.
-    private var footer: some View {
-        VStack(alignment: .leading, spacing: ui.s) {
-            HStack {
-                StatusLine()
-                Spacer()
-                Button { RainMap.open(store.active, unit: store.unit) } label: {
-                    Label("Rain Map ↗", systemImage: "map").font(ui.font(12, .medium))
-                }
-                .buttonStyle(.plain)
-                .foregroundStyle(Palette.textSecondary)
-                .help("Open the rain map for \(store.active.name) in your browser")
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            Link(destination: Brand.website) {
-                Text("Made by \(Brand.author). Free. Forever. ↗")
-                    .multilineTextAlignment(.leading)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .font(ui.font(12))
-            .foregroundStyle(Palette.textMuted)
-        }
-        .padding(.top, ui.pt(2))
-    }
-
     private var shareButton: some View {
         ShareLink(
             item: Brand.repository,
@@ -257,7 +272,7 @@ private struct WeatherPanelContent: View {
     }
 }
 
-/// Shown only when a newer version is out: one line and one button.
+/// Shown only when a newer version is out: one line and one button, frosted like the page's cards.
 private struct UpdateBanner: View {
     @EnvironmentObject private var updater: Updater
     @Environment(\.metrics) private var ui
@@ -267,13 +282,13 @@ private struct UpdateBanner: View {
             // An available update is always shown, above any other status, until it's installed.
             if let release = updater.latest {
                 row {
-                    Circle().fill(Palette.crimson).frame(width: ui.pt(7), height: ui.pt(7))
+                    Circle().fill(Palette.pink).frame(width: ui.pt(7), height: ui.pt(7))
                     Text("Two Degrees \(release.version) is available")
                         .font(ui.font(14, .semibold))
-                        .foregroundStyle(Palette.textPrimary)
+                        .foregroundStyle(.white)
                     Text("You have \(updater.currentVersion)")
                         .font(ui.meta)
-                        .foregroundStyle(Palette.textMuted)
+                        .foregroundStyle(.white.opacity(0.6))
                     Spacer(minLength: ui.s)
                     switch updater.phase {
                     case .downloading:
@@ -300,11 +315,11 @@ private struct UpdateBanner: View {
                     HStack(alignment: .top, spacing: ui.m) {
                         Image(systemName: notice.isError ? "exclamationmark.circle.fill" : "checkmark.circle.fill")
                             .font(ui.font(14, .semibold))
-                            .foregroundStyle(notice.isError ? Palette.crimson : Palette.cream)
+                            .foregroundStyle(notice.isError ? Palette.pink : Color.white)
                             .padding(.top, ui.pt(6))
                         Text(notice.text)
                             .font(ui.meta)
-                            .foregroundStyle(Palette.textSecondary)
+                            .foregroundStyle(.white.opacity(0.85))
                             .fixedSize(horizontal: false, vertical: true)
                             .padding(.top, ui.pt(5))   // level with the dismiss button beside it
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -327,7 +342,7 @@ private struct UpdateBanner: View {
                 .padding(.leading, ui.l)
                 .padding(.trailing, ui.pt(8))
                 .padding(.vertical, ui.pt(10))
-                .background(RoundedRectangle(cornerRadius: ui.pt(18), style: .continuous).fill(Palette.raisedTile))
+                .background { Frost(radius: ui.pt(18)) }
                 .transition(.move(edge: .top).combined(with: .opacity))
             }
         }
@@ -339,7 +354,7 @@ private struct UpdateBanner: View {
     private func message(_ text: String) -> some View {
         Text(text)
             .font(ui.meta)
-            .foregroundStyle(Palette.textSecondary)
+            .foregroundStyle(.white.opacity(0.85))
             .lineLimit(2)
             .fixedSize(horizontal: false, vertical: true)
     }
@@ -350,7 +365,7 @@ private struct UpdateBanner: View {
             .padding(.leading, ui.l)
             .padding(.trailing, ui.pt(6))
             .padding(.vertical, ui.pt(6))
-            .background(RoundedRectangle(cornerRadius: ui.pt(22), style: .continuous).fill(Palette.raisedTile))
+            .background { Frost(radius: ui.pt(22)) }
             .transition(.move(edge: .top).combined(with: .opacity))
     }
 }
@@ -428,13 +443,12 @@ private struct MoreMenu: View {
         } label: {
             Image(systemName: "ellipsis")
                 .font(ui.font(13, .semibold))
-                .foregroundStyle(Palette.textSecondary)
+                .foregroundStyle(SkyControl.text())
                 .frame(width: ui.pt(32), height: ui.pt(32))
-                .background(Circle().fill(Palette.raisedTile))
-                .overlay(Circle().strokeBorder(Palette.borderStrong, lineWidth: 0.5))
+                .background(Circle().fill(SkyControl.fill))
                 .overlay(alignment: .topTrailing) {
                     if updater.latest != nil {
-                        Circle().fill(Palette.crimson).frame(width: ui.pt(8), height: ui.pt(8))
+                        Circle().fill(Palette.pink).frame(width: ui.pt(8), height: ui.pt(8))
                     }
                 }
                 .contentShape(Circle())

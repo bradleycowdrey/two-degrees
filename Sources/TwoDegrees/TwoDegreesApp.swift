@@ -203,7 +203,6 @@ private struct WindowConfigurator: NSViewRepresentable {
             window.collectionBehavior = floatOnTop ? [.canJoinAllSpaces, .fullScreenAuxiliary] : [.managed]
             window.isMovableByWindowBackground = true
             window.titlebarAppearsTransparent = true
-            window.backgroundColor = NSColor(Palette.bg)
             if window.frameAutosaveName.isEmpty { window.setFrameAutosaveName("TwoDegreesWindow") }
         }
     }

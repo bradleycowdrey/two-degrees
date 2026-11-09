@@ -139,7 +139,6 @@ struct Metrics {
     var xl: CGFloat { pt(24) }
 
     // Type scale: semibold headlines, tight tracking, regular body
-    var eyebrow: Font { font(13, .semibold) }
     var meta: Font { font(13) }
     var body: Font { font(15, .semibold) }
     var cell: Font { font(17, .medium) }
@@ -148,11 +147,7 @@ struct Metrics {
     var display: Font { font(34, .semibold) }
 
     // Panel geometry
-    var tilePadding: CGFloat { pt(18) }
-    var tileRadius: CGFloat { pt(22) }
     var cellRadius: CGFloat { pt(12) }
-    var hourWidth: CGFloat { pt(48) }
-    var sparkHeight: CGFloat { pt(26) }
     var panelWidth: CGFloat { pt(444) }
 }
 

@@ -1,7 +1,7 @@
 import SwiftUI
 import AppKit
 
-/// Draws the current reading into the app's Dock icon: both units, the sky, the crimson rule.
+/// Draws the current reading into the app's Dock icon: both units, on the city's sky.
 @MainActor
 enum DockTile {
     static func update(store: WeatherStore) {
@@ -38,14 +38,11 @@ struct DockTileView: View {
     var body: some View {
         GeometryReader { proxy in
             let s = min(proxy.size.width, proxy.size.height)
+            let sky = Sky.colors(code: code, isDay: isDay)
             ZStack {
                 // macOS icon grid: the artwork sits inside ~80% of the tile.
                 RoundedRectangle(cornerRadius: s * 0.18, style: .continuous)
-                    .fill(LinearGradient(colors: [Color(hex: 0x2A2622), Palette.bg], startPoint: .top, endPoint: .bottom))
-                    .overlay(alignment: .top) {
-                        Palette.crimson.frame(height: s * 0.035)
-                    }
-                    .clipShape(RoundedRectangle(cornerRadius: s * 0.18, style: .continuous))
+                    .fill(LinearGradient(colors: [sky.top, sky.bottom], startPoint: .top, endPoint: .bottom))
                     .shadow(color: .black.opacity(0.35), radius: s * 0.02, y: s * 0.01)
                     .frame(width: s * 0.82, height: s * 0.82)
 
@@ -58,13 +55,11 @@ struct DockTileView: View {
                         .minimumScaleFactor(0.6)
                     Text("\(secondary)\(primaryUnit.other.symbol)")
                         .font(.system(size: s * 0.17, weight: .semibold, design: .rounded))
-                        .foregroundStyle(Palette.cream.opacity(0.8))
+                        .foregroundStyle(.white.opacity(0.7))
                 }
                 .monospacedDigit()
                 .lineLimit(1)
                 .frame(width: s * 0.74)
-                // Nudged down so the stack is centred in the plate below the crimson rule.
-                .offset(y: s * 0.03)
             }
             .frame(width: proxy.size.width, height: proxy.size.height)
         }

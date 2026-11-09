@@ -12,7 +12,7 @@ const PAGE = 'file://' + path.resolve(__dirname, '../docs/app.html');
 const SHOTS = process.argv[2];
 const VIEWPORTS = [['small phone', 320, 640], ['phone', 390, 844], ['tablet', 768, 1024], ['desktop', 1280, 900]];
 const SIZES = ['extraSmall', 'small', 'medium', 'large', 'extraLarge'];
-const FOOTER = 'Made by Bradley Cowdrey. Free. Forever. ↗';
+const FOOTER = 'Made by Bradley Cowdrey. Free. Forever.';
 
 let passed = 0, failed = 0;
 const results = [];
@@ -36,7 +36,7 @@ async function fresh(browser, w, h, query = '', api = {}) {
   return { context, page, errors };
 }
 
-// Layout: sibling blocks inside the panel must not overlap, and key text must not be clipped.
+// Layout: sibling blocks on the page must not overlap, and key text must not be clipped.
 async function layoutProblems(page) {
   return page.evaluate(() => {
     const problems = [];
@@ -45,28 +45,40 @@ async function layoutProblems(page) {
       const a = blocks[i - 1].getBoundingClientRect(), b = blocks[i].getBoundingClientRect();
       if (b.top < a.bottom - 0.5) problems.push(`${blocks[i].className || blocks[i].tagName} overlaps ${blocks[i - 1].className || blocks[i - 1].tagName} by ${(a.bottom - b.top).toFixed(1)}px`);
     }
-    for (const sel of ['.hdr h1', '.place h2', '.stat .v', '.stat .s', '.day .d', '.foot .brand', '#statusText', '.chip', '.alert b', '.alert .m', '.soon-line', '#soonAside',
-      '.dt .eyebrow', '.dt .dv', '.dt .ds', '.dt .dn', '.mapcard p', '.mapcard .pill', '.mapcard .credit']) {
+    for (const sel of ['.hdr h1', '.place h2', '.place .local', '.temps', '.cond', '.hilo', '.summary', '.hour .h', '.hour .f', '.hour .c', '.day .d', '.day .lo', '.day .hi', '.foot .brand', '.foot .status', '#statusText',
+      '.chip', '.alert b', '.alert .m', '.soon-line', '#soonAside', '.dt .eyebrow', '.dt .dv', '.dt .ds', '.dt .dn', '.mapcard b', '#mapText']) {
       for (const e of document.querySelectorAll(sel)) {
         if (e.offsetParent === null || getComputedStyle(e).clipPath === 'inset(50%)') continue;   // hidden, or visually hidden on purpose
         if (e.scrollWidth > e.clientWidth + 1 && getComputedStyle(e).textOverflow !== 'ellipsis') problems.push(`${sel} clipped ("${e.textContent.trim().slice(0, 30)}")`);
       }
     }
-    // Open forecast: each low and high sits right at its end of the bar, inside the row, and the scale's labels sit over its ticks.
-    for (const day of document.querySelectorAll('#days:not([hidden]) .day')) {
+    // The reading: both units on one line, inside the page.
+    const temps = document.querySelector('.temps');
+    if (temps) {
+      const page = document.querySelector('.panel').getBoundingClientRect(), big = temps.querySelector('.primary').getBoundingClientRect(), small = temps.querySelector('.secondary').getBoundingClientRect();
+      if (small.top > big.bottom - 1) problems.push('the second unit has dropped under the reading');
+      if (big.left < page.left - 0.5 || small.right > page.right + 0.5) problems.push('the reading runs off the page');
+    }
+    // 10-day forecast: in each row the low, the bar and the high sit side by side inside the row, the day's
+    // range inside its bar, and the bar wide enough to read.
+    for (const day of document.querySelectorAll('#days .day')) {
       const r = (s) => day.querySelector(s).getBoundingClientRect();
-      const fill = r('.bar i'), lo = r('.lo'), hi = r('.hi'), track = r('.track'), name = day.querySelector('.d').textContent;
-      if (Math.abs(lo.right - fill.left) > 1 || Math.abs(hi.left - fill.right) > 1) problems.push(`${name}: low/high labels aren't at the ends of the bar`);
-      if (lo.left < track.left - 0.5 || hi.right > track.right + 0.5) problems.push(`${name}: a low/high label runs out of the row`);
+      const row = day.getBoundingClientRect(), bar = r('.bar'), fill = r('.bar i'), lo = r('.lo'), hi = r('.hi'), ic = r('.ic'), name = day.querySelector('.d').textContent;
+      if (fill.left < bar.left - 0.5 || fill.right > bar.right + 0.5) problems.push(`${name}: the range runs out of its bar`);
+      if (lo.right > bar.left + 0.5 || hi.left < bar.right - 0.5 || ic.right > lo.left + 0.5) problems.push(`${name}: the icon, low, bar and high overlap`);
+      if (lo.left < row.left - 0.5 || hi.right > row.right + 0.5 || ic.bottom > row.bottom + 0.5) problems.push(`${name}: something runs out of the row`);
+      if (bar.width < 16) problems.push(`${name}: the bar is only ${bar.width.toFixed(0)}px wide`);
+      const dot = day.querySelector('.bar u');
+      if (dot && (dot.getBoundingClientRect().left < bar.left - 1.5 || dot.getBoundingClientRect().right > bar.right + 1.5)) problems.push(`${name}: the "now" dot is off its bar`);
     }
-    const firstRow = document.querySelector('#days:not([hidden]) .day');
-    if (firstRow) {
-      const lines = [...firstRow.querySelectorAll('.bar s')].map((s) => s.getBoundingClientRect().left + 0.5);
-      const labels = [...document.querySelectorAll('#dayTicks span')].map((s) => { const b = s.getBoundingClientRect(); return b.left + b.width / 2; });
-      if (lines.length !== labels.length || labels.some((x, i) => Math.abs(x - lines[i]) > 1)) problems.push('5-day scale labels are not over their ticks');
+    // Tiles: each graphic stays inside its tile, above the note.
+    for (const tile of document.querySelectorAll('.dt')) {
+      const box = tile.getBoundingClientRect(), g = tile.querySelector('.gfx'), note = tile.querySelector('.dn');
+      if (!g) continue;
+      const r = g.getBoundingClientRect();
+      if (r.left < box.left - 0.5 || r.right > box.right + 0.5) problems.push(`${tile.dataset.tile}: its graphic runs out of the tile`);
+      if (note && r.bottom > note.getBoundingClientRect().top + 0.5) problems.push(`${tile.dataset.tile}: its graphic runs into the note`);
     }
-    const range = document.querySelector('.days-head .range'), title = document.querySelector('#daysTitle');
-    if (range && range.offsetParent !== null && range.getBoundingClientRect().left < title.getBoundingClientRect().right - 0.5) problems.push('5-day range runs into the "5-day forecast" title');
     if (document.documentElement.scrollWidth > innerWidth) problems.push(`page scrolls sideways by ${document.documentElement.scrollWidth - innerWidth}px`);
     return problems;
   });
@@ -78,7 +90,7 @@ async function sheetProblems(page) {
   return page.evaluate(() => {
     const problems = [], sheet = document.querySelector('#sheet'), sr = sheet.getBoundingClientRect();
     if (sheet.scrollWidth > sheet.clientWidth + 1) problems.push('the sheet scrolls sideways');
-    for (const e of sheet.querySelectorAll('.sh-head, .tile, svg.chart, .facts dt, .facts dd')) {
+    for (const e of sheet.querySelectorAll('.sh-head, .sh-sum, .card, svg.chart, .facts dt, .facts dd')) {
       const r = e.getBoundingClientRect();
       if (r.left < sr.left - 0.5 || r.right > sr.right + 0.5) problems.push(`${e.className.baseVal ?? e.className ?? e.tagName} runs out of the sheet`);
     }
@@ -123,22 +135,35 @@ async function setSize(page, size) {
     // Loads cleanly, with the creator's footer verbatim and honest status.
     check((await page.textContent('.foot .brand')).trim() === FOOTER, t('footer text is exact'));
     check(/Sample forecast|Updated|Offline/.test(await page.textContent('#statusText')), t('status line says where the data came from'));
-    check(await page.getAttribute('.status a', 'href') === 'https://open-meteo.com/', t('Open-Meteo credit links to open-meteo.com'));
+    check(await page.getAttribute('.status a', 'href') === 'https://open-meteo.com/' && (await page.textContent('.foot .status')).replace(/\s+/g, ' ').trim() === 'Weather for New York · Open-Meteo',
+      t('the footer says whose weather it is, and credits Open-Meteo with a link'));
 
-    // 5-day accordion: closed on open, opens, closes.
-    check(await page.getAttribute('#daysToggle', 'aria-expanded') === 'false' && await page.isHidden('#days'), t('5-day forecast starts closed'));
-    check(/°F · .*°C/.test(await page.textContent('#dayTicks')), t('closed forecast shows the range in both units'));
-    await page.click('#daysToggle');
-    check(await page.isVisible('#days') && (await page.$$('#days .day')).length === 5, t('opening shows 5 day rows'));
-    check((await page.$$('#dayTicks span')).length >= 1, t('open forecast shows scale ticks'));
+    // 10-day forecast: one card, always open, a row a day, on one shared scale.
+    check((await page.textContent('#daysTitle')).trim() === '10-day forecast' && await page.isVisible('#days') && (await page.$$('#daysToggle')).length === 0, t('the 10-day forecast is open, with nothing to toggle'));
+    const dayRows = await page.$$eval('#days .day', (els) => els.map((e) => [e.querySelector('.d').textContent, e.querySelector('.lo').textContent, e.querySelector('.hi').textContent].join(' ')));
+    check(dayRows.length === 10 && /^Today /.test(dayRows[0]), t(`10 day rows, from Today (${dayRows.length})`));
+    check(dayRows.every((r) => /^\w+ -?\d+°-?\d+°C -?\d+°-?\d+°C$/.test(r)), t(`each day gives its low and high in both units (${dayRows[1]})`));
+    const scale = await page.$$eval('#days .day', (els) => {
+      const edge = (e, s) => { const b = e.querySelector('.bar').getBoundingClientRect(), f = e.querySelector(s).getBoundingClientRect(); return [(f.left - b.left) / b.width, (f.right - b.left) / b.width]; };
+      const fills = els.map((e) => edge(e, '.bar i'));
+      return { min: Math.min(...fills.map((f) => f[0])), max: Math.max(...fills.map((f) => f[1])), same: new Set(els.map((e) => e.querySelector('.bar').getBoundingClientRect().width.toFixed(1))).size };
+    });
+    check(scale.same === 1 && Math.abs(scale.min) < 0.02 && Math.abs(scale.max - 1) < 0.02, t(`the bars share one scale, from the coldest low to the warmest high (${scale.min.toFixed(2)}–${scale.max.toFixed(2)})`));
     const dots = await page.$$('#days .bar u');
-    check(dots.length === 1, t('one "now" dot, on today'));
-    await page.click('#daysToggle');
-    check(await page.isHidden('#days'), t('clicking again closes it'));
+    check(dots.length === 1 && (await page.$$('#days .day:first-child .bar u')).length === 1, t('one "now" dot, on today'));
+    check(/^(Rain|Snow|Storms) likely around \d+ [AP]M \(\d+%\)\.$|^(Warming|Cooling) to -?\d+°F \/ -?\d+°C by \d+ [AP]M\.$|^Today -?\d+°F \/ -?\d+°C to -?\d+°F \/ -?\d+°C\.$/.test((await page.textContent('#summary')).trim()),
+      t(`the next 24 hours start with a line about what's coming (${(await page.textContent('#summary')).trim()})`));
+
+    // The reading: centred, the city, both units on one baseline, the sky, today's high and low in each unit.
+    const hilo = await page.$$eval('.hilo', (els) => els.map((e) => [...e.children].map((c) => c.textContent).join(' ')));
+    check(/^H:-?\d+°F L:-?\d+°F$/.test(hilo[0]) && /^H:-?\d+°C L:-?\d+°C$/.test(hilo[1]), t(`today's high and low, in the larger unit then the other (${hilo.join(' | ')})`));
+    const centred = await page.evaluate(() => { const p = document.querySelector('.panel').getBoundingClientRect(), mid = (e) => { const r = e.getBoundingClientRect(); return r.left + r.width / 2; };
+      return ['.place h2', '.temps', '.cond', '.hilo'].every((s) => Math.abs(mid(document.querySelector(s)) - (p.left + p.width / 2)) < 2); });
+    check(centred, t('the reading is centred on the page'));
 
     // Units.
     await page.click('#unitC');
-    check((await page.textContent('.temps .primary sup')).includes('°C') && (await page.textContent('.temps .secondary sup')).includes('°F'), t('°C makes Celsius large, Fahrenheit beside it'));
+    check((await page.textContent('.temps .primary sup')).includes('°C') && (await page.textContent('.temps .secondary')).includes('°F'), t('°C makes Celsius large, Fahrenheit beside it'));
     check(await page.getAttribute('#unitC', 'aria-pressed') === 'true', t('°C button reports pressed'));
     await page.click('#unitF');
     check((await page.textContent('.temps .primary sup')).includes('°F'), t('°F switches back'));
@@ -146,35 +171,68 @@ async function setSize(page, size) {
     check(/degrees Fahrenheit, -?\d+ Celsius/.test(label || ''), t('screen readers hear both units'));
     check((await page.$$('.hour[role="img"][aria-label]')).length === 24, t('24 labelled hours'));
 
-    // More detail tiles: each one present with a value. Air quality and the archive (normals) answer after
+    // Detail tiles: twelve, in the apps' order, each with a value. Air quality and the archive (normals) answer after
     // the forecast, so wait for them as a visitor would; tiles without data show a dash, so every city has the same tiles.
     await page.waitForSelector('.dt[data-tile="aqi"] .aqbar', { timeout: 30000 }).catch(() => {});
     await page.waitForFunction(() => /Normal high/.test((document.querySelector('.dt[data-tile="normal"]') || {}).textContent || ''), null, { timeout: 30000 }).catch(() => {});
-    const tiles = await page.$$eval('.dt', (els) => Object.fromEntries(els.map((e) => [e.dataset.tile, e.querySelector('.dv').textContent.trim() + ' | ' + (e.querySelector('.dn') || { textContent: '' }).textContent.trim()])));
+    const order = await page.$$eval('.dt', (els) => els.map((e) => e.dataset.tile).join(','));
+    check(/^feels,humidity,wind,rain,(sunrise|sunset),uv,aqi,normal,visibility,precip,cloud,moon$/.test(order), t(`twelve tiles, in the apps' order (${order})`));
+    const tiles = await page.$$eval('.dt', (els) => Object.fromEntries(els.map((e) => [e.dataset.tile.replace(/^sun(rise|set)$/, 'sun'), ['.dv', '.ds', '.dn'].map((s) => (e.querySelector(s) || { textContent: '' }).textContent.trim()).join(' | ')])));
     const expect = {
-      visibility: /^\d+(\.\d)? mi \| (Clear view|Haze|Fog)$/, cloud: /^\d+% \| (No cloud at any height|Cloud at several heights|Mostly low cloud|Mostly mid-level cloud|Mostly high, thin cloud)\.$/,
-      precip: /^(0|\d+\.\d\d) in \| (None expected|Expected in the next 24 hours: .+ in)$/,
-      moon: /^(New Moon|Waxing Crescent|First Quarter|Waxing Gibbous|Full Moon|Waning Gibbous|Last Quarter|Waning Crescent) \| (Full|New) moon (today|tomorrow|in \d+ days)\.$/,
-      aqi: /^\d+ (Good|Moderate|Unhealthy for Sensitive Groups|Unhealthy|Very Unhealthy|Hazardous) \| (Better than yesterday|Worse than yesterday|About the same as yesterday|Mostly .+)(\. Pollen: [a-z ]+\.)?$/,
-      normal: /^(About normal|\d+° (above|below) normal) \| Normal high -?\d+°F · -?\d+°C, low -?\d+°F · -?\d+°C$/,
+      feels: /^-?\d+°F \| -?\d+°C \| (Wind is making it feel cooler|It feels cooler than it is|Humidity is making it feel warmer|Similar to the actual temperature)\.$/,
+      humidity: /^\d+% \|  \| The dew point is -?\d+°F · -?\d+°C right now\.$/,
+      wind: /^\d+ mph \| \d+ km\/h \| (Calm|(A light breeze|A moderate breeze|A strong breeze|Gale-force wind) from the southwest)\.( Gusts to \d+ mph\.)?$/,
+      rain: /^\d+% \| chance today \| (None expected in the next 12 hours|(Rain|Snow|Storms) likely around \d+ [AP]M)\.$/,
+      sun: /^\d{1,2}:\d\d [AP]M \| ((Great|Good) colour likely|Some colour possible|Little colour expected) \| .+\. (Sunrise|Sunset) \d{1,2}:\d\d [AP]M\.$/,
+      uv: /^\d+ \| (Low|Moderate|High|Very high|Extreme) \| (Use sun protection around midday|Low for the rest of the day)\.$/,
+      visibility: /^\d+(\.\d)? mi \| \d+(\.\d)? km \| (Clear view|Haze is cutting the view|Fog is cutting the view)\.$/,
+      cloud: /^\d+% \| (Clear|Mostly clear|Partly cloudy|Mostly cloudy|Overcast) \| (No cloud at any height|Cloud at several heights|Mostly low cloud|Mostly mid-level cloud|Mostly high, thin cloud)\.$/,
+      precip: /^(0|\d+\.\d\d) in \| (0|\d+(\.\d)?) mm today \| (None expected in the next 24 hours|Expected in the next 24 hours: .+ in)\.$/,
+      moon: /^(New Moon|Waxing Crescent|First Quarter|Waxing Gibbous|Full Moon|Waning Gibbous|Last Quarter|Waning Crescent) \| \d+% lit \| (Full|New) moon (today|tomorrow|in \d+ days)\.$/,
+      aqi: /^\d+ \| (Good|Moderate|Unhealthy for Sensitive Groups|Unhealthy|Very Unhealthy|Hazardous) \| US AQI\. (Better than yesterday|Worse than yesterday|About the same as yesterday|Mostly .+)\.( Pollen: [a-z ]+\.)?$/,
+      normal: /^(About normal|\d+° (above|below) normal) \|  \| Normal high -?\d+°F · -?\d+°C, low -?\d+°F · -?\d+°C\.$/,
     };
     for (const [k, re] of Object.entries(expect)) check(re.test(tiles[k] || ''), t(`${k} tile shows a value (${tiles[k]})`));
-    // Graphics: the averages range bar, the sun's path on sunrise and sunset, the cloud layers; all hidden from screen readers.
-    const gfx = await page.evaluate(() => Object.fromEntries([['normal', '.rbar b'], ['sunrise', '.sunpath svg'], ['sunset', '.sunpath svg'], ['cloud', '.clbars i']].map(([k, sel]) => {
-      const e = document.querySelector(`.dt[data-tile="${k}"] ${sel}`), box = e && e.closest('[aria-hidden="true"]');
+    // Graphics: the wind compass, the sun's path, the UV and air quality scales, the averages range bar, the cloud
+    // layers and the moon; all drawn, and hidden from screen readers.
+    const gfx = await page.evaluate(() => Object.fromEntries([['wind', '.compass .arrow'], ['sun', '.sunpath svg'], ['uv', '.uvbar u'], ['aqi', '.aqbar u'], ['normal', '.rbar b'], ['cloud', '.clbars i'], ['moon', 'svg.moon path']].map(([k, sel]) => {
+      const e = document.querySelector(`.dt[data-tile${k === 'sun' ? '^' : ''}="${k}"] ${sel}`), box = e && e.closest('[aria-hidden="true"]');
       return [k, !!e && !!box && e.getBoundingClientRect().width > 0];
     })));
     for (const [k, ok] of Object.entries(gfx)) check(ok, t(`${k} tile has its graphic, hidden from screen readers`));
+    // The wind comes from the southwest (225°) in the fixtures, so the arrow points northeast: its head up and to the right, its tail opposite.
+    const arrow = await page.$eval('.dt[data-tile="wind"] .compass', (svg) => {
+      const mid = (e) => { const r = e.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; };
+      const c = mid(svg), h = mid(svg.querySelector('.head')), tl = mid(svg.querySelector('.tail'));
+      return { toward: svg.querySelector('.arrow').dataset.toward, head: [Math.sign(Math.round(h[0] - c[0])), Math.sign(Math.round(h[1] - c[1]))].join(), tail: [Math.sign(Math.round(tl[0] - c[0])), Math.sign(Math.round(tl[1] - c[1]))].join(), letters: [...svg.querySelectorAll('text')].map((x) => x.textContent).join('') };
+    });
+    check(arrow.toward === '45' && arrow.head === '1,-1' && arrow.tail === '-1,1' && arrow.letters === 'NESW', t(`the compass arrow points where the wind is blowing (toward ${arrow.toward}°, head ${arrow.head}, tail ${arrow.tail})`));
+    const uvDot = await page.$eval('.dt[data-tile="uv"]', (e) => { const b = e.querySelector('.uvbar').getBoundingClientRect(), d = e.querySelector('.uvbar u').getBoundingClientRect(); return [(d.left + d.width / 2 - b.left) / b.width, +e.querySelector('.dv').textContent]; });
+    check(Math.abs(uvDot[0] - Math.min(1, uvDot[1] / 11)) < 0.08, t(`the UV dot sits at its place on the scale (${uvDot[0].toFixed(2)} for UV ${uvDot[1]})`));
+    // Air quality, as in the apps: one smooth bar in the scale's colours, the dot at the reading out of 300 (US AQI).
+    const aqDot = await page.$eval('.dt[data-tile="aqi"]', (e) => { const bar = e.querySelector('.aqbar'), b = bar.getBoundingClientRect(), d = bar.querySelector('u').getBoundingClientRect();
+      return [(d.left + d.width / 2 - b.left) / b.width, +e.querySelector('.dv').textContent, getComputedStyle(bar).backgroundImage]; });
+    check(Math.abs(aqDot[0] - Math.min(1, aqDot[1] / 300)) < 0.03 && aqDot[2] === 'linear-gradient(90deg, rgb(0, 228, 0), rgb(255, 255, 0), rgb(255, 126, 0), rgb(255, 0, 0), rgb(143, 63, 151), rgb(126, 0, 35))',
+      t(`the air quality dot sits at its place on a smooth scale (${aqDot[0].toFixed(2)} for AQI ${aqDot[1]})`));
+    const looks = await page.$$eval('.dt', (els) => els.map((e) => { const cs = getComputedStyle(e), head = getComputedStyle(e.querySelector('.eyebrow'));
+      return { id: e.dataset.tile, acc: cs.getPropertyValue('--acc').trim().toUpperCase(), glow: /gradient/.test(cs.backgroundImage), caps: head.textTransform === 'uppercase', icon: !!e.querySelector('.eyebrow svg[aria-hidden="true"]') }; }));
+    const fixed = { humidity: '#6FC8D6', wind: '#9EDCC2', rain: '#8DB4E2', sunrise: '#F2C66D', sunset: '#F39A72', visibility: '#B4D2F0', precip: '#8DB4E2', cloud: '#B9C3CF', moon: '#EFE3CC' };
+    check(looks.every((l) => l.glow && l.caps && l.icon && /^#[0-9A-F]{6}$/.test(l.acc) && (!fixed[l.id] || fixed[l.id] === l.acc)), t(`each tile has an icon, an uppercase title and its own accent glow (${looks.map((l) => l.acc).join(' ')})`));
     const uneven = await page.$$eval('.dgrid .dt', (els) => els.map((e) => e.getBoundingClientRect()).filter((r, i, a) => i > 0 && Math.abs(r.top - a[i - 1].top) < 1 && Math.abs(r.height - a[i - 1].height) > 0.5).length);
     check(uneven === 0, t('detail tiles side by side are the same height'));
-    check(/^(\d+ mph|Gusts to \d+\u00A0mph)$/.test((await page.textContent('.stat:nth-child(3) .s')).trim()) || /km\/h$/.test(await page.textContent('.stat:nth-child(3) .s')),
-      t(`wind shows km/h beside mph, or the gusts (${(await page.textContent('.stat:nth-child(3)')).trim()})`));
+    const across = await page.$$eval('.dgrid .dt', (els) => els.filter((e) => Math.abs(e.getBoundingClientRect().top - els[0].getBoundingClientRect().top) < 1).length);
+    check(across === (w >= 700 ? 3 : 2), t(`tiles are ${w >= 700 ? 'three' : 'two'} across (${across})`));
+    // Cards: frosted, on the city's sky, with small uppercase titles.
+    const card = await page.$eval('#hourly', (e) => { const cs = getComputedStyle(e), head = getComputedStyle(e.querySelector('.eyebrow'));
+      return { filter: cs.backdropFilter || cs.webkitBackdropFilter || '', fill: cs.backgroundColor.replace(/\s/g, ''), radius: cs.borderRadius, caps: head.textTransform, size: head.fontSize };
+    });
+    // The frost is the Mac's mix (white 0.23 at 0.55), blurred but not tinted: no added saturation.
+    check(card.filter === 'blur(24px)' && card.fill === 'rgba(59,59,59,0.55)' && card.radius === '16px' && card.caps === 'uppercase' && card.size === '12px', t(`cards are frosted, with small uppercase titles (${JSON.stringify(card)})`));
     const map = await page.getAttribute('#mapLink', 'href');
     check(/^https:\/\/bradleycowdrey\.github\.io\/two-degrees\/radar\.html\?lat=40\.713&lon=-74\.006&z=7&units=F$/.test(map) && await page.getAttribute('#mapLink', 'target') === '_blank',
       t(`Rain map opens the map page at the city, in a new tab (${map})`));
 
     // Day detail: a day row opens it, with three charts; previous/next; Escape closes it and focus goes back.
-    await page.click('#daysToggle');
     await page.click('#days [data-day="0"]');
     await page.waitForSelector('#sheet svg.chart');
     check(await page.isVisible('#sheet[role="dialog"][aria-modal="true"]') && /^Today, /.test(await page.textContent('#sheetTitle')), t('a day row opens its detail, as a dialog'));
@@ -203,11 +261,11 @@ async function setSize(page, size) {
     await page.waitForFunction(() => document.activeElement && document.activeElement.dataset.day === '0', null, { timeout: 2000 }).catch(() => {});
     const closed = await page.isHidden('#sheetBack'), onRow = await page.evaluate(() => { const a = document.activeElement; return a ? (a.dataset.day ?? a.tagName + (a.id ? '#' + a.id : '')) : 'none'; });
     check(closed && onRow === '0', t(`Escape closes the day detail, back on its row (closed ${closed}, focus ${onRow})`));
-    await page.click('#daysToggle');
     await page.evaluate(() => scrollTo(0, 0));
 
     // Switch city. Selecting a chip must not move any chip or the Add | Edit controls.
-    const chipBoxes = () => page.$$eval('.chip[data-i], #addBtn', (els) => els.map((e) => { const r = e.getBoundingClientRect(); return [r.x, r.y, r.width].map((v) => v.toFixed(1)).join(','); }).join(' '));
+    // (Measured along the row itself: on a phone the row may scroll to bring the chosen city into view.)
+    const chipBoxes = () => page.$$eval('.chip[data-i], #addBtn', (els) => els.map((e) => { const r = e.getBoundingClientRect(), row = e.closest('#chips'); return [r.x + (row ? row.scrollLeft : 0), r.y + scrollY, r.width].map((v) => v.toFixed(1)).join(','); }).join(' '));
     // Wait until every city's temperature has arrived, so a chip growing as it loads isn't counted as a move.
     await page.waitForFunction(() => [...document.querySelectorAll('.chip[data-i]')].every((c) => c.querySelector('.t')), null, { timeout: 15000 }).catch(() => {});
     const boxesBefore = await chipBoxes();
@@ -291,12 +349,12 @@ async function setSize(page, size) {
     check(!(await page.evaluate(() => document.querySelector('.panel').classList.contains('system'))), t('Font: Inter applies'));
     for (const [i, size] of SIZES.entries()) {
       await setSize(page, size);
-      for (const open of [false, true]) {
-        if (open !== (await page.getAttribute('#daysToggle', 'aria-expanded') === 'true')) await page.click('#daysToggle');
+      for (const unit of ['F', 'C']) {
+        await page.click('#unit' + unit);
         const problems = await layoutProblems(page);
-        check(problems.length === 0, t(`${size}, forecast ${open ? 'open' : 'closed'}: layout${problems.length ? ' — ' + problems.join('; ') : ' clean'}`));
-        if (SHOTS) await page.screenshot({ path: path.join(SHOTS, `web-${vp}-${i}-${size}-${open ? 'open' : 'closed'}.png`), fullPage: true });
-        if (open) {
+        check(problems.length === 0, t(`${size}, °${unit} large: layout${problems.length ? ' — ' + problems.join('; ') : ' clean'}`));
+        if (SHOTS) await page.screenshot({ path: path.join(SHOTS, `web-${vp}-${i}-${size}-${unit}.png`), fullPage: true });
+        if (unit === 'C') {
           await page.click('#days [data-day="1"]');
           await page.waitForSelector('#sheet svg.chart');
           const inSheet = await sheetProblems(page);
@@ -306,15 +364,16 @@ async function setSize(page, size) {
         }
       }
     }
+    await page.click('#unitF');
     await setSize(page, 'medium');
 
-    // Persistence: settings survive a reload; the forecast is closed again.
+    // Persistence: settings survive a reload, and the forecast is all there again.
     await page.click('#unitC');
     await page.reload();
     await page.waitForSelector('.temps');
     check((await page.textContent('.temps .primary sup')).includes('°C'), t('unit choice survives a reload'));
     check((await page.$$('.chip[data-i]')).length === 1, t('saved cities survive a reload'));
-    check(await page.getAttribute('#daysToggle', 'aria-expanded') === 'false', t('forecast is closed again after a reload'));
+    check((await page.$$('#days .day')).length === 10 && (await page.$$('.dt')).length === 12, t('the 10 days and twelve tiles are there again after a reload'));
 
     check(errors.length === 0, t(`no script errors${errors.length ? ': ' + errors.join(' | ') : ''}`));
     await context.close();
@@ -325,6 +384,68 @@ async function setSize(page, size) {
     const { context, page } = await fresh(browser, 1280, 900);
     const r = await page.evaluate(() => [__twoDegreesTest.deg(-2.5, 'C'), __twoDegreesTest.deg(2.5, 'C'), __twoDegreesTest.deg(-19.7, 'F'), __twoDegreesTest.deg(37, 'F')]);
     check(JSON.stringify(r) === '[-3,3,-3,99]', `rounding matches the Mac app (${r})`);
+    await context.close();
+  }
+
+  // The sky: behind the page is the showing city's sky for its weather and time of day, across the whole
+  // window, in the apps' colours (Sky.swift). No panel, and no rule across the top.
+  {
+    const look = async (now, w = 390, h = 844) => {
+      const { context, page } = await fresh(browser, w, h, '', { now });
+      const r = await page.evaluate(() => {
+        const sky = getComputedStyle(document.body, '::before'), panel = document.querySelector('.panel'), tone = (s) => getComputedStyle(document.querySelector(s)).color.replace(/\s/g, '');
+        return { image: sky.backgroundImage, fixed: sky.position, w: parseFloat(sky.width), h: parseFloat(sky.height), panel: getComputedStyle(panel).backgroundColor, rule: getComputedStyle(panel, '::before').content,
+          tones: ['.place h2', '.dt .dn', '.dt .ds', '#hoursTitle', '.foot'].map(tone).join(' '),
+          foot: [...document.querySelectorAll('.foot > *')].map((e) => getComputedStyle(e).fontSize + ' ' + getComputedStyle(e).textAlign).join(','),
+          chips: [...document.querySelectorAll('.chip[data-i]')].map((c) => getComputedStyle(c).backgroundColor.replace(/\s/g, '') + '/' + getComputedStyle(c).color.replace(/\s/g, '')) };
+      });
+      await context.close();
+      return r;
+    };
+    const day = await look({ code: 0, isDay: true }), night = await look({ code: 63, isDay: false }), wide = await look({ code: 0, isDay: true }, 1280, 900);
+    check(day.image === 'linear-gradient(rgb(61, 116, 176), rgb(28, 58, 94))', `sky: a clear day is blue (${day.image})`);
+    check(night.image === 'linear-gradient(rgb(37, 44, 54), rgb(16, 19, 23))' && night.image !== day.image, `sky: a rainy night is dark slate, not the clear day's sky (${night.image})`);
+    check(wide.fixed === 'fixed' && wide.w >= 1260 && wide.h === 900 && wide.image === day.image, `sky: it fills the whole window on a desktop (${wide.w}×${wide.h})`);
+    check(day.panel === 'rgba(0, 0, 0, 0)' && day.rule === 'none', `sky: no panel behind the page and no rule across its top (${day.panel}, ${day.rule})`);
+    check(day.tones === 'rgb(255,255,255) rgba(255,255,255,0.85) rgba(255,255,255,0.7) rgba(255,255,255,0.6) rgba(255,255,255,0.6)', `text is white at 1, 0.85, 0.7 and 0.6 (${day.tones})`);
+    check(day.foot === '13px center,13px center,13px center', `the footer is three centred 13px lines (${day.foot})`);
+    check(day.chips[0] === 'rgb(255,255,255)/rgb(21,24,30)' && day.chips.slice(1).every((c) => /^rgba\(255,255,255,0\.\d+\)\/rgba?\(255,255,255/.test(c)), `the city showing is a solid white capsule, the others translucent (${day.chips.join(' ')})`);
+    const { context, page } = await fresh(browser, 390, 844);
+    const table = await page.evaluate(() => [[0, true], [1, false], [2, true], [3, true], [3, false], [45, true], [63, true], [63, false], [73, true], [86, false], [95, true]].map(([code, isDay]) => __twoDegreesTest.sky(code, isDay).join('>')).join(' '));
+    check(table === '#3D74B0>#1C3A5E #141E3C>#0A0E1C #4F78A3>#24384F #667585>#2E3640 #262A33>#111317 #667585>#2E3640 #4F5E70>#232A33 #252C36>#101317 #7C8EA0>#3E4A57 #323B47>#14181E #3A3346>#16131B',
+      `sky: the same colours as the apps for clear, cloudy, fog, rain, snow and storms (${table})`);
+    await context.close();
+  }
+
+  // Menus drop over the page. Browsers where a container also contains layout (Safari 16–17) make the top bar
+  // a layer of its own, so it must sit above the cards: emulated here with contain: layout.
+  for (const [vp, w, h] of [VIEWPORTS[1], VIEWPORTS[3]]) {
+    const { context, page } = await fresh(browser, w, h);
+    await page.waitForSelector('.dt[data-tile="aqi"] .aqbar', { timeout: 30000 }).catch(() => {});
+    await page.addStyleTag({ content: '.hdr, .now, .daily, .details, .dt { contain: layout }' });
+    for (const [btn, menu] of [['#shareBtn', '#shareMenu'], ['#moreBtn', '#moreMenu']]) {
+      await page.click(btn);
+      const covered = await page.$eval(menu, (m) => { const r = m.getBoundingClientRect(); let n = 0;
+        for (let i = 0; i < 10; i++) for (let j = 0; j < 10; j++) { const y = r.top + (j + 0.5) * r.height / 10; if (y < innerHeight && !m.contains(document.elementFromPoint(r.left + (i + 0.5) * r.width / 10, y))) n++; }
+        return n; });
+      check(covered === 0, `${vp}: the ${menu === '#shareMenu' ? 'Share' : '⋯'} menu opens over the cards, nothing painted on top of it (${covered} of 100 points covered)`);
+      await page.keyboard.press('Escape');
+    }
+    await context.close();
+  }
+
+  // A deep freeze: two wide numbers (-27°F -33°C) still share one line, at phone widths and every size.
+  for (const [vp, w, h] of VIEWPORTS.slice(0, 2)) {
+    const { context, page } = await fresh(browser, w, h, '', { offset: -40 });
+    for (const size of SIZES) {
+      await setSize(page, size);
+      for (const unit of ['F', 'C']) {
+        await page.click('#unit' + unit);
+        const reading = (await page.$eval('.temps', (e) => [...e.children].map((c) => c.textContent).join(' '))).trim(), problems = await layoutProblems(page);
+        check(/^-\d\d°[FC] -\d\d°[FC]$/.test(reading) && problems.length === 0, `${vp}: ${size}, a deep freeze, °${unit} large (${reading}): layout${problems.length ? ' — ' + problems.join('; ') : ' clean'}`);
+      }
+    }
+    if (SHOTS) await page.screenshot({ path: path.join(SHOTS, `web-${vp}-deep-freeze.png`), fullPage: true });
     await context.close();
   }
 
@@ -351,19 +472,19 @@ async function setSize(page, size) {
   {
     const { context, page } = await fresh(browser, 390, 844);
     const tile = (k) => page.$eval(`.dt[data-tile="${k}"]`, (e) => [e.querySelector('.dv').textContent.trim(), (e.querySelector('.ds') || { textContent: '' }).textContent.trim()].join(' / '));
-    const wind = () => page.$eval('.stat:nth-child(3)', (e) => e.querySelector('.v').textContent.trim() + ' / ' + e.querySelector('.s').textContent.trim());
-    check(/mph \/ /.test(await wind()) && /in \/ .*mm$/.test(await tile('precip')), `units: Automatic with °F is mph and in (${await wind()}; ${await tile('precip')})`);
+    const wind = () => tile('wind');
+    check(/mph \/ /.test(await wind()) && /in \/ .*mm today$/.test(await tile('precip')), `units: Automatic with °F is mph and in (${await wind()}; ${await tile('precip')})`);
     await page.click('#unitC');
-    check(/km\/h \/ /.test(await wind()) && /mm \/ .*in$/.test(await tile('precip')), `units: Automatic with °C is km/h and mm (${await wind()}; ${await tile('precip')})`);
+    check(/km\/h \/ /.test(await wind()) && /mm \/ .*in today$/.test(await tile('precip')), `units: Automatic with °C is km/h and mm (${await wind()}; ${await tile('precip')})`);
     const pick = async (attr) => { await page.click('#moreBtn'); await page.click(`#moreMenu [${attr}]`); };
     await pick('data-wind-unit="ms"');
-    check(/^\d+ m\/s \/ /.test(await wind()) && / km \/ [\d.,]+ (mi|ft)$/.test(await tile('visibility')), `Wind: m/s stands alone; visibility in km with miles beside it (${await wind()}; ${await tile('visibility')})`);
+    check(/^\d+ m\/s \/ $/.test(await wind()) && / km \/ [\d.,]+ (mi|ft)$/.test(await tile('visibility')), `Wind: m/s stands alone; visibility in km with miles beside it (${await wind()}; ${await tile('visibility')})`);
     await pick('data-wind-unit="kn"');
-    check(/^\d+ kn \/ /.test(await wind()), `Wind: knots (${await wind()})`);
+    check(/^\d+ kn \/ $/.test(await wind()), `Wind: knots (${await wind()})`);
     await pick('data-wind-unit="mph"');
-    check(/^\d+ mph \/ (\d+ km\/h|Gusts to \d+\u00A0mph)$/.test(await wind()) && / mi \/ [\d.,]+ (km|m)$/.test(await tile('visibility')), `Wind: mph, with km/h beside it, and visibility in miles (${await wind()}; ${await tile('visibility')})`);
+    check(/^\d+ mph \/ \d+ km\/h$/.test(await wind()) && / mi \/ [\d.,]+ (km|m)$/.test(await tile('visibility')), `Wind: mph, with km/h beside it, and visibility in miles (${await wind()}; ${await tile('visibility')})`);
     await pick('data-rain-unit="in"');
-    check(/^(0|\d+\.\d\d) in \/ (0|\d+(\.\d)?) mm$/.test(await tile('precip')), `Rain: in, with mm beside it (${await tile('precip')})`);
+    check(/^(0|\d+\.\d\d) in \/ (0|\d+(\.\d)?) mm today$/.test(await tile('precip')), `Rain: in, with mm beside it (${await tile('precip')})`);
     await page.click('#moreBtn');
     check(await page.getAttribute('#moreMenu [data-wind-unit="mph"]', 'aria-checked') === 'true' && (await page.textContent('#moreMenu')).includes('Severe weather alerts: United States only, from the National Weather Service.'),
       'the ⋯ menu shows the unit chosen, and where alerts come from');
@@ -414,8 +535,10 @@ async function setSize(page, size) {
     check(cards.map((c) => c[0]).join(',') === 'Tornado Warning,Wind Advisory,Frost Advisory', `alerts: most severe first, expired ones left out (${cards.map((c) => c[0]).join(', ')})`);
     check(cards.map((c) => c[1].toUpperCase()).join(',') === '#E5484D,#F2A65A,#E9C98A', `alerts: red, orange, yellow by severity (${cards.map((c) => c[1]).join(', ')})`);
     check(/^Until \d{1,2}:\d\d [AP]M · NWS New York NY$/.test(cards[0][2]), `an alert says until when, and who sent it (${cards[0][2]})`);
-    const order = await page.evaluate(() => { const a = document.querySelector('#alerts').getBoundingClientRect(), n = document.querySelector('#now').getBoundingClientRect(); return a.bottom <= n.top; });
-    check(order, 'alerts sit above the current conditions');
+    // As in the apps: right under the reading, above every card.
+    const order = await page.evaluate(() => { const top = (s) => document.querySelector(s).getBoundingClientRect().top, a = document.querySelector('#alerts').getBoundingClientRect();
+      return a.top >= document.querySelector('#now').getBoundingClientRect().bottom && ['#soon', '#hourly', '#daily', '#mapLink', '#details'].every((s) => document.querySelector(s).hidden || a.bottom <= top(s)); });
+    check(order, 'alerts sit right under the reading, above every card');
     check((await page.$$('.chip[data-i="0"] svg.warn')).length === 1 && (await page.$$('.chip[data-i="1"] svg.warn')).length === 0, 'the city with an alert has a warning triangle in the city list');
     const problems = await layoutProblems(page);
     check(problems.length === 0, `alerts: layout${problems.length ? ' — ' + problems.join('; ') : ' clean'}`);
@@ -455,7 +578,6 @@ async function setSize(page, size) {
     check(/US AQI/.test(aq) && /Better than yesterday/.test(aq), `live: air quality in New York on the US scale, against yesterday (${aq})`);
     await page.waitForFunction(() => /Normal high/.test((document.querySelector('.dt[data-tile="normal"]') || {}).textContent || ''), null, { timeout: 30000 }).catch(() => {});
     check(/Normal high/.test(await page.textContent('.dt[data-tile="normal"]').catch(() => '')), 'live: the averages tile appears when the archive answers');
-    await page.click('#daysToggle');
     await page.click('#days [data-day="0"]');
     check(/Record high.*\(\d{4}\).*Record low.*\(\d{4}\)/s.test(await page.textContent('#sheet .facts')), 'live: the day detail has the records from the archive');
     await page.keyboard.press('Escape');
@@ -467,9 +589,10 @@ async function setSize(page, size) {
     await page.waitForTimeout(3500);   // every answer (and failure) is in
     const shown = await page.$$eval('.dt', (els) => els.map((e) => e.dataset.tile).join(','));
     const dashes = await page.$$eval('.dt[data-tile="aqi"] .dv, .dt[data-tile="normal"] .dv', (els) => els.map((e) => e.textContent.trim()).join(','));
-    check(shown === 'aqi,normal,visibility,precip,cloud,sunrise,sunset,moon' && dashes === '–,–' && await page.isHidden('#alerts'), `live: failed air quality and archive keep their tiles with a dash, and NWS shows no alerts (${shown}; ${dashes})`);
+    const notes = await page.$$eval('.dt[data-tile="aqi"] .dn, .dt[data-tile="normal"] .dn', (els) => els.map((e) => e.textContent.trim()).join(','));
+    check(/^feels,humidity,wind,rain,(sunrise|sunset),uv,aqi,normal,visibility,precip,cloud,moon$/.test(shown) && dashes === '–,–' && notes === 'Not available right now.,Not available right now.' && await page.isHidden('#alerts'),
+      `live: failed air quality and archive keep their tiles with a dash, and NWS shows no alerts (${shown}; ${dashes}; ${notes})`);
     check(/Updated/.test(await page.textContent('#statusText')), 'live: the forecast itself still shows as live');
-    await page.click('#daysToggle');
     await page.click('#days [data-day="0"]');
     const facts = await page.textContent('#sheet .facts');
     check(/Sunrise/.test(facts) && !/Normal|Record/.test(facts) && (await page.$$('#sheet svg.chart')).length === 3, 'live: without the archive, the day detail leaves out normals and records');
@@ -494,11 +617,14 @@ async function setSize(page, size) {
     await page.waitForFunction(() => document.querySelector('.place h2').textContent.trim() === 'London' && document.querySelector('.dt[data-tile="aqi"] .aqbar') && /Normal high/.test(document.querySelector('.dt[data-tile="normal"]').textContent), null, { timeout: 30000 });
     await page.evaluate(() => __twoDegreesTest.inject('aq', { us: 60, eu: 45, usY: null, euY: null, pm25: 30, pm10: 20, o3: 50, no2: 10, pollen: { grass: 120, birch: 30, alder: 2 } }));
     const aq = await page.textContent('.dt[data-tile="aqi"]');
-    check(/45 Moderate/.test(aq) && /European AQI/.test(aq) && /Mostly PM2\.5/.test(aq), `London's air quality is on the European scale, with the main pollutant (${aq})`);
+    check(/45\s*Moderate/.test(aq) && /European AQI/.test(aq) && /Mostly PM2\.5/.test(aq), `London's air quality is on the European scale, with the main pollutant (${aq})`);
+    const euDot = await page.$eval('.dt[data-tile="aqi"] .aqbar', (bar) => { const b = bar.getBoundingClientRect(), d = bar.querySelector('u').getBoundingClientRect(); return [(d.left + d.width / 2 - b.left) / b.width, getComputedStyle(bar).backgroundImage]; });
+    check(Math.abs(euDot[0] - 0.45) < 0.03 && /^linear-gradient\(90deg, rgb\(80, 240, 230\), .+rgb\(125, 33, 129\)\)$/.test(euDot[1]) && !/%/.test(euDot[1]), `the European scale's bar is smooth, its dot at the reading out of 100 (${euDot[0].toFixed(2)} for 45)`);
     check(/Pollen: grass high\./.test(aq) && (await page.$$('.dt[data-tile="pollen"]')).length === 0, `pollen is a line on the air quality tile, not a tile of its own (${aq})`);
-    check(await page.$$eval('.dt', (els) => els.length) === 8, 'London has the same eight tiles as New York');
-    const sun = await page.textContent('.dt[data-tile="sunset"]').catch(() => '');
-    check(/\d:\d\d [AP]M/.test(sun) && /(Great|Good) colour likely|Some colour possible|Little colour expected/.test(sun), `the sunset tile gives the time and how colourful it'll be (${sun.replace(/\s+/g, ' ')})`);
+    check(await page.$$eval('.dt', (els) => els.length) === 12, 'London has the same twelve tiles as New York');
+    const sun = await page.textContent('.dt[data-tile^="sun"]').catch(() => '');
+    check(/^(Sunrise|Sunset)/.test(sun.trim()) && /\d:\d\d [AP]M/.test(sun) && /(Great|Good) colour likely|Some colour possible|Little colour expected/.test(sun) && /(Sunrise|Sunset) \d{1,2}:\d\d [AP]M\.$/.test(sun.trim()),
+      `the sun tile gives the next sunrise or sunset, how colourful it'll be, and the other's time (${sun.replace(/\s+/g, ' ')})`);
     const rules = await page.evaluate(() => [[0, 20, 50], [20, 0, 50], [0, 0, 0], [0, 95, 95], [80, 30, 30]].map(([l, m, h]) => __twoDegreesTest.skyRule(l, m, h, 0, 2, 24000).r).join(','));
     const nm = await page.evaluate(() => [__twoDegreesTest.moonNext(0.5 - 1 / 29.53), __twoDegreesTest.moonNext(0)].join(' | '));
     check(nm === 'Full moon tomorrow. | New moon today.', `the moon tile says when the next full or new moon is (${nm})`);
@@ -506,7 +632,7 @@ async function setSize(page, size) {
     check(dist === '24 km, 15 mi, 8 mi, 13 km, 1,600 ft, 490 m', `visibility in miles and kilometres, and feet and metres in fog (${dist})`);
     check(rules === '3,2,1,1,0', `sky colour: high cloud great, some low cloud good, clear or overcast fair, low cloud poor (${rules})`);
     await page.evaluate(() => __twoDegreesTest.inject('aq', { us: null, eu: null, pollen: null }));
-    check(await page.$eval('.dt[data-tile="aqi"] .dv', (e) => e.textContent.trim()) === '–' && await page.$$eval('.dt', (els) => els.length) === 8, 'no air quality reading: its tile shows a dash and the count stays eight');
+    check(await page.$eval('.dt[data-tile="aqi"] .dv', (e) => e.textContent.trim()) === '–' && await page.$$eval('.dt', (els) => els.length) === 12, 'no air quality reading: its tile shows a dash and the count stays twelve');
     const m = await page.evaluate(() => [__twoDegreesTest.moonPhase(new Date(Date.UTC(2000, 0, 6, 18, 14))).name, __twoDegreesTest.moonPhase(new Date(Date.UTC(2000, 0, 21, 4, 40))).name, __twoDegreesTest.moonPhase(new Date(Date.UTC(2026, 9, 26, 4, 12))).lit]);
     check(m[0] === 'New Moon' && m[1] === 'Full Moon' && m[2] >= 99, `the moon phase is computed from the 2000-01-06 new moon (${m.join(', ')})`);
     await context.close();
@@ -591,7 +717,7 @@ async function setSize(page, size) {
     await context.close();
   }
 
-  // Widget mode (app?widgets, shown on the product page): the Mac widgets, live, at every width.
+  // Widget mode (app?widgets, shown on the product page): the widgets, live, at every width.
   for (const [vp, w, h] of VIEWPORTS) {
     const context = await newContext(browser, { viewport: { width: w, height: h } });
     const page = await context.newPage();
@@ -619,10 +745,14 @@ async function setSize(page, size) {
         sizes: [...document.querySelectorAll('.w')].map((e) => e.className.replace('w ', '')),
         panelShown: getComputedStyle(document.querySelector('main.panel')).display !== 'none',
         units: [...document.querySelectorAll('.w.small .wn-temp small')].map((e) => e.textContent.slice(-1)),
+        skies: [...document.querySelectorAll('.w')].map((e) => /^linear-gradient\(rgb/.test(getComputedStyle(e).backgroundImage) && getComputedStyle(e, '::before').content === 'none' && getComputedStyle(e.querySelector('.wn-city')).color === 'rgb(255, 255, 255)'),
+        raised: [...document.querySelectorAll('.wn-temp')].every((e) => /^°[FC]$/.test(e.querySelector('sup').textContent)),
+        days: document.querySelectorAll('.w.large .wd-row').length,
       };
     });
     check(r.sizes.join(',') === 'large,medium,small a,small b' && !r.panelShown, t(`large, medium and two small widgets, without the app (${r.sizes.join(', ')})`));
     check(r.units.length === 2 && r.units[0] !== r.units[1], t(`the two small widgets show different units large (${r.units.join(', ')})`));
+    check(r.skies.length === 4 && r.skies.every(Boolean) && r.raised && r.days === 6, t(`each widget sits on its city's sky, in white, the unit raised beside the reading, six days on the large one (${r.skies.join(', ')}; ${r.days} days)`));
     check(r.problems.length === 0 && errors.length === 0, t('layout') + (r.problems.length || errors.length ? ` — ${[...r.problems, ...errors].join('; ')}` : ''));
     await context.close();
   }

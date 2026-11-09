@@ -14,11 +14,9 @@ struct WeatherEntry: TimelineEntry {
     var unavailable = false
 }
 
-/// Warm near-black with the crimson rule; the rule steps aside in tinted and clear modes.
-/// Text tones over the widget's background: white at the app's opacities over the iPhone's sky (as on the
-/// city pages), the panel's warm greys on the Mac.
+/// Text tones over the widget's sky: white at the app's opacities, as on the city pages (iPhone, iPad
+/// and Mac alike).
 enum WidgetTone {
-    #if os(iOS)
     static let secondary = Color.white.opacity(0.78)
     static let muted = Color.white.opacity(0.6)
     static let faint = Color.white.opacity(0.4)
@@ -26,37 +24,21 @@ enum WidgetTone {
     static let now = Color.white
     static let track = Color.clear
     static let dotRing = Color.black.opacity(0.35)
-    #else
-    static let secondary = Palette.textSecondary
-    static let muted = Palette.textMuted
-    static let faint = Palette.textFaint
-    static let divider = Palette.borderStrong
-    static let now = Palette.cream
-    static let track = Color.clear
-    static let dotRing = Palette.bg
-    #endif
 }
 
-/// Behind each widget, as behind the app it belongs to: on iPhone and iPad, the city's sky for its weather
-/// and time of day, as on the city pages; on the Mac, the panel's warm black with its crimson line.
+/// Behind each widget, as behind the app it belongs to: the city's sky for its weather and time of day,
+/// as on the city pages. It steps aside in tinted and clear modes.
 struct WidgetBackground: View {
     @Environment(\.widgetRenderingMode) private var mode
-    /// The weather to draw the sky for (iPhone and iPad); nil for the neutral evening sky.
+    /// The weather to draw the sky for; nil for the neutral evening sky.
     var sky: (code: Int, isDay: Bool)? = nil
 
     var body: some View {
-        #if os(iOS)
         if mode == .fullColor {
             SkyBackground(code: sky?.code ?? 3, isDay: sky?.isDay ?? false)
         } else {
             Color.clear
         }
-        #else
-        ZStack(alignment: .top) {
-            Palette.bg
-            if mode == .fullColor { Palette.crimson.frame(height: 3) }
-        }
-        #endif
     }
 }
 
@@ -87,7 +69,7 @@ extension Forecast {
 
 // MARK: - Views
 
-/// The big reading, drawn the way the Mac panel draws it: the number, then its unit smaller and raised to
+/// The big reading, drawn the same way everywhere: the number, then its unit smaller and raised to
 /// the top of the number ("69°F"). Small numbers elsewhere show just "69°", next to the other unit with
 /// its symbol ("21°C"), so it's always clear which is which.
 enum Reading {
@@ -122,10 +104,8 @@ struct WidgetView: View {
             }
         }
         .environment(\.colorScheme, .dark)
-        #if os(iOS)
         // The city page's soft shadow, so small white text stays clear on the brightest skies (snow by day).
         .shadow(color: .black.opacity(0.18), radius: 4, y: 1)
-        #endif
         .redacted(reason: entry.isPlaceholder ? .placeholder : [])
         // A tap opens Two Degrees on this widget's city.
         .widgetURL(entry.isPlaceholder ? nil : WidgetLink.url(for: entry.city))

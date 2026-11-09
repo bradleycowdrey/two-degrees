@@ -23,11 +23,16 @@ enum SelfTest {
     private static var maxBodyHeight: CGFloat = 0
     private static var panelWidth: CGFloat = 0
 
+    /// How far down the page the city's reading ends (its name, both temperatures, high and low).
+    private static var readingBottom: CGFloat = 0
+
     static func panelMeasured(content: CGFloat, maxBody: CGFloat, width: CGFloat) {
         contentHeight = content
         maxBodyHeight = maxBody
         panelWidth = width
     }
+
+    static func readingMeasured(bottom: CGFloat) { readingBottom = bottom }
     private static var lines: [String] = []
     private static var failures = 0
 
@@ -38,7 +43,7 @@ enum SelfTest {
 
     private static func note(_ text: String) { lines.append("     \(text)") }
 
-    static func run(store: WeatherStore, adding: Binding<Bool>, editing: Binding<Bool>, daysOpen: Binding<Bool>, host: HostWindow) async {
+    static func run(store: WeatherStore, adding: Binding<Bool>, editing: Binding<Bool>, shown: Binding<String>, host: HostWindow) async {
         guard let dir = outputDir, !started else { return }
         started = true
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
@@ -54,7 +59,7 @@ enum SelfTest {
             check(f != nil, "forecast loaded for \(city.name)")
             if let f {
                 check(f.upcomingHours.count == 24, "\(city.name): 24 upcoming hours (got \(f.upcomingHours.count))")
-                check(f.days.count >= 5, "\(city.name): at least 5 days (got \(f.days.count))")
+                check(f.days.count >= 10, "\(city.name): the 10 days the forecast card lists (got \(f.days.count))")
                 check((-60...60).contains(f.now.temperature), "\(city.name): plausible temperature \(f.now.temperature)°C")
                 check(f.days.allSatisfy { $0.low <= $0.high }, "\(city.name): every day's low is at or below its high")
             }
@@ -69,6 +74,9 @@ enum SelfTest {
             let sky = SkyColour.next(f).flatMap { SkyColour.outlook(f, at: $0.time) }
             check(sky != nil, "\(first.name): the next sunrise or sunset has a colour outlook (\(sky.map { "\($0.rating.word): \($0.reason)" } ?? "none"))")
             check(f.hours(on: f.days[1]).count == 24 && f.hours(on: f.days[1]).allSatisfy { $0.wind != nil }, "\(first.name): a day's 24 hours, with wind, for the day detail")
+            let ten = DailyCard.days(f), scale = DailyCard.scale(ten, now: f.now.temperature)
+            check(ten.count == 10 && ten.allSatisfy { $0.low >= scale.low && $0.high <= scale.high } && (scale.low...scale.high).contains(f.now.temperature),
+                  "\(first.name): the 10-day forecast lists ten days on one scale that takes in right now (\(ten.count) days, \(TempUnit.fahrenheit.value(scale.low))–\(TempUnit.fahrenheit.spaced(TempUnit.fahrenheit.value(scale.high))))")
         }
         for _ in 0..<60 where store.airQuality[first.id] == nil || store.climate[first.id] == nil { try? await Task.sleep(for: .milliseconds(500)) }
         let reading = store.airQuality[first.id]?.reading(inUS: WeatherAlert.inUS(latitude: first.latitude, longitude: first.longitude))
@@ -86,16 +94,15 @@ enum SelfTest {
         store.windUnit = .auto
         check(store.windUnit.text(36, temp: .fahrenheit).main == "22 mph" && store.windUnit.text(36, temp: .celsius).main == "36 km/h", "wind follows the larger unit when automatic")
 
-        check(!daysOpen.wrappedValue, "5-day forecast starts closed")
-
-        // 2. Every size × state: base (forecast closed), forecast open, adding, editing, °C. Window must fit its content and stay on screen.
+        // 2. Every size × state: base (the top of the page), scrolled to the 10-day forecast, scrolled to the
+        //    foot of the detail tiles, adding, editing, °C. Window must fit its content and stay on screen.
         let states: [(String, () -> Void)] = [
-            ("base", { adding.wrappedValue = false; editing.wrappedValue = false; daysOpen.wrappedValue = false; store.unit = .fahrenheit }),
-            ("forecast-open", { daysOpen.wrappedValue = true }),
-            ("adding", { editing.wrappedValue = false; adding.wrappedValue = true }),
+            ("base", { adding.wrappedValue = false; editing.wrappedValue = false; shown.wrappedValue = "top"; store.unit = .fahrenheit }),
+            ("days", { shown.wrappedValue = "days" }),
+            ("tiles", { shown.wrappedValue = "tiles" }),
+            ("adding", { shown.wrappedValue = "top"; editing.wrappedValue = false; adding.wrappedValue = true }),
             ("editing", { adding.wrappedValue = false; editing.wrappedValue = true }),
             ("celsius", { editing.wrappedValue = false; store.unit = .celsius }),
-            ("forecast-closed-again", { daysOpen.wrappedValue = false }),
         ]
         for (index, size) in UISize.allCases.enumerated() {
             store.uiSize = size
@@ -103,13 +110,15 @@ enum SelfTest {
                 apply()
                 try? await Task.sleep(for: .seconds(1.2))
                 layoutCheck(host: host, screen: screen, label: "\(size.rawValue) \(name)")
-                snapshot(host: host, dir: dir, name: "panel-\(index)-\(size.rawValue)-\(name).png")
+                let picture = snapshot(host: host, dir: dir, name: "panel-\(index)-\(size.rawValue)-\(name).png")
+                if size == .medium && name == "base" { skyCheck(picture, store: store) }
             }
         }
         store.uiSize = .medium
         store.unit = .fahrenheit
         adding.wrappedValue = false
         editing.wrappedValue = false
+        shown.wrappedValue = "top"
 
         // 3. Unit toggle and city switching.
         store.toggleUnit()
@@ -213,7 +222,7 @@ enum SelfTest {
                     let ok = render(WidgetView(entry: e, family: family)
                         .padding(16)
                         .frame(width: size.width, height: size.height)
-                        .background(WidgetBackground())
+                        .background(WidgetBackground(sky: e.forecast.sky))
                         .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous)),
                                     dir: dir, name: "widget-\(name)\(variant).png")
                     check(ok, "\(name) widget\(variant.isEmpty ? "" : " (offline)") renders")
@@ -235,7 +244,7 @@ enum SelfTest {
             render(WidgetView(entry: e, family: family)
                 .padding(16)
                 .frame(width: size.width, height: size.height)
-                .background(WidgetBackground())
+                .background(WidgetBackground(sky: e.unavailable ? nil : e.forecast.sky))
                 .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous)), dir: dir, name: name)
         }
         let widgetDefaults = UserDefaults(suiteName: "TwoDegrees.selftest.widget") ?? .standard
@@ -332,16 +341,17 @@ enum SelfTest {
         check(fromTag?.version == "1.2.3" && fromTag?.dmg.lastPathComponent == "TwoDegrees-1.2.3.dmg", "update fallback reads the version from the release page")
         check(Updater.isNewer("0.2.10", than: "0.2.9") && !Updater.isNewer("0.2.0", than: "0.2.0") && Updater.isNewer("1.0", than: "0.9.9-dev"),
               "version comparison")
-        let ticks = Ticks.make(low: 0, high: 25, unit: .fahrenheit)
-        check(ticks.map(\.label) == [40, 50, 60, 70], "five-day scale ticks every 10°F (got \(ticks.map(\.label)))")
+        let mild = Forecast.Day(date: Date(), code: 0, high: 20, low: 10, rainChance: 0, sunrise: nil, sunset: nil)
+        let span = DailyCard.scale([mild], now: 25)
+        check(span.low == 10 && span.high == 25, "10-day scale stretches to take in right now (got \(span.low) to \(span.high))")
 
         lines.insert("\(failures == 0 ? "ALL PASSED" : "\(failures) FAILED") (\(lines.filter { $0.hasPrefix("PASS") }.count) passed)", at: 0)
         try? lines.joined(separator: "\n").write(to: dir.appendingPathComponent("report.txt"), atomically: true, encoding: .utf8)
         NSApp.terminate(nil)
     }
 
-    /// The window must be exactly the panel's width, fully on screen, and only scroll when the
-    /// panel is taller than the screen allows.
+    /// The window must be exactly the panel's width and fully on screen. The city page is longer than
+    /// the panel shows at once, so it scrolls: the window is then as tall as the panel allows.
     private static func layoutCheck(host: HostWindow, screen: CGRect, label: String) {
         guard let window = host.window, let content = window.contentView else {
             check(false, "\(label): no window")
@@ -351,13 +361,30 @@ enum SelfTest {
         let widthOK = panelWidth > 0 && abs(panelWidth - bounds.width) <= 1
         let onScreen = screen.isEmpty || screen.insetBy(dx: -1, dy: -1).contains(window.frame)
         let scrolls = contentHeight > maxBodyHeight + 1
-        let screenFull = window.frame.height >= screen.height - 80
-        // On a normal laptop screen (800pt+ tall), the closed panel must fit without scrolling.
-        let roomy = screen.height >= 800 && !label.contains("forecast-open") && !label.contains("adding")
-        check(widthOK && onScreen && contentHeight > 0 && (!scrolls || screenFull) && !(roomy && scrolls),
+        let full = window.frame.height >= maxBodyHeight
+        // On a normal laptop screen (800pt+ tall), the city's reading must show without scrolling
+        // (except while the search for a city to add is open above it).
+        let roomy = screen.height >= 800 && !label.contains("adding")
+        let readingShows = readingBottom > 0 && readingBottom <= maxBodyHeight
+        check(widthOK && onScreen && contentHeight > 0 && (!scrolls || full) && !(roomy && !readingShows),
               "\(label): window \(Int(window.frame.width))x\(Int(window.frame.height)), panel \(Int(panelWidth)) wide, content \(Int(contentHeight)) tall"
-              + (scrolls ? " (scrolls: screen allows \(Int(maxBodyHeight)))" : " (fits)")
+              + (scrolls ? " (scrolls: the panel shows \(Int(maxBodyHeight)))" : " (fits)") + ", reading ends at \(Int(readingBottom))"
               + (widthOK ? "" : " WIDTH MISMATCH") + (onScreen ? "" : " OFFSCREEN"))
+    }
+
+    /// The panel sits on the city's sky right to its top edge (where the crimson rule used to be).
+    private static func skyCheck(_ picture: NSBitmapImageRep?, store: WeatherStore) {
+        let sky = store.activeForecast?.sky ?? (code: 3, isDay: true)
+        guard let picture, picture.pixelsHigh > 4,
+              let top = picture.colorAt(x: picture.pixelsWide / 2, y: 2)?.usingColorSpace(.sRGB),
+              let want = NSColor(Sky.colors(code: sky.code, isDay: sky.isDay).top).usingColorSpace(.sRGB) else {
+            check(false, "the panel's sky: no picture to check")
+            return
+        }
+        let near = abs(top.redComponent - want.redComponent) < 0.08 && abs(top.greenComponent - want.greenComponent) < 0.08
+            && abs(top.blueComponent - want.blueComponent) < 0.08
+        let hex = { (c: NSColor) in String(format: "#%02X%02X%02X", Int(c.redComponent * 255), Int(c.greenComponent * 255), Int(c.blueComponent * 255)) }
+        check(near, "the panel sits on \(store.active.name)'s sky, right to the top edge (top \(hex(top)), sky \(hex(want)))")
     }
 
     private static func findStatusButton(in view: NSView?) -> NSButton? {
@@ -367,15 +394,18 @@ enum SelfTest {
         return nil
     }
 
-    private static func snapshot(host: HostWindow, dir: URL, name: String) {
+    @discardableResult
+    private static func snapshot(host: HostWindow, dir: URL, name: String) -> NSBitmapImageRep? {
         guard let content = host.window?.contentView,
-              let rep = content.bitmapImageRepForCachingDisplay(in: content.bounds) else { return }
+              let rep = content.bitmapImageRepForCachingDisplay(in: content.bounds) else { return nil }
         content.cacheDisplay(in: content.bounds, to: rep)
         try? rep.representation(using: .png, properties: [:])?.write(to: dir.appendingPathComponent(name))
+        return rep
     }
 
-    /// Renders offscreen at 2x, saves the PNG, and returns whether it has real content
-    /// (more than one colour), so a blank render fails.
+    /// Renders offscreen at 2x, saves the PNG, and returns whether it has real content, so a blank
+    /// render fails. A sky alone is one colour all the way across at any height, so real content is
+    /// a line across the picture that holds more than one colour (at two heights at least).
     @discardableResult
     private static func render<V: View>(_ view: V, dir: URL, name: String) -> Bool {
         let renderer = ImageRenderer(content: view.environment(\.colorScheme, .dark))
@@ -384,14 +414,20 @@ enum SelfTest {
         let rep = NSBitmapImageRep(cgImage: cg)
         guard let png = rep.representation(using: .png, properties: [:]) else { return false }
         try? png.write(to: dir.appendingPathComponent(name))
-        var colours = Set<UInt32>()
-        for y in stride(from: 0, to: rep.pixelsHigh, by: max(1, rep.pixelsHigh / 24)) {
-            for x in stride(from: 0, to: rep.pixelsWide, by: max(1, rep.pixelsWide / 24)) {
+        // Read across the middle of the width only, clear of rounded corners and the Dock tile's margins.
+        let wide = rep.pixelsWide, high = rep.pixelsHigh
+        let byte = { (part: CGFloat) in UInt32(max(0, min(1, part)) * 255) }
+        var mixed = 0
+        for y in stride(from: 0, to: high, by: 3) {
+            var colours = Set<UInt32>()
+            for x in (wide * 3 / 10)..<(wide * 7 / 10) {
                 guard let c = rep.colorAt(x: x, y: y)?.usingColorSpace(.sRGB) else { continue }
-                colours.insert(UInt32(c.redComponent * 255) << 16 | UInt32(c.greenComponent * 255) << 8 | UInt32(c.blueComponent * 255))
+                colours.insert(byte(c.redComponent) << 16 | byte(c.greenComponent) << 8 | byte(c.blueComponent))
+                if colours.count > 1 { break }
             }
+            if colours.count > 1 { mixed += 1 }
         }
-        return colours.count > 3
+        return mixed >= 2
     }
 }
 

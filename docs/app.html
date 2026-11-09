@@ -1,84 +1,86 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><link rel="icon" href="https://raw.githubusercontent.com/bradleycowdrey/two-degrees/main/docs/icon.png"></head><body>
 <title>Two Degrees</title>
 <meta name="claude:viewport-fit-sides" content="cover">
-<meta name="description" content="Two Degrees: weather in °F and °C at once, with the next 24 hours and a 5-day forecast. Free and open source, by Bradley Cowdrey.">
+<meta name="description" content="Two Degrees: weather in °F and °C at once, with the next 24 hours and a 10-day forecast. Free and open source, by Bradley Cowdrey.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600&display=swap" rel="stylesheet">
 <style>
-  /* One Meridian-style panel, centred: header, now, next 24 hours, five days, footer.
-     bradcowdrey.com colours (warm near-black, cream, crimson), committed to one dark look. */
+  /* One city page, as on the iPhone: the city's sky behind everything, a centred reading, frosted cards
+     for the next 24 hours and 10 days, twelve detail tiles, the footer. White text at four strengths. */
   :root {
     color-scheme: dark;
-    --bg: #1A1816; --tile: #23201D; --raised: #1C1A18; --border: #2A2520; --border-strong: #3A3530;
-    --text: #FFFFFF; --cream: #FFF1E5; --secondary: #E0D8D0; --muted: #B0A898; --faint: #9A9286;
-    --crimson: #990F3D; --accent: #E04A7A;
+    --sky-top: #262A33; --sky-bottom: #111317;   /* set per city, from its weather and time of day */
+    --text: #FFFFFF; --t85: rgba(255,255,255,.85); --t70: rgba(255,255,255,.7); --t60: rgba(255,255,255,.6);
+    --hair: rgba(255,255,255,.2); --fill: rgba(255,255,255,.14); --fill-strong: rgba(255,255,255,.24);
+    --card: rgba(59,59,59,.55); --ink: #15181E; --sheet: #1B1B1D;
     --sun: #F4B860; --moon: #E9DCC8; --cloud: #CFC6BB; --cloud-dark: #8E857B; --rain: #8DB4E2; --snow: #F4F7FB;
-    --cold: #7FA7D9; --mild: #E9C98A; --warm: #F2A65A; --hot: #E04A7A;
     --font: Inter, -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
-    --r-panel: 28px; --r-tile: 22px; --r-cell: 12px;
   }
   * { box-sizing: border-box; }
   [hidden] { display: none !important; }
-  html { -webkit-font-smoothing: antialiased; }
+  html { -webkit-font-smoothing: antialiased; min-height: 100%; background: var(--sky-bottom); }
   body {
-    margin: 0; background: var(--bg); color: var(--text);
-    font: 400 15px/1.4 var(--font); letter-spacing: -.01em;
-    padding-left: max(16px, env(safe-area-inset-left, 0px));
-    padding-right: max(16px, env(safe-area-inset-right, 0px));
-    padding-block: 32px 48px;
+    margin: 0; color: var(--text);
+    font: 400 15px/1.35 var(--font); letter-spacing: -.01em;
+    padding: max(12px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) calc(32px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
   }
+  /* The sky: fixed across the whole window, so the page scrolls over it. */
+  body::before { content: ""; position: fixed; inset: 0; z-index: -1; background: linear-gradient(var(--sky-top), var(--sky-bottom)); }
   button { font: inherit; color: inherit; }
   a { color: inherit; text-decoration: none; }
-  :focus-visible { outline: 2px solid var(--cream); outline-offset: 2px; border-radius: 8px; }
+  :focus-visible { outline: 2px solid #fff; outline-offset: 2px; border-radius: 8px; }
 
-  .panel {
-    position: relative; overflow: hidden; width: 100%; max-width: 480px; margin: 0 auto;
-    background: var(--bg); border-radius: var(--r-panel);
-    box-shadow: 0 0 0 0.5px var(--border-strong), 0 40px 100px rgba(0,0,0,.55);
-    padding: 24px 18px 16px; display: flex; flex-direction: column; gap: 10px;
-  }
-  .panel { zoom: var(--z, 1); }
-  /* Inside the product page's frame: a shadow short enough not to be cut off at the frame's edge. */
-  .embedded .panel { box-shadow: 0 0 0 0.5px var(--border-strong), 0 16px 32px rgba(0,0,0,.4); }
+  /* The page: one centred column. */
+  .panel { width: 100%; max-width: 720px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px; zoom: var(--z, 1); }
   .panel.system, .panel.system button, .panel.system input { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif; }
-  .more-wrap { position: relative; }
-  .menu.more { top: 40px; bottom: auto; width: 230px; }
-  .menu .sec { padding: 6px 10px 2px; font-size: 11px; font-weight: 600; color: var(--faint); }
-  .menu button .ck { width: 14px; flex: none; text-align: center; }
-  .menu button .k { margin-left: auto; color: var(--muted); font-size: 12px; }
-  .menu hr { border: 0; border-top: 0.5px solid var(--border-strong); margin: 5px 4px; }
-  .panel::before { content: ""; position: absolute; inset: 0 0 auto; height: 3px; background: var(--crimson); }
+  /* Inside the product page's frame: the page carries its own sky, with rounded corners. */
+  html.embedded { background: transparent; }
+  html.embedded body { padding: 0; }
+  html.embedded body::before { display: none; }
+  html.embedded .panel { padding: 14px 16px 24px; border-radius: 28px; background: linear-gradient(var(--sky-top), var(--sky-bottom)); }
 
-  /* Header */
-  .hdr { display: flex; align-items: center; gap: 12px; padding: 0 0 4px; }
-  .hdr h1 { margin: 0; white-space: nowrap; font-size: 19px; font-weight: 600; letter-spacing: -.02em; }
+  /* Cards: frosted, the same mix as the Mac's, matched to the iPhone's over the same skies. Only the sky is
+     ever behind a card, so the fill looks the same where the browser can't blur. */
+  .card { min-width: 0; padding: 14px; border-radius: 16px; background: var(--card);
+    -webkit-backdrop-filter: blur(24px); backdrop-filter: blur(24px); }
+  .eyebrow { display: flex; align-items: center; gap: 6px; margin: 0 0 10px; font-size: 12px; font-weight: 600; line-height: 16px; letter-spacing: .01em;
+    text-transform: uppercase; color: var(--t60); }
+  .eyebrow > svg { width: 14px; height: 14px; flex: none; }
+  .eyebrow .sp { flex: 1; }
+  .eyebrow .aside { font-weight: 500; text-transform: none; letter-spacing: 0; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .rule { height: 0; margin: 10px 0; border: 0; border-top: 0.5px solid var(--hair); }
+
+  /* Top bar: above the cards, so its menus drop over them. */
+  .hdr { container-type: inline-size; position: relative; z-index: 5; display: flex; align-items: center; gap: 10px; }
+  .hdr h1 { margin: 0; white-space: nowrap; font-size: 17px; font-weight: 600; letter-spacing: -.02em; }
   .hdr .sp { flex: 1; }
   .mark { width: 28px; height: 28px; flex: none; }
-  .seg { display: flex; padding: 3px; border-radius: 980px; background: var(--tile); box-shadow: inset 0 0 0 0.5px var(--border-strong); }
-  .seg button { height: 26px; min-width: 44px; padding: 0 10px; border: 0; border-radius: 980px; background: none; color: var(--secondary);
+  .seg { display: flex; padding: 3px; border-radius: 980px; background: var(--fill); }
+  .seg button { height: 26px; min-width: 44px; padding: 0 10px; border: 0; border-radius: 980px; background: none; color: var(--t85);
     font-size: 13px; font-weight: 500; cursor: pointer; transition: background .15s, color .15s; }
-  .seg button:hover { background: var(--border); color: var(--text); }
-  .seg button[aria-pressed="true"] { background: var(--cream); color: var(--bg); }
-  /* Meridian's Add | Edit control, icon-only so the city row stays on one line. */
+  .seg button:hover { background: var(--fill); color: var(--text); }
+  .seg button[aria-pressed="true"] { background: #fff; color: var(--ink); }
+  /* Add | Edit, icon-only so the city row stays on one line. */
   .seg.list { align-items: center; flex: none; padding: 2px; }
-  .seg.list button { display: grid; place-items: center; width: 32px; min-width: 0; padding: 0; }
+  .seg.list button { display: grid; place-items: center; width: 32px; min-width: 0; height: 28px; padding: 0; }
   .seg.list button svg { width: 13px; height: 13px; }
-  .seg.list button:disabled { color: var(--faint); cursor: default; background: none; }
-  .seg.list b { width: 1px; height: 14px; background: var(--border-strong); }
+  .seg.list button:disabled { color: rgba(255,255,255,.4); cursor: default; background: none; }
+  .seg.list b { width: 1px; height: 14px; background: var(--hair); }
   .seg.list.active b { opacity: 0; }
   .circle { width: 32px; height: 32px; flex: none; display: grid; place-items: center; border: 0; border-radius: 50%; cursor: pointer;
-    background: var(--tile); box-shadow: inset 0 0 0 0.5px var(--border-strong); color: var(--secondary); transition: background .15s, color .15s; }
-  .circle:hover { background: var(--border); color: var(--text); }
+    background: var(--fill); color: var(--text); transition: background .15s; }
+  .circle:hover { background: var(--fill-strong); }
   .circle svg { width: 16px; height: 16px; }
 
-  /* Cities */
+  /* Cities: translucent capsules, the one showing in solid white. */
   .cities { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-  .credit .nw { white-space: nowrap; }
-  .chip { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; border: 0; border-radius: 980px; cursor: pointer;
-    background: var(--border); color: var(--secondary); font-size: 13px; font-weight: 500; transition: background .15s, color .15s; }
-  .chip:hover { background: var(--border-strong); color: var(--text); }
-  .chip[aria-current="true"] { background: var(--cream); color: var(--bg); font-weight: 600; }
+  .chips { display: contents; }
+  #listCtl { display: inline-flex; flex: none; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 13px; border: 0; border-radius: 980px; cursor: pointer;
+    background: var(--fill); color: var(--t85); font-size: 13px; font-weight: 500; transition: background .15s, color .15s; }
+  .chip:hover { background: var(--fill-strong); color: var(--text); }
+  .chip[aria-current="true"] { background: #fff; color: var(--ink); font-weight: 600; }
   /* The name always takes its bold (selected) width, so selecting a city never reflows the row. */
   .chip .n { display: inline-flex; flex-direction: column; }
   .chip svg.here { width: 11px; height: 11px; flex: none; margin-right: -2px; }
@@ -86,364 +88,357 @@
   .chip .t { font-variant-numeric: tabular-nums; opacity: .72; font-weight: 500; }
   .chip-wrap { position: relative; display: inline-flex; }
   .chip-x { position: absolute; top: -6px; right: -6px; width: 20px; height: 20px; border: 0; border-radius: 50%; padding: 0; cursor: pointer;
-    background: var(--crimson); color: #fff; font-size: 13px; line-height: 20px; display: none; }
+    background: #E5484D; color: #fff; font-size: 13px; line-height: 20px; display: none; }
   .cities.editing .chip-x { display: block; }
 
   .search { display: flex; flex-direction: column; gap: 6px; }
-  .search .box { display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 14px; border-radius: var(--r-cell);
-    background: var(--bg); color: var(--faint); border: 1px solid var(--border-strong); }
-  .search .box:focus-within { border-color: var(--muted); }
+  .search .box { display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 12px; border-radius: 10px;
+    background: var(--fill); color: var(--t60); }
+  .search .box:focus-within { background: var(--fill-strong); }
   .search input { flex: 1; min-width: 0; background: none; border: 0; outline: 0; color: var(--text); font: 400 15px var(--font); }
-  .search input::placeholder { color: var(--faint); }
+  .search input::placeholder { color: var(--t60); }
   .results { display: flex; flex-direction: column; max-height: 216px; overflow: auto; }
-  .result { display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 6px 12px; border: 0; border-radius: var(--r-cell);
+  .result { display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 6px 12px; border: 0; border-radius: 10px;
     background: none; text-align: left; cursor: pointer; }
-  .result:hover, .result:focus-visible { background: var(--border); }
+  .result:hover, .result:focus-visible { background: var(--fill); }
   .result .n { font-size: 15px; font-weight: 600; line-height: 1.2; }
-  .result .r { font-size: 13px; color: var(--muted); line-height: 1.25; }
+  .result .r { font-size: 13px; color: var(--t70); line-height: 1.25; }
   .result .sp { flex: 1; }
-  .result .plus { color: var(--muted); font-size: 18px; }
-  .hint { font-size: 13px; color: var(--muted); padding: 4px 12px; }
+  .result .plus { color: var(--t70); font-size: 18px; }
+  .hint { font-size: 13px; color: var(--t70); padding: 4px 12px; }
   /* Asked once, on the first visit: Use My Location (recommended) or Not Now. */
-  .ask-loc h2 { font-size: calc(17px * var(--z, 1)); font-weight: 600; margin: 0 0 6px; }
-  .ask-loc p { font-size: calc(13px * var(--z, 1)); color: var(--muted); margin: 0 0 14px; line-height: 1.45; }
+  .ask-loc h2 { font-size: 17px; font-weight: 600; margin: 0 0 6px; }
+  .ask-loc p { font-size: 13px; color: var(--t85); margin: 0 0 14px; line-height: 1.45; }
   .ask-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-  .ask-actions button { height: 34px; padding: 0 16px; border: 0; border-radius: 980px; cursor: pointer; font: inherit; font-size: calc(14px * var(--z, 1)); font-weight: 600; }
-  .ask-yes { background: var(--cream); color: var(--bg); }
-  .ask-no { background: transparent; color: var(--text); }
+  .ask-actions button { height: 34px; padding: 0 16px; border: 0; border-radius: 980px; cursor: pointer; font-size: 14px; font-weight: 600; }
+  .ask-yes { background: #fff; color: var(--ink); }
+  .ask-no { background: var(--fill); color: var(--text); }
 
-  /* Tiles */
-  .tile { background: var(--tile); border-radius: var(--r-tile); padding: 18px; min-width: 0; }
-  .eyebrow { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--muted); margin: 0 0 8px; }
-  .eyebrow .sp { flex: 1; }
-  .eyebrow .aside { font-weight: 500; color: var(--faint); font-variant-numeric: tabular-nums; }
+  /* The reading: centred, the city, both temperatures on one baseline, the sky, today's high and low. */
+  .now { container-type: inline-size; padding: 26px 0 18px; text-align: center; text-shadow: 0 2px 6px rgba(0,0,0,.15); }
+  .now .here { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; text-transform: uppercase; opacity: .8; }
+  .now .here svg { width: 12px; height: 12px; }
+  .place h2 { margin: 0; font-size: 34px; font-weight: 400; line-height: 1.2; letter-spacing: -.015em; overflow-wrap: anywhere; }
+  .place .local { display: block; font-size: 13px; color: var(--t60); font-variant-numeric: tabular-nums; }
+  .temps { display: flex; justify-content: center; align-items: baseline; flex-wrap: wrap; column-gap: 8px; margin: 2px 0 4px;
+    font-size: 80px; font-size: min(96px, 26.8cqw); line-height: 1.12; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  /* Two wide numbers (-20°F -29°C): a little smaller, so they stay on one line. */
+  .temps.long { font-size: 68px; font-size: min(96px, 23cqw); }
+  .temps .primary { font-weight: 200; letter-spacing: -.02em; }
+  .temps .primary sup { font-size: .42em; font-weight: 300; line-height: 0; vertical-align: .86em; letter-spacing: 0; margin-left: .06em; }
+  .temps .secondary { font-size: .45em; font-weight: 300; opacity: .7; }
+  .now .waiting { font-size: 80px; font-size: min(96px, 26.8cqw); font-weight: 200; line-height: 1.12; opacity: .5; }
+  .cond { margin: 0; font-size: 20px; font-weight: 500; line-height: 1.3; opacity: .9; }
+  .hilo { display: flex; justify-content: center; flex-wrap: wrap; gap: 0 10px; margin: 0; font-size: 20px; font-weight: 500; line-height: 1.3; font-variant-numeric: tabular-nums; }
+  .hilo.other { gap: 0 8px; font-size: 15px; font-weight: 400; opacity: .65; }
+  .skeleton { color: var(--t70); font-size: 15px; padding: 8px 0; }
 
-  /* Now */
-  .now { position: relative; overflow: hidden; isolation: isolate; }
-  .now::after { content: ""; position: absolute; z-index: -1; width: 320px; height: 320px; right: -110px; top: -150px; border-radius: 50%;
-    background: radial-gradient(circle, var(--glow, rgba(244,184,96,.16)), transparent 68%); }
-  .place { display: flex; align-items: baseline; gap: 0 8px; flex-wrap: wrap; }
-  .place h2 { margin: 0; font-size: 21px; font-weight: 600; letter-spacing: -.02em; }
-  .place .local { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
-  .reading { display: flex; align-items: center; gap: 14px; margin: 6px 0 4px; }
-  .reading .big-icon { width: 64px; height: 64px; flex: none; }
-  .temps { display: flex; align-items: baseline; gap: 12px; font-variant-numeric: tabular-nums; }
-  .temps .primary { font-size: 64px; font-weight: 600; letter-spacing: -.045em; line-height: 1; }
-  .temps .primary sup, .temps .secondary sup { font-size: .42em; font-weight: 500; vertical-align: .95em; letter-spacing: 0; margin-left: 2px; color: var(--secondary); }
-  .temps .secondary sup { color: inherit; }
-  .temps .secondary { font-size: 38px; font-weight: 500; letter-spacing: -.035em; line-height: 1; color: var(--muted); }
-  .temps .divider { width: 1px; align-self: stretch; margin: 6px 0; background: var(--border-strong); }
-  .cond { font-size: 17px; font-weight: 600; letter-spacing: -.015em; margin: 0; }
-  .summary { font-size: 14px; color: var(--secondary); margin: 2px 0 0; text-wrap: balance; }
-  .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
-  .stat { background: var(--raised); border-radius: var(--r-cell); padding: 8px 10px; min-width: 0; }
-  .stat .k { font-size: 12px; font-weight: 500; color: var(--muted); }
-  .stat .v { font-size: 14px; font-weight: 600; margin-top: 4px; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .stat .s { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
-  /* Next 24 hours */
-  .hours-scroll { overflow-x: auto; margin: 0 -18px; padding: 0 18px; scrollbar-width: none;
-    -webkit-mask-image: linear-gradient(to right, #000 88%, transparent); mask-image: linear-gradient(to right, #000 88%, transparent); }
+  /* Next 24 hours: a line about what's coming, then a column an hour. */
+  .summary { margin: 0; font-size: 15px; text-wrap: balance; }
+  .hours-scroll { overflow-x: auto; scrollbar-width: none; }
   .hours-scroll::-webkit-scrollbar { display: none; }
-  @media (hover: hover) { .hours-scroll:hover { scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent; } }
-  .hours { position: relative; display: flex; width: max-content; padding-right: 32px; }
-  .hour { width: 48px; flex: none; display: flex; flex-direction: column; align-items: center; font-variant-numeric: tabular-nums; }
-  .hour .h { height: 16px; font-size: 12px; font-weight: 500; color: var(--muted); line-height: 16px; }
-  .hour.is-now .h { color: var(--cream); font-weight: 600; }
-  .hour .ic { width: 24px; height: 24px; margin-top: 3px; margin-bottom: 3px; }
-  .hour .spark { height: 26px; }
-  .hour .f { font-size: 15px; font-weight: 600; line-height: 18px; }
-  .hour .c { font-size: 12px; color: var(--muted); line-height: 16px; }
-  /* An hour with rain shrinks its icon to make room for the % beneath it, in the same 30px slot. */
-  .hour .p { display: none; }
-  .hour.wet .p { display: block; }
-  .hour.wet .ic { width: 20px; height: 20px; margin: 0; }
-  .hour .p { height: 10px; font-size: 10px; font-weight: 600; color: var(--rain); line-height: 10px; }
-  .hour.day-start::before { content: ""; position: absolute; width: 1px; top: 0; bottom: 0; margin-left: -54px; background: var(--border-strong); }
-  .hour.day-start { position: relative; }
-  .hour.day-start::before { left: 0; margin-left: 0; }
-  .sparkline { position: absolute; left: 0; top: 46px; height: 26px; pointer-events: none; overflow: visible; }
+  @media (hover: hover) { .hours-scroll:hover { scrollbar-width: thin; scrollbar-color: var(--hair) transparent; } }
+  .hours { display: flex; width: max-content; }
+  .hour { width: 62px; flex: none; display: flex; flex-direction: column; align-items: center; gap: 8px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .hour .h { font-size: 15px; font-weight: 600; line-height: 18px; }
+  .hour .sym { display: flex; flex-direction: column; align-items: center; gap: 1px; }
+  .hour .ic { display: grid; place-items: center; width: 30px; height: 26px; }
+  .hour .ic svg { width: 30px; height: 30px; }
+  /* The chance line is kept or dropped for every column together, so they stay aligned. */
+  .hour .p { height: 13px; font-size: 11px; font-weight: 600; line-height: 13px; color: var(--rain); }
+  .hour .f { font-size: 18px; font-weight: 500; line-height: 22px; }
+  .hour .c { font-size: 13px; line-height: 16px; opacity: .6; }
 
-  /* Five days */
+  /* 10 days: each low to high on one shared scale, with a dot for right now on today. Each row is a
+     button: it opens that day's detail. */
+  .daily { container-type: inline-size; }
+  .daily .eyebrow { margin-bottom: 8px; }
   .days { display: flex; flex-direction: column; }
-  /* Each day's low and high ride the ends of its bar, so a bar reads as that day's range on the shared scale.
-     --lab is the room kept either side of the scale for a label at its far end. */
-  .day { --lab: 46px; --pad: 8px; display: grid; grid-template-columns: 52px 32px minmax(0, 1fr); align-items: center; gap: 10px;
-    min-height: 40px; padding-block: 0; border-top: 0.5px solid var(--border-strong); font-variant-numeric: tabular-nums; }
-  .day:first-child { border-top: 0; }
-  /* Each row is a button: it opens that day's detail. */
-  button.day { width: 100%; margin: 0; padding-inline: 0; border-width: 0.5px 0 0; border-style: solid; border-color: var(--border-strong); border-radius: 0;
-    background: none; color: inherit; text-align: left; cursor: pointer; }
-  button.day:first-child { border-top: 0; }
-  button.day:hover .d { color: var(--cream); }
-  .day .d { font-size: 15px; font-weight: 600; }
-  .day .ic { position: relative; display: flex; justify-content: center; }
-  .day .ic svg { width: 22px; height: 22px; }
-  .day .p { position: absolute; top: 100%; margin-top: -2px; font-size: 10px; font-weight: 600; line-height: 1; color: var(--rain); }
-  .day .track { position: relative; height: 36px; }
-  .day .bar { position: absolute; left: var(--lab); right: var(--lab); top: 50%; margin-top: -3px; background: none; box-shadow: none; }   /* no empty track: the ticks carry the scale */
-  .day .lo, .day .hi { position: absolute; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; line-height: 1.1;
-    background: var(--tile); white-space: nowrap; }   /* the tile colour hides the empty track behind the label */
-  .day .lo { align-items: flex-end; padding-right: var(--pad); }
-  .day .hi { align-items: flex-start; padding-left: var(--pad); }
-  .day .lo b, .day .hi b { font-size: 15px; font-weight: 600; }
-  .day .lo b { color: var(--secondary); }
-  .day .lo span, .day .hi span { font-size: 12px; color: var(--muted); }
-  .bar { position: relative; height: 6px; border-radius: 6px; background: var(--raised); box-shadow: inset 0 0 0 0.5px var(--border-strong); }
-  .bar i { position: absolute; top: 0; bottom: 0; border-radius: 6px; }
-  .bar s { position: absolute; top: -4px; bottom: -4px; width: 1px; margin-left: -0.5px; background: var(--border-strong); }
-  /* The five-day forecast is an accordion, closed when the app opens. */
-  .days-head { display: grid; grid-template-columns: 152px minmax(0, 1fr) 48px; column-gap: 10px; align-items: center; width: 100%;
-    padding: 0; border: 0; background: none; color: inherit; text-align: left; cursor: pointer; }
-  .days-head[aria-expanded="true"] { margin-bottom: 4px; grid-template-columns: 140px minmax(0, 1fr) 36px; }   /* ticks span the bars' scale */
-  /* Closed, the title column only needs to fit the title, which leaves the range room on a phone. */
-  .days-head[aria-expanded="false"] { grid-template-columns: max-content minmax(0, 1fr) 48px; }
-  .days-head .eyebrow { margin: 0; }
-  .days-head:hover .eyebrow, .days-head:hover .chev { color: var(--text); }
-  .days-head .range { display: block; text-align: right; font-size: 13px; font-weight: 500; color: var(--faint); font-variant-numeric: tabular-nums; white-space: nowrap; }
-  .chev { justify-self: end; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; color: var(--muted); transition: transform .2s, color .15s; }
-  .chev svg { width: 14px; height: 14px; }
-  .days-head[aria-expanded="true"] .chev { transform: rotate(180deg); }
-  .ticks { position: relative; height: 14px; }
-  .ticks span { position: absolute; transform: translateX(-50%); font-size: 11px; font-weight: 500; line-height: 14px; color: var(--faint); }
-  .ticks .range { position: static; transform: none; }   /* the closed summary is text, not a tick label */
-  .bar u { position: absolute; top: 50%; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%; background: var(--text); box-shadow: 0 0 0 2.5px var(--tile); }
+  .day { display: grid; grid-template-columns: 52px 36px 50px minmax(0, 1fr) 50px; align-items: center; gap: 10px; width: 100%; min-height: 48px;
+    margin: 0; padding: 0; border: 0; border-top: 0.5px solid var(--hair); border-radius: 0; background: none; color: inherit; text-align: left;
+    cursor: pointer; font-variant-numeric: tabular-nums; }
+  .day .d { font-size: 18px; font-weight: 500; white-space: nowrap; }
+  .day .ic { display: flex; flex-direction: column; align-items: center; }
+  .day .ic svg { width: 28px; height: 28px; margin: -2px 0 -1px; }
+  .day .p { font-size: 11px; font-weight: 600; line-height: 1; color: var(--rain); }
+  .day .lo, .day .hi { display: flex; flex-direction: column; line-height: 1.15; white-space: nowrap; }
+  .day .lo { align-items: flex-end; }
+  .day .hi { align-items: flex-start; }
+  .day .lo b, .day .hi b { font-size: 17px; font-weight: 500; }
+  .day .lo b { opacity: .65; }
+  .day .lo span, .day .hi span { font-size: 11px; opacity: .6; }
+  @media (hover: hover) { button.day:hover .d { opacity: .8; } }
+  .bar { position: relative; height: 5px; border-radius: 5px; background: rgba(255,255,255,.15); }
+  .bar i { position: absolute; top: 0; bottom: 0; min-width: 5px; border-radius: 5px; }
+  .bar u { position: absolute; top: 50%; width: 8px; height: 8px; margin: -4px 0 0 -4px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 1.5px rgba(0,0,0,.35); }
+  @container (max-width: 330px) {
+    .day { grid-template-columns: 48px 30px 42px minmax(0, 1fr) 42px; gap: 8px; }
+    .day .d { font-size: 16px; }
+    .day .lo b, .day .hi b { font-size: 15px; }
+  }
+  @container (max-width: 250px) {
+    .day { grid-template-columns: 42px 22px 36px minmax(0, 1fr) 36px; gap: 5px; }
+    .day .d { font-size: 14px; }
+    .day .ic svg { width: 22px; height: 22px; }
+    .day .lo span, .day .hi span { font-size: 10px; }
+  }
 
-  /* Footer */
-  .status { display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; white-space: nowrap; font-size: 12px; color: var(--muted); }
-  #statusText { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-  .status .dot { align-self: center; width: 7px; height: 7px; border-radius: 50%; background: var(--crimson); flex: none; }
-  .status.live .dot { background: #6FD39C; }
-  .status a { text-decoration: underline; text-decoration-color: var(--border-strong); text-underline-offset: 2px; }
-  .status a:hover { color: var(--text); }
-  /* Footer: the status line, the credit on its own full-width line beneath. */
-  .foot { display: flex; flex-direction: column; gap: 8px; padding-top: 2px; }
-  .foot-row { display: flex; align-items: center; gap: 10px; }
-  .foot-row .status { flex: 1; min-width: 0; }
-  .foot .brand { font-size: 12px; color: var(--muted); }
-  .foot .brand:hover { color: var(--text); }
-  .pill { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 12px; border: 0; border-radius: 980px; cursor: pointer;
-    background: var(--border); color: var(--text); font-size: 13px; font-weight: 600; transition: background .15s, transform .1s; flex: none; }
-  .pill:hover { background: var(--border-strong); }
+  /* Footer: three quiet lines. */
+  .foot { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 8px 0 0; font-size: 13px; line-height: 1.3; color: var(--t60); text-align: center; }
+  .foot .status a { text-decoration: underline; text-underline-offset: 2px; }
+  .foot a:hover { color: var(--text); }
+  .pill { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 14px; border: 0; border-radius: 980px; cursor: pointer;
+    background: var(--fill); color: var(--text); font-size: 13px; font-weight: 600; transition: background .15s, transform .1s; flex: none; }
+  .pill:hover { background: var(--fill-strong); }
   .pill:active { transform: scale(.97); }
-  .pill svg { width: 14px; height: 14px; }
 
-  .share-wrap { position: relative; }
-  /* Share sits in the header: its menu drops down from the header's left edge, so it stays inside the panel. */
-  .hdr { position: relative; }
-  .hdr .share-wrap { position: static; }
-  .menu.share { top: 40px; bottom: auto; right: auto; left: 0; max-width: 100%; }
-  .menu { position: absolute; right: 0; bottom: 38px; z-index: 5; width: 270px; padding: 6px; border-radius: 12px;
-    background: rgba(42,37,32,.96); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-    box-shadow: 0 0 0 0.5px var(--border-strong), 0 12px 32px rgba(0,0,0,.5); font-size: 13px; }
+  /* Menus: Share drops down from the top bar's left edge, ⋯ from its right, so both stay on the page. */
+  .share-wrap { position: static; }
+  .more-wrap { position: relative; }
+  .menu { position: absolute; right: 0; top: 40px; z-index: 5; width: 270px; padding: 6px; border-radius: 14px;
+    background: rgba(34,37,44,.94); -webkit-backdrop-filter: blur(28px) saturate(1.5); backdrop-filter: blur(28px) saturate(1.5);
+    box-shadow: 0 0 0 0.5px rgba(255,255,255,.16), 0 12px 32px rgba(0,0,0,.4); font-size: 13px; }
+  .menu.share { right: auto; left: 0; max-width: 100%; }
+  .menu.more { width: 230px; max-height: calc(100vh - 80px); overflow-y: auto; }
   .menu .mh { padding: 6px 10px 2px; font-weight: 600; }
-  .menu p { margin: 0; padding: 2px 10px 8px; color: var(--muted); font-size: 12.5px; line-height: 1.45; }
-  .menu button { display: flex; align-items: center; gap: 10px; width: 100%; padding: 7px 10px; border: 0; border-radius: 6px; background: none;
+  .menu .sec { padding: 6px 10px 2px; font-size: 11px; font-weight: 600; color: var(--t60); }
+  .menu p { margin: 0; padding: 2px 10px 8px; color: var(--t70); font-size: 12.5px; line-height: 1.45; }
+  .menu hr { border: 0; border-top: 0.5px solid var(--hair); margin: 5px 4px; }
+  .menu button { display: flex; align-items: center; gap: 10px; width: 100%; padding: 7px 10px; border: 0; border-radius: 8px; background: none;
     color: var(--text); font-size: 13px; cursor: pointer; text-align: left; }
-  .menu button:hover, .menu button:focus-visible { background: #0A64D2; outline: none; }
-  .menu button svg { width: 15px; height: 15px; color: var(--secondary); flex: none; }
-  .toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 20;
-    padding: 9px 16px; border-radius: 980px; background: var(--cream); color: var(--bg); font-size: 13px; font-weight: 600;
-    box-shadow: 0 10px 30px rgba(0,0,0,.4); transition: opacity .2s, transform .2s; }
+  .menu button:hover, .menu button:focus-visible { background: var(--fill-strong); outline: none; }
+  .menu button svg { width: 15px; height: 15px; color: var(--t85); flex: none; }
+  .menu button .ck { width: 14px; flex: none; text-align: center; }
+  .menu button .k { margin-left: auto; color: var(--t70); font-size: 12px; }
+  .menu .opts { display: flex; flex-wrap: wrap; gap: 4px; padding: 2px 8px 6px; }
+  .menu .opts button { width: auto; padding: 4px 9px; border-radius: 980px; background: var(--fill); font-size: 12px; }
+  .menu .opts button[aria-checked="true"] { background: #fff; color: var(--ink); font-weight: 600; }
+  .menu .opts button[aria-checked="true"]:hover, .menu .opts button[aria-checked="true"]:focus-visible { background: #fff; color: var(--ink); box-shadow: 0 0 0 2px rgba(255,255,255,.5); }
+  .toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 40;
+    padding: 9px 16px; border-radius: 980px; background: #fff; color: var(--ink); font-size: 13px; font-weight: 600;
+    box-shadow: 0 10px 30px rgba(0,0,0,.35); transition: opacity .2s, transform .2s; }
   .toast[hidden] { display: block !important; opacity: 0; transform: translate(-50%, 8px); pointer-events: none; }
 
-  .skeleton { color: var(--faint); font-size: 14px; padding: 8px 0; }
-
-  /* Widget mode (app?widgets): the Mac widgets, live, laid out like a desktop. Shown on the product page.
-     Sizes follow the macOS grid: small S×S, medium (2S+g)×S, large (2S+g)×(2S+g). */
+  /* Widget mode (app?widgets): the widgets, live, each on its city's sky as on the iPhone. Shown on the
+     product page. Sizes follow the widget grid: small S×S, medium (2S+g)×S, large (2S+g)×(2S+g). */
   html.widgets-mode, html.widgets-mode body { background: transparent; }
   html.widgets-mode body { padding: 0; }
+  html.widgets-mode body::before { display: none; }
   html.widgets-mode main.panel, html.widgets-mode .toast { display: none !important; }
   .wdesk { --S: 170px; --g: 20px; display: grid; grid-template-columns: repeat(4, var(--S)); grid-template-rows: repeat(2, var(--S)); gap: var(--g);
     justify-content: center; padding: 8px 0 24px; }
   .wdesk.narrow { grid-template-columns: repeat(2, var(--S)); grid-template-rows: repeat(4, var(--S)); }
-  .w { position: relative; overflow: hidden; min-width: 0; background: var(--bg); border-radius: 22px; padding: 16px; color: var(--text);
+  .w { position: relative; overflow: hidden; min-width: 0; border-radius: 22px; padding: 16px; color: var(--text);
     font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, system-ui, sans-serif; letter-spacing: 0;
-    box-shadow: 0 0 0 0.5px rgba(255,255,255,.1), 0 18px 40px rgba(0,0,0,.45); }
-  .w::before { content: ""; position: absolute; inset: 0 0 auto; height: 3px; background: var(--crimson); }
+    text-shadow: 0 1px 4px rgba(0,0,0,.18); box-shadow: 0 0 0 0.5px rgba(255,255,255,.1), 0 18px 40px rgba(0,0,0,.45); }
   .w.large { grid-area: 1 / 1 / 3 / 3; display: flex; flex-direction: column; gap: 10px; }
-  .w.medium { grid-area: 1 / 3 / 2 / 5; display: flex; gap: 12px; }
+  .w.medium { grid-area: 1 / 3 / 2 / 5; display: flex; gap: 14px; }
   .w.small.a { grid-area: 2 / 3 / 3 / 4; }
   .w.small.b { grid-area: 2 / 4 / 3 / 5; }
   .wdesk.narrow .w.medium { grid-area: 3 / 1 / 4 / 3; }
   .wdesk.narrow .w.small.a { grid-area: 4 / 1 / 5 / 2; }
   .wdesk.narrow .w.small.b { grid-area: 4 / 2 / 5 / 3; }
-  .w hr { flex: none; margin: 0; border: 0; background: var(--border-strong); height: 0.5px; }
+  .w hr { flex: none; margin: 0; border: 0; background: rgba(255,255,255,.18); height: 0.5px; }
   .w.medium hr { width: 0.5px; height: auto; }
+  /* The city with the reading right under it; the sky and the day's range at the foot. */
   .wn { display: flex; flex-direction: column; height: 100%; min-width: 0; }
-  .w.medium .wn { width: 120px; flex: none; }
-  .w.large .wn { height: 104px; flex: none; }
-  .wn-top { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; }
-  .wn-top b { flex: 1; min-width: 0; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .wn-top svg { width: 18px; height: 18px; flex: none; }
-  .wn-temp { margin-top: auto; display: flex; align-items: baseline; gap: 6px; white-space: nowrap; font-variant-numeric: tabular-nums; }
-  .wn-temp span { font-size: var(--big); font-weight: 600; letter-spacing: -.03em; line-height: 1.05; }
-  .wn-temp small { font-size: calc(var(--big) * .45); font-weight: 500; color: var(--muted); }
+  .w.medium .wn { width: 124px; flex: none; }
+  .wn-city { display: block; font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .wn-temp { display: flex; align-items: baseline; gap: 6px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .wn-temp span { font-size: var(--big); font-weight: 600; letter-spacing: -.03em; line-height: 1.12; }
+  .wn-temp sup { font-size: .42em; font-weight: 500; line-height: 0; vertical-align: .86em; letter-spacing: 0; }
+  .wn-temp small { font-size: calc(var(--big) * .45); font-weight: 500; color: var(--t60); }
+  .wn-foot { margin-top: auto; min-width: 0; }
+  .wn-foot svg { display: block; width: 24px; height: 24px; margin: 0 0 -1px -3px; }
   .wn-cond, .wn-range { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .wn-cond { font-size: 12px; font-weight: 600; color: var(--secondary); }
-  .wn-range { font-size: 11px; font-weight: 500; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .wn-cond { font-size: 12px; font-weight: 600; color: rgba(255,255,255,.78); }
+  .wn-range { font-size: 11px; font-weight: 500; color: var(--t60); font-variant-numeric: tabular-nums; }
+  /* The large widget's top: the city and the reading on the left, the sky and its name on the right. */
+  .wl-now { display: flex; justify-content: space-between; gap: 8px; flex: none; min-width: 0; }
+  .wl-now > div { min-width: 0; }
+  .wl-sky { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; padding-top: 4px; }
+  .wl-sky svg { width: 60px; height: 60px; margin: -10px -7px -10px 0; }
+  .wl-sky .wn-cond { font-size: 13px; }
   .wh { flex: 1; display: flex; min-width: 0; }
   .wh > div { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; white-space: nowrap; font-variant-numeric: tabular-nums; }
-  .wh span { font-size: 10px; font-weight: 500; color: var(--muted); }
-  .wh span.wnow { font-weight: 600; color: var(--cream); }
-  .wh svg { width: 16px; height: 18px; }
+  .wh span { font-size: 10px; font-weight: 500; color: var(--t60); }
+  .wh span.wnow { font-weight: 600; color: var(--text); }
+  .wh svg { width: 22px; height: 22px; margin: -2px 0; }
   .wh b { font-size: 13px; font-weight: 600; }
-  .wh small { font-size: 10px; color: var(--muted); }
+  .wh small { font-size: 10px; color: var(--t60); }
   .wd { display: flex; flex-direction: column; gap: 6px; }
   .wd-row { display: grid; grid-template-columns: 40px 18px minmax(0, 1fr) 54px; gap: 8px; align-items: center; height: 16px; font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
-  .wd-row svg { width: 15px; height: 15px; }
+  .wd-row svg { width: 19px; height: 19px; margin: -2px; }
   .wd-track { position: relative; height: 16px; }
-  /* As in the app: one scale for all five days, each low and high riding the ends of its bar. */
+  /* As in the app: one scale for all the days, each low and high riding the ends of its bar. */
   .wd-bar { position: absolute; left: 30px; right: 30px; top: 50%; height: 5px; margin-top: -2.5px; }
   .wd-bar i { position: absolute; top: 0; bottom: 0; min-width: 5px; border-radius: 5px; }
-  .wd-bar u { position: absolute; top: 50%; width: 8px; height: 8px; margin: -4px 0 0 -4px; border-radius: 50%; background: var(--text); box-shadow: 0 0 0 2px var(--bg); }
+  .wd-bar u { position: absolute; top: 50%; width: 8px; height: 8px; margin: -4px 0 0 -4px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 1.5px rgba(0,0,0,.35); }
   .wd-lo, .wd-hi { position: absolute; top: 50%; transform: translateY(-50%); white-space: nowrap; line-height: 1; }
-  .wd-lo { padding-right: 4px; color: var(--secondary); }
+  .wd-lo { padding-right: 4px; color: rgba(255,255,255,.78); }
   .wd-hi { padding-left: 4px; }
-  .wd-o { font-size: 10px; font-weight: 400; color: var(--muted); text-align: right; white-space: nowrap; }
-  .w .wload { margin-top: auto; font-size: 12px; color: var(--faint); }
+  .wd-o { font-size: 10px; font-weight: 400; color: var(--t60); text-align: right; white-space: nowrap; }
+  .w .wload { margin-top: auto; font-size: 12px; color: var(--t60); }
 
-  /* Severe weather alerts (US, from the NWS): one card per alert, above everything else, most severe first. */
-  .alerts { display: flex; flex-direction: column; gap: 8px; }
-  .alert { --sev: #E9C98A; display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; align-items: center; gap: 12px; width: 100%;
-    padding: 12px 16px; border: 0; border-radius: var(--r-tile); cursor: pointer; text-align: left;
-    background: color-mix(in srgb, var(--sev) 13%, var(--tile)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--sev) 42%, transparent); }
-  .alert:hover { background: color-mix(in srgb, var(--sev) 19%, var(--tile)); }
-  .alert > svg { width: 20px; height: 20px; color: var(--sev); }
-  .alert b { display: block; font-size: 15px; font-weight: 600; line-height: 1.25; }
-  .alert .m { display: block; font-size: 12.5px; color: var(--secondary); line-height: 1.35; margin-top: 1px; }
-  .alert .go { color: var(--muted); font-size: 20px; line-height: 1; }
+  /* Severe weather alerts (US, from the NWS): one card per alert, right under the reading, most severe first. */
+  .alerts { display: flex; flex-direction: column; gap: 10px; }
+  .alert { --sev: #E9C98A; display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; align-items: start; gap: 10px; width: 100%;
+    padding: 14px; border: 0; border-radius: 16px; cursor: pointer; text-align: left; color: var(--text);
+    background: color-mix(in srgb, var(--sev) 22%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--sev) 60%, transparent); }
+  .alert:hover { background: color-mix(in srgb, var(--sev) 30%, transparent); }
+  .alert > svg { width: 20px; height: 20px; margin-top: 1px; color: var(--sev); }
+  .alert b { display: block; font-size: 17px; font-weight: 600; line-height: 1.25; }
+  .alert .m { display: block; font-size: 13px; line-height: 1.35; margin-top: 2px; opacity: .75; }
+  .alert .go { align-self: center; width: 14px; height: 14px; opacity: .5; }
   .chip svg.warn { width: 12px; height: 12px; flex: none; margin-left: -2px; color: #E9C98A; }
   .chip[aria-current="true"] svg.warn { color: #B4471E; }
-  .stat .s.wrap { white-space: normal; }
 
   /* Next 2 hours: rain (or snow) in 15-minute steps, shown only when some is near. */
-  .soon-line { margin: 0 0 10px; font-size: 15px; font-weight: 600; letter-spacing: -.01em; }
+  .soon-line { margin: 0 0 10px; font-size: 15px; }
   .soon-bars { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 6px; }
-  .soon-bars .b { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
-  .soon-bars .col { position: relative; height: 44px; border-radius: 5px; background: var(--raised); box-shadow: inset 0 0 0 0.5px var(--border-strong); }
-  .soon-bars .col i { position: absolute; left: 0; right: 0; bottom: 0; border-radius: 5px; background: var(--rain); }
+  .soon-bars .b { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .soon-bars .col { position: relative; height: 54px; }
+  .soon-bars .col i { position: absolute; left: 0; right: 0; bottom: 0; min-height: 3px; border-radius: 5px; background: var(--rain); }
+  .soon-bars .col i.dry { opacity: .25; }
   .soon-bars .col.snow i { background: var(--snow); }
-  .soon-bars .t { display: flex; justify-content: center; height: 14px; font-size: 11px; font-weight: 500; line-height: 14px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
-  .soon-bars .b:first-child .t { color: var(--cream); font-weight: 600; }
+  .soon-bars .t { display: flex; justify-content: center; height: 14px; font-size: 11px; line-height: 14px; opacity: .7; white-space: nowrap; font-variant-numeric: tabular-nums; }
 
-  /* More detail: two across, the same card as the other tiles. */
+  /* Detail tiles: two across (three where there's room), the same frosted card, each with its own quiet
+     accent on its title and as a faint glow at the top. */
   .details { container-type: inline-size; }
   .dgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-  .dt { display: flex; flex-direction: column; padding: 16px 18px;
-    background-image: linear-gradient(to bottom, color-mix(in srgb, var(--acc, transparent) 16%, transparent), transparent 50%); }
-  .dt .eyebrow { color: color-mix(in srgb, var(--acc, var(--muted)) 90%, transparent); }
-  .dt.wide { grid-column: 1 / -1; }
-  .dt .eyebrow { flex-wrap: wrap; margin-bottom: 6px; }
-  .dt .eyebrow svg { width: 18px; height: 18px; flex: none; margin-left: auto; }
-  .dt .dv { font-size: 20px; font-weight: 600; letter-spacing: -.02em; line-height: 1.2; font-variant-numeric: tabular-nums; overflow-wrap: break-word; }
-  .dt .dv .cat { font-size: 15px; letter-spacing: -.01em; }
-  .dt .ds { margin-top: 2px; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; overflow-wrap: break-word; }
-  .dt .dn { margin-top: auto; padding-top: 6px; font-size: 13px; line-height: 1.35; color: var(--secondary); overflow-wrap: break-word; }
-  .aqbar { position: relative; height: 4px; margin: 8px 6px 2px 0; border-radius: 4px; }
-  .aqbar u { position: absolute; top: 50%; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%; background: var(--text); box-shadow: 0 0 0 2.5px var(--tile); }
-  /* Averages: normal low–high (muted) and today's low–high (the accent) on one scale. */
-  .rbar { position: relative; height: 6px; margin: 10px 6px 2px 0; border-radius: 3px; background: color-mix(in srgb, var(--text) 8%, transparent); }
-  .rbar i, .rbar b { position: absolute; top: 50%; border-radius: 3px; }
-  .rbar i { height: 5px; margin-top: -2.5px; background: color-mix(in srgb, var(--text) 26%, transparent); }
-  .rbar b { height: 6px; margin-top: -3px; background: var(--acc); box-shadow: 0 0 0 1.5px var(--tile); }
-  /* Sunrise and sunset: the sun's path over one day, the horizon, and where the sun is now. */
-  .sunpath { position: relative; height: 34px; margin: 10px 0 2px; }
-  .sunpath svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
-  .sunpath u { position: absolute; width: 8px; height: 8px; margin: -4px 0 0 -4px; border-radius: 50%; }
-  .sunpath u.up { background: var(--acc); box-shadow: 0 0 6px 1px color-mix(in srgb, var(--acc) 60%, transparent); }
-  .sunpath u.down { background: color-mix(in srgb, var(--text) 30%, var(--tile)); }
-  /* Cloud cover: high, mid and low layers, each filled to its share. */
-  .clbars { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 4px 8px; margin: 10px 6px 2px 0; }
-  .clbars span { font-size: 11px; line-height: 13px; color: var(--muted); }
-  .clbars div { position: relative; height: 4px; border-radius: 2px; background: color-mix(in srgb, var(--text) 10%, transparent); }
-  .clbars div i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 2px; background: var(--acc); }
+  @container (min-width: 560px) { .dgrid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
   @container (max-width: 250px) { .dgrid { grid-template-columns: minmax(0, 1fr); } }
+  .dt { --acc: #C9C2B8; container-type: inline-size; display: flex; flex-direction: column; gap: 4px; min-height: 160px; font-variant-numeric: tabular-nums;
+    background-image: linear-gradient(to bottom, color-mix(in srgb, var(--acc) 16%, transparent), transparent 50%); }
+  /* Titles and readings shrink with a narrow tile rather than being cut off. */
+  .dt .eyebrow { margin: 0; color: color-mix(in srgb, var(--acc) 90%, transparent); font-size: min(12px, calc(100cqw / 9.4)); }
+  .dt .dv { margin-top: 4px; font-size: 32px; font-size: min(32px, calc(100cqw / 4.4)); font-weight: 500; line-height: 1.15; letter-spacing: -.015em; white-space: nowrap; }
+  .dt .dv.words { font-size: 22px; font-size: min(22px, calc(100cqw / 5)); line-height: 1.22; white-space: normal; overflow-wrap: anywhere; }
+  .dt .ds { font-size: 15px; line-height: 1.3; color: var(--t70); overflow-wrap: anywhere; }
+  .dt .gfx { margin-top: 4px; }
+  .dt .dn { margin-top: auto; padding-top: 4px; font-size: 13px; line-height: 1.3; color: var(--t85); overflow-wrap: break-word; }
+  @container (max-width: 128px) { .dt .eyebrow svg { display: none; } }
+  /* A thin bar in a scale's colours with a dot at the reading: air quality and UV. */
+  .sbar { position: relative; height: 5px; margin: 7px 0 3px; border-radius: 5px; }
+  .sbar u { position: absolute; top: 50%; width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.35); }
+  .uvbar { background: linear-gradient(90deg, #3EA72D, #FFF300, #F18B00, #E53210, #B567A4); }
+  /* Wind: a compass, the arrow pointing where the wind is blowing. */
+  .compass { display: block; width: 56px; height: 56px; }
+  .compass text { font-size: 8px; font-weight: 600; fill: rgba(255,255,255,.5); text-anchor: middle; dominant-baseline: central; }
+  /* Averages: the normal low to high (muted) over today's low to high (the accent), on one scale. */
+  .rbar { position: relative; height: 14px; margin-top: 2px; }
+  .rbar::before, .rbar::after { content: ""; position: absolute; left: 0; right: 0; background: rgba(255,255,255,.08); }
+  .rbar::before { top: 0; height: 4px; border-radius: 2px; }
+  .rbar::after { bottom: 0; height: 6px; border-radius: 3px; }
+  .rbar i, .rbar b { position: absolute; z-index: 1; }
+  .rbar i { top: 0; height: 4px; border-radius: 2px; background: rgba(255,255,255,.4); }
+  .rbar b { bottom: 0; height: 6px; border-radius: 3px; background: var(--acc); }
+  /* Sunrise and sunset: the sun's path over one day, the horizon, and where the sun is now. */
+  .sunpath { position: relative; height: 34px; }
+  .sunpath svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+  .sunpath u { position: absolute; width: 7px; height: 7px; margin: -3.5px 0 0 -3.5px; border-radius: 50%; }
+  .sunpath u.up { background: #fff; box-shadow: 0 0 0 3px color-mix(in srgb, var(--acc) 35%, transparent); }
+  .sunpath u.down { width: 6px; height: 6px; margin: -3px 0 0 -3px; background: rgba(255,255,255,.4); }
+  /* Cloud cover: high, mid and low layers, each filled to its share. */
+  .clbars { display: grid; grid-template-columns: 26px minmax(0, 1fr); align-items: center; gap: 3px 6px; }
+  .clbars span { font-size: 10px; line-height: 12px; opacity: .7; }
+  .clbars div { position: relative; height: 4px; border-radius: 2px; background: rgba(255,255,255,.12); }
+  .clbars div i { position: absolute; left: 0; top: 0; bottom: 0; min-width: 4px; border-radius: 2px; background: var(--acc); }
+  svg.moon { display: block; width: 26px; height: 26px; }
 
-  /* Rain map: opens the shared map page, at this city, in a new tab. */
-  .mapcard { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
-  .mapcard .eyebrow { flex-basis: 100%; margin: 0 0 -4px; }
-  .mapcard p { flex: 1 1 180px; margin: 0; font-size: 13px; color: var(--secondary); line-height: 1.4; text-wrap: balance; }
-  .mapcard .pill { flex: none; }
-  .mapcard .credit { flex-basis: 100%; margin-top: 2px; font-size: 11px; color: var(--faint); }
+  /* Rain map: the whole card opens the shared map page, at this city, in a new tab. */
+  .mapcard { display: flex; align-items: center; gap: 12px; }
+  .mapcard > svg { flex: none; }
+  .mapcard .map { width: 24px; height: 24px; color: var(--rain); }
+  .mapcard .tx { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .mapcard b { font-size: 17px; font-weight: 600; line-height: 1.25; }
+  .mapcard #mapText { font-size: 13px; opacity: .7; }
+  .mapcard .go { width: 14px; height: 14px; opacity: .5; }
 
   /* Sheets: a day's detail and an alert's full text. Over the page when the app has the window; in the
-     product page's frame (whose height follows the page) the sheet takes the panel's place instead. */
+     product page's frame (whose height follows the page) the sheet takes the page's place instead. */
   .sheet-back { position: fixed; inset: 0; z-index: 30; display: flex; justify-content: center; align-items: flex-start; overflow-y: auto;
-    padding: 24px 16px; background: rgba(12,11,10,.74); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); overscroll-behavior: contain; }
+    padding: 24px 16px; background: rgba(0,0,0,.6); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); overscroll-behavior: contain; }
   body.sheet-open { overflow: hidden; }
-  .sheet { position: relative; overflow: hidden; width: 100%; max-width: 520px; flex: none; zoom: var(--z, 1); padding: 20px 18px 20px; border-radius: var(--r-panel);
-    background: var(--bg); box-shadow: 0 0 0 0.5px var(--border-strong), 0 30px 80px rgba(0,0,0,.6); display: flex; flex-direction: column; gap: 10px; outline: none; }
-  .sheet::before { content: ""; position: absolute; inset: 0 0 auto; height: 3px; background: var(--crimson); }
+  .sheet { position: relative; width: 100%; max-width: 560px; flex: none; zoom: var(--z, 1); padding: 14px 16px 20px; border-radius: 24px;
+    background: var(--sheet); box-shadow: 0 0 0 0.5px rgba(255,255,255,.12), 0 30px 80px rgba(0,0,0,.5); display: flex; flex-direction: column; gap: 12px; outline: none; }
   .sheet.system, .sheet.system button { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif; }
+  .sheet .card { background: rgba(255,255,255,.07); -webkit-backdrop-filter: none; backdrop-filter: none; }
   html.embedded .sheet-back { position: static; padding: 0; overflow: visible; background: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
   html.embedded body.sheet-open { overflow: visible; }
   html.embedded body.sheet-open main.panel { display: none; }
-  html.embedded .sheet { box-shadow: 0 0 0 0.5px var(--border-strong), 0 16px 32px rgba(0,0,0,.4); }
-  .sh-head { display: flex; align-items: center; gap: 8px; }
-  .sh-head h2 { flex: 1; min-width: 0; margin: 0; font-size: 19px; font-weight: 600; letter-spacing: -.02em; line-height: 1.25; }
-  .sh-head .circle:disabled { opacity: .35; cursor: default; background: var(--tile); }
-  .sh-sum { display: flex; align-items: center; gap: 14px; }
-  .sh-sum svg { width: 48px; height: 48px; flex: none; }
-  .sh-sum .cond { margin: 0; }
-  .sh-sum .hl { font-size: 14px; color: var(--secondary); font-variant-numeric: tabular-nums; }
-  .sh-sum .hl b { font-weight: 600; color: var(--text); }
+  html.embedded .sheet { border-radius: 28px; box-shadow: none; }
+  .sh-head { display: flex; align-items: center; gap: 8px; min-height: 36px; }
+  .sh-head h2 { flex: 1; min-width: 0; margin: 0; font-size: 17px; font-weight: 600; letter-spacing: -.01em; line-height: 1.25; text-align: center; }
+  .sh-head .done { height: 32px; min-width: 72px; padding: 0 2px; border: 0; background: none; font-size: 17px; text-align: left; cursor: pointer; }
+  .sh-head .done:hover { opacity: .8; }
+  .sh-head span.done { min-width: 72px; }
+  .sheet .eyebrow { flex-wrap: wrap; }
+  .sh-head .circle { background: none; }
+  .sh-head .circle:hover { background: var(--fill); }
+  .sh-head .circle svg { width: 20px; height: 20px; }
+  .sh-head .circle:disabled { opacity: .35; cursor: default; background: none; }
+  .sh-sum { display: flex; align-items: center; gap: 12px; padding: 4px 2px 0; }
+  .sh-sum > svg { width: 44px; height: 44px; flex: none; }
+  .sh-sum .tx { flex: 1; min-width: 0; }
+  .sh-sum .cond { font-size: 20px; font-weight: 600; opacity: 1; }
+  .sh-sum .hl { font-size: 17px; font-weight: 500; font-variant-numeric: tabular-nums; }
+  .sh-sum .hl.other { font-size: 14px; font-weight: 400; opacity: .65; }
+  .sh-sum .pop { flex: none; display: flex; flex-direction: column; align-items: center; font-size: 12px; color: var(--t70); }
+  .sh-sum .pop b { font-size: 20px; font-weight: 600; line-height: 1.2; color: var(--rain); }
   svg.chart { display: block; width: 100%; height: auto; overflow: visible; }
-  svg.chart text { font-family: var(--font); font-size: 10.5px; font-weight: 500; fill: var(--faint); font-variant-numeric: tabular-nums; }
-  svg.chart text.now { fill: var(--cream); font-weight: 600; }
+  svg.chart text { font-family: var(--font); font-size: 10.5px; font-weight: 500; fill: var(--t60); font-variant-numeric: tabular-nums; }
+  svg.chart text.now { fill: #fff; font-weight: 600; }
+  .legends { display: flex; gap: 12px; margin-top: 6px; font-size: 12px; color: var(--t70); }
   .legend { display: inline-flex; align-items: center; gap: 5px; }
-  .legend i { display: inline-block; width: 12px; height: 2px; border-radius: 2px; background: var(--cream); }
-  .legend i.g { background: var(--muted); opacity: .7; }
-  .facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 7px 14px; margin: 0; font-size: 14px; }
-  .facts dt { color: var(--muted); }
-  .facts dd { margin: 0; text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: break-word; }
-  .facts dd small { font-weight: 500; color: var(--muted); font-size: 13px; }
-  .al-text { margin: 0; font-size: 14px; line-height: 1.5; color: var(--secondary); white-space: pre-line; overflow-wrap: break-word; }
+  .legend i { display: inline-block; width: 12px; height: 2px; border-radius: 2px; background: #fff; }
+  .legend i.g { background: rgba(255,255,255,.5); }
+  .facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 8px 14px; margin: 0; font-size: 15px; }
+  .facts dt { color: var(--t70); }
+  .facts dd { margin: 0; text-align: right; font-weight: 500; font-variant-numeric: tabular-nums; overflow-wrap: break-word; }
+  .facts dd small { font-weight: 400; color: var(--t70); font-size: 13px; }
+  .al-card { display: flex; flex-direction: column; gap: 12px; }
+  .al-text { margin: 0; font-size: 15px; line-height: 1.5; color: var(--t85); white-space: pre-line; overflow-wrap: break-word; }
   .al-text.lead { color: var(--text); font-weight: 600; }
-  .al-note { margin: 0; font-size: 12.5px; color: var(--muted); line-height: 1.45; }
+  .al-note { margin: 0; font-size: 13px; color: var(--t70); line-height: 1.45; }
   .al-link { align-self: flex-start; }
-  .menu .opts { display: flex; flex-wrap: wrap; gap: 4px; padding: 2px 8px 6px; }
-  .menu .opts button { width: auto; padding: 4px 9px; border-radius: 980px; background: var(--border); font-size: 12px; }
-  .menu .opts button[aria-checked="true"] { background: var(--cream); color: var(--bg); font-weight: 600; }
-  .menu .opts button[aria-checked="true"]:hover, .menu .opts button[aria-checked="true"]:focus-visible { background: var(--cream); color: var(--bg); box-shadow: 0 0 0 2px #0A64D2; }
-  .menu.more { max-height: calc(100vh - 80px); overflow-y: auto; }
 
   @media (max-width: 460px) {
     .sheet-back { padding: 0; }
-    .sheet { max-width: none; min-height: 100%; border-radius: 0; padding: 18px 14px 28px; }
+    .sheet { max-width: none; min-height: 100%; border-radius: 0; padding: 14px 14px 28px; }
     html.embedded .sheet { min-height: 0; border-radius: 24px; }
-    .soon-bars { gap: 4px; }
-    .panel { padding: 25px 14px 16px; border-radius: 24px; }
-    .tile { padding: 16px; }
-    .dt { padding: 16px; }
-    /* The header fits a phone with Share in it: tighter gaps, no spacer element (its two gaps), narrower °F/°C. */
+    .sh-head { gap: 4px; }
+    .sh-head .done, .sh-head span.done { min-width: 0; }
+    .sh-head span.done { display: none; }
+    .sh-head .circle { width: 32px; height: 32px; }
+    html.embedded .panel { padding: 12px 12px 20px; border-radius: 24px; }
+    /* The top bar fits a phone with Share in it: tighter gaps, no spacer element (its two gaps), narrower °F/°C. */
     .hdr { gap: 6px; }
     .hdr .sp { display: none; }
     .hdr .share-wrap { margin-left: auto; }
     .hdr .seg button { min-width: 36px; padding: 0 8px; }
     .hdr h1 { font-size: 16px; }
-    .cities { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 0 -14px; padding: 2px 14px; }
-    .cities::-webkit-scrollbar { display: none; }
+    /* The cities scroll sideways under a fade, with Add | Edit always in reach at the end of the row. */
+    .cities { flex-wrap: nowrap; }
+    .chips { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; overflow-x: auto; scrollbar-width: none; padding: 2px 20px 2px 0;
+      -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 22px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 22px), transparent); }
+    .chips::-webkit-scrollbar { display: none; }
     .chip-wrap, .chip { flex: none; }
     .chip-x { width: 24px; height: 24px; line-height: 24px; top: -8px; right: -8px; }
-    .cities.editing { padding-top: 10px; }
+    .cities.editing .chips { padding-top: 10px; padding-left: 2px; }
     .chip { height: 36px; }
     .seg.list button { width: 36px; height: 32px; }
-    .seg.list { position: sticky; right: 0; box-shadow: -20px 0 14px 2px var(--bg); }
-    .days-head { grid-template-columns: 134px minmax(0, 1fr) 44px; column-gap: 8px; }
-    .days-head[aria-expanded="true"] { grid-template-columns: 124px minmax(0, 1fr) 34px; }
-    .days-head[aria-expanded="false"] { grid-template-columns: max-content minmax(0, 1fr) 44px; }
     .seg button { height: 32px; }
     .circle { width: 36px; height: 36px; }
-    .hours-scroll { margin: 0 -16px; padding: 0 16px; }
-    .temps .primary { font-size: 54px; }
-    .temps .secondary { font-size: 32px; }
-    .reading .big-icon { width: 52px; height: 52px; }
-    .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .day { --lab: 42px; --pad: 6px; grid-template-columns: 44px 30px minmax(0, 1fr); gap: 8px; }
+    .now { padding-top: 22px; }
+    .soon-bars { gap: 4px; }
   }
-  /* The narrowest phones: the logo stands for the name (still read out). */
+  /* The narrowest phones, and a phone at the largest sizes: the logo stands for the name (still read out). */
   @media (max-width: 359px) {
+    .hdr h1 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  }
+  @container (max-width: 300px) {
     .hdr h1 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
@@ -480,15 +475,15 @@
     </div>
   </header>
 
-  <section class="tile ask-loc" id="askLoc" hidden aria-labelledby="askLocTitle">
+  <section class="card ask-loc" id="askLoc" hidden aria-labelledby="askLocTitle">
     <h2 id="askLocTitle">Show the weather where you are?</h2>
     <p>Two Degrees can put the place you’re in first in your cities and keep it up to date. Recommended. Your location is rounded to about a kilometre and used only to get its weather. You can change this anytime in the ⋯ menu.</p>
     <div class="ask-actions"><button type="button" class="ask-yes" id="askLocYes">Use My Location</button><button type="button" class="ask-no" id="askLocNo">Not Now</button></div>
   </section>
 
-  <nav class="cities" id="cities" aria-label="Saved cities"></nav>
+  <nav class="cities" id="cities" aria-label="Saved cities"><div class="chips" id="chips"></div><span id="listCtl"></span></nav>
 
-  <section class="tile search" id="search" hidden aria-label="Add a city">
+  <section class="card search" id="search" hidden aria-label="Add a city">
     <div class="box">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
       <input id="searchInput" type="search" placeholder="Add a city" autocomplete="off" spellcheck="false" aria-label="City name">
@@ -496,48 +491,42 @@
     <div class="results" id="results" role="listbox" aria-label="Matching cities"></div>
   </section>
 
+  <section class="now" id="now" aria-live="polite"><div class="skeleton">Loading the forecast…</div></section>
+
   <section class="alerts" id="alerts" aria-label="Severe weather alerts" hidden></section>
 
-  <section class="tile now" id="now" aria-live="polite"><div class="skeleton">Loading the forecast…</div></section>
-
-  <section class="tile soon" id="soon" aria-labelledby="soonTitle" hidden>
-    <h3 class="eyebrow" id="soonTitle">Next 2 hours<span class="sp"></span><span class="aside" id="soonAside"></span></h3>
+  <section class="card soon" id="soon" aria-labelledby="soonTitle" hidden>
+    <h3 class="eyebrow" id="soonTitle"><span id="soonIcon"></span><span>Next 2 hours</span><span class="sp"></span><span class="aside" id="soonAside"></span></h3>
     <p class="soon-line" id="soonLine"></p>
     <div class="soon-bars" id="soonBars" role="img"></div>
   </section>
 
-  <section class="tile" aria-labelledby="hoursTitle">
-    <h3 class="eyebrow" id="hoursTitle">Next 24 hours<span class="sp"></span><span class="aside" id="hoursAside"></span></h3>
+  <section class="card hourly" id="hourly" aria-labelledby="hoursTitle" hidden>
+    <h3 class="eyebrow" id="hoursTitle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5h4"/></svg><span>Next 24 hours</span></h3>
+    <p class="summary" id="summary"></p>
+    <hr class="rule" id="summaryRule">
     <div class="hours-scroll" tabindex="0" aria-label="Hourly forecast, scroll sideways">
       <div class="hours" id="hours"></div>
     </div>
   </section>
 
-  <section class="tile" aria-labelledby="daysTitle">
-    <button type="button" class="days-head" id="daysToggle" aria-expanded="false" aria-controls="days">
-      <span class="eyebrow" id="daysTitle">5-day forecast</span>
-      <span class="ticks" id="dayTicks" aria-hidden="true"></span>
-      <span class="chev" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></span>
-    </button>
-    <div class="days" id="days" hidden></div>
+  <section class="card daily" id="daily" aria-labelledby="daysTitle" hidden>
+    <h3 class="eyebrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg><span id="daysTitle">10-day forecast</span></h3>
+    <div class="days" id="days"></div>
   </section>
+
+  <a class="card mapcard" id="mapLink" href="https://bradleycowdrey.github.io/two-degrees/radar.html" target="_blank" rel="noopener">
+    <svg class="map" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 6.6 8.6 4v13.4L3 20zM10.2 4l3.6 2.6V20l-3.6-2.6zM15.4 6.6 21 4v13.4L15.4 20z"/></svg>
+    <span class="tx"><b>Rain Map</b><span id="mapText">Radar for the last two hours</span></span>
+    <svg class="go" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg>
+  </a>
 
   <section class="details" id="details" aria-label="More detail" hidden><div class="dgrid" id="dgrid"></div></section>
 
-  <section class="tile mapcard" id="mapCard" aria-labelledby="mapTitle">
-    <h3 class="eyebrow" id="mapTitle">Rain map</h3>
-    <p id="mapText">Radar for the past two hours.</p>
-    <a class="pill" id="mapLink" href="https://bradleycowdrey.github.io/two-degrees/radar.html" target="_blank" rel="noopener">Open Rain Map <span aria-hidden="true">↗</span></a>
-    <span class="credit"><span class="nw">Radar © RainViewer</span> · <span class="nw">Map OpenFreeMap © OpenMapTiles</span> · <span class="nw">Data © OpenStreetMap contributors</span></span>
-  </section>
-
-
-
   <footer class="foot">
-    <div class="foot-row">
-    <div class="status" id="status"><span class="dot"></span><span id="statusText" title="">Loading…</span><span aria-hidden="true">·</span><a href="https://open-meteo.com/" target="_blank" rel="noopener" title="Weather data by Open-Meteo.com">Data: Open-Meteo</a></div>
-    </div>
-    <a class="brand" href="https://bradcowdrey.com" target="_blank" rel="noopener">Made by Bradley Cowdrey. Free. Forever. ↗</a>
+    <div class="status" id="status"><span id="footLead">Weather</span> <span aria-hidden="true">·</span> <a href="https://open-meteo.com/" target="_blank" rel="noopener" title="Weather data by Open-Meteo.com">Open-Meteo</a></div>
+    <div id="statusText" title="">Loading…</div>
+    <a class="brand" href="https://bradcowdrey.com" target="_blank" rel="noopener">Made by Bradley Cowdrey. Free. Forever.</a>
   </footer>
 </main>
 <div class="sheet-back" id="sheetBack" hidden><div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle" tabindex="-1"></div></div>
@@ -549,7 +538,7 @@
   'use strict';
   const APP_URL = 'https://bradcowdrey.com/two-degrees';
   const MAC_URL = 'https://github.com/bradleycowdrey/two-degrees/releases/latest/download/TwoDegrees.dmg';
-  const SHARE_TEXT = 'Two Degrees: the weather in °F and °C at once, with the next 24 hours and five days ahead. Free and open source, by Bradley Cowdrey.';
+  const SHARE_TEXT = 'Two Degrees: the weather in °F and °C at once, with the next 24 hours and ten days ahead. Free and open source, by Bradley Cowdrey.';
   const MAX_CITIES = 20;   // of your own; where you are doesn't count
   const CACHE_MS = 10 * 60 * 1000;
   const inArtifact = () => !!(window.claude && typeof window.claude.use === 'function');
@@ -647,14 +636,13 @@
 
   /* ---------- State ---------- */
   const EMBEDDED = window.parent !== window;   // running inside the product page's frame
-  const WIDGETS = new URLSearchParams(location.search).has('widgets');   // app?widgets: just the Mac widgets, live
+  const WIDGETS = new URLSearchParams(location.search).has('widgets');   // app?widgets: just the widgets, live
   const state = {
     unit: store.get('unit', defaultUnit()),
     cities: [],
     active: 0,
     data: {},
     editing: false,
-    daysOpen: EMBEDDED,   // expanded inside the product page's frame; the standalone app opens closed
     // Extra large on the product page when there's room for it, unless the visitor picked a size.
     size: store.get('size', EMBEDDED && innerWidth >= 560 ? 'extraLarge' : 'medium'),
     font: store.get('font', 'inter'),
@@ -726,7 +714,7 @@
     let g;
     switch (kind) {
       case 'clear': g = isDay ? sun(12, 12, 4.6) : moon(11, 12, 7.6); break;
-      case 'partly': g = (isDay ? sun(8.6, 8.4, 3.4) : moon(8.4, 8.4, 4.4)) + `<path d="${CLOUD}" fill="var(--cloud)" stroke="var(--tile)" stroke-width="1.4"/>`; break;
+      case 'partly': g = (isDay ? sun(8.6, 8.4, 3.4) : moon(8.4, 8.4, 4.4)) + `<path d="${CLOUD}" fill="var(--cloud)" stroke="rgba(20,24,32,.4)" stroke-width="1.2"/>`; break;
       case 'cloud': g = `<path d="M10.5 9.8a4.6 4.6 0 0 1 8.4 1.6 3.2 3.2 0 0 1 .2 6.3" fill="none" stroke="var(--cloud-dark)" stroke-width="1.6" stroke-linecap="round"/><path d="${CLOUD}" fill="var(--cloud)"/>`; break;
       case 'fog': g = `<path d="${CLOUD_HI}" fill="var(--cloud)"/><path d="M5 18.5h14M7 21.5h10" stroke="var(--cloud-dark)" stroke-width="1.8" stroke-linecap="round"/>`; break;
       case 'drizzle': g = `<path d="${CLOUD_HI}" fill="var(--cloud)"/><g fill="var(--rain)"><circle cx="8.5" cy="19" r="1.1"/><circle cx="12.5" cy="20.5" r="1.1"/><circle cx="16.5" cy="19" r="1.1"/></g>`; break;
@@ -758,8 +746,8 @@
   const at = (o, k, i) => (o && Array.isArray(o[k]) && o[k][i] != null ? o[k][i] : null);
   async function fetchLive(city) {
     const url = 'https://api.open-meteo.com/v1/forecast?' + new URLSearchParams({
-      latitude: city.lat.toFixed(4), longitude: city.lon.toFixed(4), timezone: 'auto', forecast_days: '6', wind_speed_unit: 'kmh',
-      current: 'temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,is_day,pressure_msl,cloud_cover,wind_gusts_10m,visibility,precipitation',
+      latitude: city.lat.toFixed(4), longitude: city.lon.toFixed(4), timezone: 'auto', forecast_days: '11', wind_speed_unit: 'kmh',   // 10 days shown, as in the apps
+      current: 'temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,wind_direction_10m,is_day,pressure_msl,cloud_cover,wind_gusts_10m,visibility,precipitation',
       hourly: 'temperature_2m,weather_code,precipitation_probability,is_day,precipitation,wind_speed_10m,wind_gusts_10m,cloud_cover_low,cloud_cover_mid,cloud_cover_high,visibility',
       daily: 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset,precipitation_sum,rain_sum,snowfall_sum,wind_speed_10m_max,wind_gusts_10m_max,wind_direction_10m_dominant,uv_index_max',
       minutely_15: 'precipitation', forecast_minutely_15: '8',
@@ -771,7 +759,7 @@
     return {
       source: 'live', fetchedAt: Date.now(), tz: j.timezone,
       current: { time: c.time, t: c.temperature_2m, feels: c.apparent_temperature, hum: c.relative_humidity_2m, wind: c.wind_speed_10m, code: c.weather_code, isDay: !!c.is_day,
-        pres: val(c, 'pressure_msl'), cloud: val(c, 'cloud_cover'), gust: val(c, 'wind_gusts_10m'), vis: val(c, 'visibility'), precip: val(c, 'precipitation') },
+        wdir: val(c, 'wind_direction_10m'), pres: val(c, 'pressure_msl'), cloud: val(c, 'cloud_cover'), gust: val(c, 'wind_gusts_10m'), vis: val(c, 'visibility'), precip: val(c, 'precipitation') },
       hourly: h.time.map((time, i) => ({ time, t: h.temperature_2m[i], code: h.weather_code[i], pop: h.precipitation_probability[i] ?? 0, isDay: !!h.is_day[i],
         precip: at(h, 'precipitation', i), wind: at(h, 'wind_speed_10m', i), gust: at(h, 'wind_gusts_10m', i), vis: at(h, 'visibility', i),
         lo: at(h, 'cloud_cover_low', i), mi: at(h, 'cloud_cover_mid', i), hi: at(h, 'cloud_cover_high', i) })),
@@ -803,7 +791,8 @@
     const pattern = [0, 2, 61, 3, 1, 80, 2, 0];
     const daily = [], hourly = [];
     const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-    for (let i = 0; i < 6; i++) {
+    const DAYS = 11;   // as the live forecast asks for
+    for (let i = 0; i < DAYS; i++) {
       const mid = base + (rnd() - 0.5) * 6;
       let code = pattern[Math.floor(rnd() * pattern.length)];
       if (code >= 61 && mid < 1) code = 73;
@@ -816,10 +805,10 @@
         uv, wdir: Math.round(r2() * 359), _wind: 7 + r2() * 20, _mid: mid, _sw: swing, _rise: rise, _set: set });
     }
     const p0 = 1004 + r2() * 18, slope = (r2() - 0.5) * 0.5;
-    for (let i = 0; i < 24 * 6; i++) {
+    for (let i = 0; i < 24 * DAYS; i++) {
       const t = new Date(start.getTime() + i * 36e5);
       const day = daily[Math.floor(i / 24)], hr = i % 24;
-      const next = daily[Math.min(5, Math.floor(i / 24) + 1)];
+      const next = daily[Math.min(DAYS - 1, Math.floor(i / 24) + 1)];
       const mid = day._mid + (next._mid - day._mid) * (hr / 24);
       const temp = mid + day._sw * Math.sin((hr - 9) / 24 * 2 * Math.PI) + (rnd() - 0.5);
       const wet = day.code >= 51 && hr >= 12 && hr <= 18;
@@ -847,7 +836,7 @@
     return {
       source: 'sample', fetchedAt: Date.now(), tz: city.tz,
       current: { time: nowStr, t: cur.t, feels: cur.t - 1.5, hum: 55 + Math.round(rnd() * 30), wind, code: cur.code, isDay: cur.isDay,
-        pres: cur.pres, cloud: Math.min(100, Math.round(({ clear: 6, partly: 44, cloud: 92, fog: 100 }[kind] ?? 86) + r2() * 6)),
+        wdir: daily[0].wdir, pres: cur.pres, cloud: Math.min(100, Math.round(({ clear: 6, partly: 44, cloud: 92, fog: 100 }[kind] ?? 86) + r2() * 6)),
         gust: wind + 6 + Math.round(r2() * 14), vis: kind === 'fog' ? 900 : cur.vis, precip: raining ? minutely[0].p : 0 },
       hourly, daily: daily.map(({ _mid, _sw, _rise, _set, _wind, ...d }) => d), minutely,
     };
@@ -1027,8 +1016,25 @@
     }
     return `rgb(${stops[stops.length - 1][1]})`;
   };
-  const glowFor = (kind, isDay) => !isDay ? 'rgba(233,220,200,.10)'
-    : ({ clear: 'rgba(244,184,96,.20)', partly: 'rgba(244,184,96,.13)', rain: 'rgba(141,180,226,.16)', drizzle: 'rgba(141,180,226,.13)', storm: 'rgba(153,15,61,.28)', snow: 'rgba(244,247,251,.12)' }[kind] || 'rgba(207,198,187,.09)');
+  // The sky behind a city: a top-to-bottom gradient for its weather and time of day. The same table as
+  // the apps (Sky.swift).
+  const isSnow = (code) => [71, 73, 75, 77, 85, 86].includes(code);
+  function skyColors(code, isDay) {
+    if (code >= 95 && code <= 99) return ['#3A3346', '#16131B'];                                    // storm
+    if (isSnow(code)) return isDay ? ['#7C8EA0', '#3E4A57'] : ['#323B47', '#14181E'];
+    if (code >= 51 && code <= 82) return isDay ? ['#4F5E70', '#232A33'] : ['#252C36', '#101317'];    // rain
+    if (isDay && (code === 45 || code === 48 || code === 3)) return ['#667585', '#2E3640'];          // overcast or fog, day
+    if (isDay && (code === 0 || code === 1)) return ['#3D74B0', '#1C3A5E'];                          // clear, day
+    if (isDay && code === 2) return ['#4F78A3', '#24384F'];                                          // partly cloudy, day
+    if (!isDay && (code === 0 || code === 1)) return ['#141E3C', '#0A0E1C'];                         // clear, night
+    return ['#262A33', '#111317'];                                                                   // cloudy, night
+  }
+  const skyOf = (data) => (data ? skyColors(data.current.code, data.current.isDay) : skyColors(3, false));
+  function applySky(data) {
+    const [top, bottom] = skyOf(data), root = document.documentElement.style;
+    root.setProperty('--sky-top', top);
+    root.setProperty('--sky-bottom', bottom);
+  }
   const dual = (c) => { const u = state.unit; return `${deg(c, u)}°${u} / ${deg(c, other(u))}°${other(u)}`; };
   const speak = (c) => `${deg(c, 'F')} degrees Fahrenheit, ${deg(c, 'C')} Celsius`;
 
@@ -1058,6 +1064,28 @@
     plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>',
     pencil: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13.5 6.5 4 4"/></svg>',
     check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>',
+    go: '<svg class="go" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg>',
+  };
+  // The small icon beside a card's or a tile's title.
+  const line = (d) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+  const solid = (d) => `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">${d}</svg>`;
+  const TITLE = {
+    here: solid('<path d="M21 3 3 10.5l7.5 3 3 7.5z"/>'),
+    thermo: line('<path d="M10 5a2 2 0 0 1 4 0v8.6a4 4 0 1 1-4 0z"/><path d="M12 16.5V10"/>'),
+    humidity: line('<path d="M3 7.5h8.5a2.5 2.5 0 1 0-2.5-2.5M3 12.5h10M3 17.5h6.5"/><path d="M17.5 12c1.9 2.3 3 3.9 3 5.4a3 3 0 0 1-6 0c0-1.5 1.1-3.1 3-5.4z" fill="currentColor" stroke="none"/>'),
+    wind: line('<path d="M3 9h10a3 3 0 1 0-3-3M3 14h15a3 3 0 1 1-3 3M3 19h6"/>'),
+    drop: solid('<path d="M12 2.8c3.6 4.3 6 7.7 6 11a6 6 0 0 1-12 0c0-3.3 2.4-6.7 6-11z"/>'),
+    sunrise: line('<path d="M3 19h18M7 15a5 5 0 0 1 10 0M12 9V3M9.5 5.5 12 3l2.5 2.5M3.5 15H5M19 15h1.5M6.3 9.7l1 1M17.7 9.7l-1 1"/>'),
+    sunset: line('<path d="M3 19h18M7 15a5 5 0 0 1 10 0M12 3v6M9.5 6.5 12 9l2.5-2.5M3.5 15H5M19 15h1.5M6.3 9.7l1 1M17.7 9.7l-1 1"/>'),
+    sun: line('<circle cx="12" cy="12" r="4" fill="currentColor"/><path d="M12 2.5V5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3 7 7M17 17l1.7 1.7M5.3 18.7 7 17M17 7l1.7-1.7"/>'),
+    aqi: solid('<circle cx="12" cy="12" r="1.7"/><circle cx="6.5" cy="12" r="1.5"/><circle cx="17.5" cy="12" r="1.5"/><circle cx="12" cy="6.5" r="1.5"/><circle cx="12" cy="17.5" r="1.5"/><circle cx="8" cy="8" r="1.2"/><circle cx="16" cy="8" r="1.2"/><circle cx="8" cy="16" r="1.2"/><circle cx="16" cy="16" r="1.2"/><circle cx="12" cy="2.5" r="1"/><circle cx="12" cy="21.5" r="1"/><circle cx="2.5" cy="12" r="1"/><circle cx="21.5" cy="12" r="1"/>'),
+    chart: line('<path d="M4 4v16h16"/><path d="m7.5 15 3.5-4 3 2.5 5-6"/>'),
+    eye: line('<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8" fill="currentColor" stroke="none"/>'),
+    cloud: solid(`<path d="${CLOUD}"/>`),
+    moon: solid('<path d="M20.5 14.2A8.6 8.6 0 0 1 9.8 3.5a8.6 8.6 0 1 0 10.7 10.7z"/>'),
+    rain: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${CLOUD_HI}" fill="currentColor"/><path d="M8.6 18 7.6 21.6M12.6 18l-1 3.6M16.6 18l-1 3.6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>`,
+    snow: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${CLOUD_HI}" fill="currentColor"/><g fill="currentColor"><circle cx="8.4" cy="19.2" r="1.3"/><circle cx="12.4" cy="21.2" r="1.3"/><circle cx="16.4" cy="19.2" r="1.3"/></g></svg>`,
+    list: line('<path d="M8.5 7H20M8.5 12H20M8.5 17H20M4 7h.01M4 12h.01M4 17h.01"/>'),
   };
   function listControls() {
     const adding = !$('#search').hidden, editing = state.editing;
@@ -1070,28 +1098,57 @@
   }
 
   function renderCities() {
-    const el = $('#cities');
-    el.classList.toggle('editing', state.editing);
-    el.innerHTML = state.cities.map((c, i) => {
+    $('#cities').classList.toggle('editing', state.editing);
+    $('#chips').innerHTML = state.cities.map((c, i) => {
       const d = state.data[keyOf(c)];
       const t = d ? `<span class="t">${deg(d.current.t, state.unit)}°</span>` : '';
       const arrow = isHere(c) ? `<svg class="here" viewBox="0 0 24 24" role="img" aria-label="My Location:"><path d="M21 3 3 10.5l7.5 3 3 7.5z" fill="currentColor"/></svg>` : '';
       const warn = alertsOf(c).length ? WARN.replace('<svg ', '<svg class="warn" role="img" aria-label="Weather alert" ').replace(' aria-hidden="true"', '') : '';
       return `<span class="chip-wrap"><button type="button" class="chip" data-i="${i}" aria-current="${i === state.active}">${arrow}<span class="n" data-n="${esc(c.name)}">${esc(c.name)}</span>${warn}${t}</button>` +
         (state.cities.length > 1 ? `<button type="button" class="chip-x" data-x="${i}" aria-label="${c.here ? 'Stop using My Location' : 'Remove ' + esc(c.name)}">×</button>` : '') + `</span>`;
-    }).join('') +
-      listControls();
+    }).join('');
+    $('#listCtl').innerHTML = listControls();
   }
 
   /* ---------- Readings for the newer tiles ---------- */
   const both = (c) => { const u = state.unit, o = other(u); return `${deg(c, u)}°${u} · ${deg(c, o)}°${o}`; };
   const nowIndex = (data) => { const i = data.hourly.findIndex((h) => h.time.slice(0, 13) === data.current.time.slice(0, 13)); return i < 0 ? 0 : i; };
   const COMPASS = ['north', 'northeast', 'east', 'southeast', 'south', 'southwest', 'west', 'northwest'];
-  const fromDir = (d) => `From the ${COMPASS[Math.round(((d % 360) + 360) % 360 / 45) % 8]}`;
-  const uvLevel = (uv) => (uv <= 2 ? 'Low' : uv <= 5 ? 'Moderate' : uv <= 7 ? 'High' : uv <= 10 ? 'Very High' : 'Extreme');
-  const cloudLabel = (p) => (p <= 10 ? 'Clear' : p <= 30 ? 'Mostly clear' : p <= 60 ? 'Partly cloudy' : p <= 90 ? 'Mostly cloudy' : 'Overcast');
-  const visLabel = (m) => (m >= 10000 ? 'Clear view' : m >= 2000 ? 'Haze' : 'Fog');
-  const gustNote = (wind, gust) => (gust != null && wind != null && gust - wind >= 10 ? `Gusts to ${windIn(gust, windUnit()).replace(' ', '\u00A0')}` : '');
+  const compassName = (d) => COMPASS[Math.round(((d % 360) + 360) % 360 / 45) % 8];
+  const fromDir = (d) => `From the ${compassName(d)}`;
+  // The words on the tiles, the same as the apps'.
+  const uvLevel = (uv) => (uv < 3 ? 'Low' : uv < 6 ? 'Moderate' : uv < 8 ? 'High' : uv < 11 ? 'Very high' : 'Extreme');
+  const cloudLabel = (p) => (p < 10 ? 'Clear' : p < 30 ? 'Mostly clear' : p < 60 ? 'Partly cloudy' : p < 90 ? 'Mostly cloudy' : 'Overcast');
+  const visLabel = (m) => (m >= 10000 ? 'Clear view.' : m >= 2000 ? 'Haze is cutting the view.' : 'Fog is cutting the view.');
+  function feelsNote(cur) {
+    const diff = cur.feels - cur.t;
+    if (diff <= -1.5) return cur.wind >= 15 ? 'Wind is making it feel cooler.' : 'It feels cooler than it is.';
+    return diff >= 1.5 ? 'Humidity is making it feel warmer.' : 'Similar to the actual temperature.';
+  }
+  // Dew point in °C, by the Magnus formula.
+  const dewPoint = (t, rh) => { const a = 17.62, b = 243.12, g = Math.log(Math.max(rh, 1) / 100) + a * t / (b + t); return b * g / (a - g); };
+  // How strong, and from where: "A light breeze from the northwest." Gusts, when they're well above the steady wind.
+  function windNote(cur) {
+    if (cur.wind < 2) return 'Calm.';
+    const strength = cur.wind < 12 ? 'A light breeze' : cur.wind < 29 ? 'A moderate breeze' : cur.wind < 50 ? 'A strong breeze' : 'Gale-force wind';
+    const note = cur.wdir != null ? `${strength} from the ${compassName(cur.wdir)}.` : `${strength}.`;
+    return cur.gust != null && cur.gust - cur.wind >= 10 ? `${note} Gusts to ${windIn(cur.gust, windUnit())}.` : note;
+  }
+  // The same rule and words as the hourly summary, so the two never disagree.
+  function rainNote(hours) {
+    const wet = hours.slice(1, 13).find((h) => h.pop >= 50);
+    if (!wet) return 'None expected in the next 12 hours.';
+    const k = codeInfo(wet.code)[1];
+    return `${k === 'snow' ? 'Snow' : k === 'storm' ? 'Storms' : 'Rain'} likely around ${hour12(wet.time)}.`;
+  }
+  // One quiet accent per tile, the same colours as the apps (TileAccent): some follow the reading, the rest are fixed.
+  const ACCENT = {
+    humidity: '#6FC8D6', wind: '#9EDCC2', rain: '#8DB4E2', sunrise: '#F2C66D', sunset: '#F39A72', visibility: '#B4D2F0', cloud: '#B9C3CF', moon: '#EFE3CC', neutral: '#C9C2B8',
+    temperature: (c) => (c < 5 ? '#8CC0F5' : c < 18 ? '#9AD3A8' : c < 27 ? '#F2C66D' : '#F28B62'),
+    uv: (uv) => (uv < 3 ? '#6CC24A' : uv < 6 ? '#E8D44D' : uv < 8 ? '#F0A04B' : uv < 11 ? '#E5604A' : '#B57BD0'),
+    air: (at) => (at < 0.17 ? '#6CC24A' : at < 0.34 ? '#E8D44D' : at < 0.5 ? '#F0A04B' : at < 0.67 ? '#E5604A' : '#B57BD0'),
+    versusNormal: (diff) => (diff >= 1.5 ? '#F2A65A' : diff <= -1.5 ? '#8CC0F5' : '#C9C2B8'),
+  };
 
   // Moon: computed here, from a synodic month of 29.530588853 days after the new moon of 2000-01-06 18:14 UTC.
   const MOON_NAMES = ['New Moon', 'Waxing Crescent', 'First Quarter', 'Waxing Gibbous', 'Full Moon', 'Waning Gibbous', 'Last Quarter', 'Waning Crescent'];
@@ -1110,28 +1167,31 @@
     // The lit half, then the terminator back across: it bulges toward the lit side for a crescent, away for a gibbous.
     const lit = waxing ? `M${c} ${c - r}A${r} ${r} 0 0 1 ${c} ${c + r}A${rx} ${r} 0 0 ${k > 0 ? 0 : 1} ${c} ${c - r}z`
       : `M${c} ${c - r}A${r} ${r} 0 0 0 ${c} ${c + r}A${rx} ${r} 0 0 ${k > 0 ? 1 : 0} ${c} ${c - r}z`;
-    return `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="${c}" cy="${c}" r="${r}" fill="var(--border-strong)"/><path d="${lit}" fill="var(--moon)"/></svg>`;
+    return `<svg class="moon gfx" viewBox="3 3 18 18" aria-hidden="true"><circle cx="${c}" cy="${c}" r="${r}" fill="#fff" fill-opacity=".18"/><path d="${lit}" fill="#F4E9D8"/></svg>`;
   }
 
   // Air quality, in the local scale: US AQI in the US, the European AQI elsewhere.
+  // Each scale's categories by their top value, the reading that fills its bar, and the bar's colours (as in the apps).
   const AQ_SCALES = {
-    us: { name: 'US AQI', max: 350, bands: [[50, 'Good', '#6FD39C'], [100, 'Moderate', '#E9C98A'], [150, 'Unhealthy for Sensitive Groups', '#F2A65A'], [200, 'Unhealthy', '#E5484D'], [300, 'Very Unhealthy', '#A066C8'], [350, 'Hazardous', '#990F3D']] },
-    eu: { name: 'European AQI', max: 120, bands: [[20, 'Good', '#6FD39C'], [40, 'Fair', '#A8D58A'], [60, 'Moderate', '#E9C98A'], [80, 'Poor', '#F2A65A'], [100, 'Very Poor', '#E5484D'], [120, 'Extremely Poor', '#A066C8']] },
+    us: { name: 'US AQI', full: 300, colors: '#00E400,#FFFF00,#FF7E00,#FF0000,#8F3F97,#7E0023',
+      bands: [[50, 'Good'], [100, 'Moderate'], [150, 'Unhealthy for Sensitive Groups'], [200, 'Unhealthy'], [300, 'Very Unhealthy'], [Infinity, 'Hazardous']] },
+    eu: { name: 'European AQI', full: 100, colors: '#50F0E6,#50CCAA,#F0E641,#FF5050,#960032,#7D2181',
+      bands: [[20, 'Good'], [40, 'Fair'], [60, 'Moderate'], [80, 'Poor'], [100, 'Very Poor'], [Infinity, 'Extremely Poor']] },
   };
-  const aqBand = (scale, v) => scale.bands.find(([top]) => v <= top) || scale.bands[scale.bands.length - 1];
+  const aqBand = (scale, v) => scale.bands.find(([top]) => v <= top);
   function aqReading(city, aq) {
     const us = isUS(city) && aq.us != null, kind = us ? 'us' : 'eu', v = us ? aq.us : aq.eu, y = us ? aq.usY : aq.euY;
     if (v == null) return null;
-    const scale = AQ_SCALES[kind], [, cat, color] = aqBand(scale, v);
+    const scale = AQ_SCALES[kind], [, cat] = aqBand(scale, v);
     let note;
-    if (y != null) note = Math.abs(v - y) <= 5 ? 'About the same as yesterday' : v < y ? 'Better than yesterday' : 'Worse than yesterday';
+    if (y != null) note = Math.abs(v - y) <= 5 ? 'About the same as yesterday.' : v < y ? 'Better than yesterday.' : 'Worse than yesterday.';
     else {
-      const main = [['PM2.5', aq.pm25 / 25], ['PM10', aq.pm10 / 50], ['Ozone', aq.o3 / 100], ['Nitrogen Dioxide', aq.no2 / 40]].filter(([, x]) => isFinite(x)).sort((a, b) => b[1] - a[1])[0];
-      note = main ? `Mostly ${main[0]}` : '';
+      // The pollutant furthest above its guide level.
+      const main = [['PM2.5', aq.pm25 / 15], ['PM10', aq.pm10 / 45], ['ozone', aq.o3 / 100], ['NO₂', aq.no2 / 25]].filter(([, x]) => isFinite(x)).sort((a, b) => b[1] - a[1])[0];
+      note = main ? `Mostly ${main[0]}.` : '';
     }
-    let prev = 0;
-    const stops = scale.bands.map(([top, , c]) => { const s = `${c} ${(prev / scale.max * 100).toFixed(1)}% ${(top / scale.max * 100).toFixed(1)}%`; prev = top; return s; }).join(',');
-    return { v: Math.round(v), cat, color, note, scale: scale.name, bar: `linear-gradient(90deg,${stops})`, at: Math.min(100, v / scale.max * 100).toFixed(1) };
+    const pos = Math.min(1, Math.max(0, v / scale.full));
+    return { v: Math.round(v), cat, note, scale: scale.name, bar: `linear-gradient(90deg,${scale.colors})`, at: (pos * 100).toFixed(1), accent: ACCENT.air(pos) };
   }
   const pollenLevel = (g) => (g < 10 ? 'Low' : g < 50 ? 'Moderate' : g < 200 ? 'High' : 'Very High');
 
@@ -1142,8 +1202,8 @@
     return Math.abs(diff) <= 1 ? 'About normal' : `${Math.abs(diff)}° ${diff > 0 ? 'above' : 'below'} normal`;
   }
 
-  /* ---------- Alerts (above everything on the city's page) ---------- */
-  const WARN = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M10.3 3.9 1.9 18.1A2 2 0 0 0 3.6 21h16.8a2 2 0 0 0 1.7-2.9L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4.5M12 17h.01" stroke="var(--bg)" stroke-width="2.2" stroke-linecap="round"/></svg>';
+  /* ---------- Alerts (right under the reading, above every card) ---------- */
+  const WARN = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M10.3 3.9 1.9 18.1A2 2 0 0 0 3.6 21h16.8a2 2 0 0 0 1.7-2.9L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4.5M12 17h.01" stroke="var(--ink)" stroke-width="2.2" stroke-linecap="round"/></svg>';
   const alertsOf = (city) => activeAlerts(state.alerts[keyOf(city)]);
   const untilText = (a, tz) => {
     if (!a.expires) return '';
@@ -1154,7 +1214,7 @@
     const list = alertsOf(city), el = $('#alerts');
     el.hidden = !list.length;
     el.innerHTML = list.map((a, i) => `<button type="button" class="alert" data-alert="${i}" style="--sev:${sevColor(a.severity)}" aria-haspopup="dialog">${WARN}
-      <span><b>${esc(a.event)}</b><span class="m">${esc([untilText(a, data.tz || city.tz), a.senderName].filter(Boolean).join(' · '))}</span></span><span class="go" aria-hidden="true">›</span></button>`).join('');
+      <span><b>${esc(a.event)}</b><span class="m">${esc([untilText(a, data.tz || city.tz), a.senderName].filter(Boolean).join(' · '))}</span></span>${GLYPH.go}</button>`).join('');
   }
 
   /* ---------- Next 2 hours, from the 15-minute forecast ---------- */
@@ -1180,6 +1240,7 @@
       : !wet[0] && changes <= 2 ? `${word} starting around ${clock(steps[wet.indexOf(true)].time)}`
       : `Light ${word.toLowerCase()} on and off`;
     $('#soonLine').textContent = line;
+    $('#soonIcon').outerHTML = (snowy ? TITLE.snow : TITLE.rain).replace('<svg ', '<svg id="soonIcon" ');
     const total = steps.reduce((a, s) => a + s.p, 0), [tMain, tOther] = fmtRain(total);
     $('#soonAside').textContent = `${tMain} · ${tOther}`;
     $('#soonAside').title = 'Total over the next two hours';
@@ -1187,8 +1248,8 @@
     const bars = $('#soonBars');
     bars.setAttribute('aria-label', line + '. ' + steps.map((s, k) => `${k ? clock(s.time) : 'Now'}: ${fmtRain(s.p)[0]}`).join(', '));
     bars.innerHTML = steps.map((s, k) => {
-      const h = s.p > 0 ? Math.max(4, s.p / top * 100) : 0, label = k === 0 ? 'Now' : k % 2 ? '' : clock(s.time).replace(/\s?[AP]M$/, '');
-      return `<div class="b"><div class="col${snowAt(data, s.time) ? ' snow' : ''}"><i style="height:${h.toFixed(1)}%"></i></div><div class="t">${label}</div></div>`;
+      const h = s.p > 0 ? s.p / top * 100 : 0, label = k === 0 ? 'Now' : k % 2 ? '' : clock(s.time).replace(/\s?[AP]M$/, '');
+      return `<div class="b"><div class="col${snowAt(data, s.time) ? ' snow' : ''}"><i${wet[k] ? '' : ' class="dry"'} style="height:${h.toFixed(1)}%"></i></div><div class="t">${label}</div></div>`;
     }).join('');
   }
 
@@ -1222,94 +1283,141 @@
     return { word: SKY[o.r][0], line: SKY[o.r][1], why: o.why, r: o.r };
   }
 
-  /* ---------- More detail tiles ---------- */
-  // Averages: one scale from the record (or normal) low to the record (or normal) high, today's range on top.
+  /* ---------- Detail tiles ---------- */
+  // Where a dot sits along a bar (0–100), kept inside its ends.
+  const dotAt = (pct, r = 4.5) => `clamp(${r}px, ${Math.max(0, Math.min(100, pct)).toFixed(1)}%, calc(100% - ${r}px))`;
+  // Averages: the normal low to high over today's low to high, on one scale that just fits both, as in
+  // Apple's Weather, so the difference is easy to see.
   function rangeBar(n, lo, hi) {
-    // Just fits the normal and today's range, as in Apple's Weather, so the difference is easy to see.
     const min = Math.min(n[1], lo), max = Math.max(n[0], hi), pad = Math.max((max - min) * 0.15, 2);
     const at = (t) => ((t - min + pad) / (max - min + 2 * pad) * 100).toFixed(1);
     const band = (tag, a, b) => `<${tag} style="left:${at(a)}%;width:max(5px,${(at(b) - at(a)).toFixed(1)}%)"></${tag}>`;
-    return `<div class="rbar" aria-hidden="true">${band('i', n[1], n[0])}${band('b', lo, hi)}</div>`;
+    return `<div class="rbar gfx" aria-hidden="true">${band('i', n[1], n[0])}${band('b', lo, hi)}</div>`;
   }
   // The sun's path over today: a cosine through sunrise and sunset, across 24 hours, with the sun at the current time.
   function sunPath(now, rise, set) {
     const hrs = (s) => { const d = parseLocal(s); return d.getUTCHours() + d.getUTCMinutes() / 60; };
     const r = hrs(rise), s = hrs(set), noon = (r + s) / 2, H = 34;
     if (!(s > r)) return '';
-    const y = (h) => H / 2 - 15 * Math.cos(2 * Math.PI * (h - noon) / 24), horizon = y(r);
+    const y = (h) => H / 2 - 11 * Math.cos(2 * Math.PI * (h - noon) / 24), horizon = y(r);
     const pts = (a, b) => { const p = []; for (let h = a; h < b; h += 0.25) p.push(`${(h / 24 * 100).toFixed(2)},${y(h).toFixed(2)}`); p.push(`${(b / 24 * 100).toFixed(2)},${y(b).toFixed(2)}`); return p.join(' '); };
     const t = Math.min(24, Math.max(0, (parseLocal(now) - parseLocal(rise.slice(0, 10) + 'T00:00')) / 36e5)), up = t > r && t < s;
-    const line = 'fill="none" vector-effect="non-scaling-stroke" stroke-linecap="round"';
-    return `<div class="sunpath" aria-hidden="true"><svg viewBox="0 0 100 ${H}" preserveAspectRatio="none">` +
-      `<line x1="0" x2="100" y1="${horizon.toFixed(2)}" y2="${horizon.toFixed(2)}" stroke="var(--text)" stroke-opacity=".22" stroke-width="1" vector-effect="non-scaling-stroke"/>` +
-      `<polyline points="${pts(0, r)}" ${line} stroke="var(--text)" stroke-opacity=".2" stroke-width="1.5"/>` +
-      `<polyline points="${pts(s, 24)}" ${line} stroke="var(--text)" stroke-opacity=".2" stroke-width="1.5"/>` +
-      `<polygon points="${pts(r, s)}" fill="var(--acc)" fill-opacity=".12"/>` +
-      `<polyline points="${pts(r, s)}" ${line} stroke="var(--acc)" stroke-opacity=".75" stroke-width="1.5"/></svg>` +
+    const stroke = 'fill="none" vector-effect="non-scaling-stroke" stroke-linecap="round"';
+    return `<div class="sunpath gfx" aria-hidden="true"><svg viewBox="0 0 100 ${H}" preserveAspectRatio="none">` +
+      `<polyline points="${pts(0, 24)}" ${stroke} stroke="#fff" stroke-opacity=".22" stroke-width="1.5"/>` +
+      `<polygon points="${pts(r, s)}" fill="var(--acc)" fill-opacity=".15"/>` +
+      `<polyline points="${pts(r, s)}" ${stroke} stroke="var(--acc)" stroke-opacity=".6" stroke-width="2"/>` +
+      `<line x1="0" x2="100" y1="${horizon.toFixed(2)}" y2="${horizon.toFixed(2)}" stroke="#fff" stroke-opacity=".3" stroke-width="1" vector-effect="non-scaling-stroke"/></svg>` +
       `<u class="${up ? 'up' : 'down'}" style="left:${(t / 24 * 100).toFixed(1)}%;top:${y(t).toFixed(1)}px"></u></div>`;
   }
   // Cloud cover by height: high, mid and low, top to bottom.
-  const cloudBars = (h) => `<div class="clbars" aria-hidden="true">` +
-    [['High', h.hi], ['Mid', h.mi], ['Low', h.lo]].map(([k, v]) => `<span>${k}</span><div><i style="width:${Math.max(0, Math.min(100, v)).toFixed(0)}%"></i></div>`).join('') + '</div>';
-  function renderDetails(city, data, today) {
-    const cur = data.current, tiles = [];
-    // One quiet accent colour per tile, on its title and as a faint glow at the top (as in the apps).
-    const acc = { visibility: '#B4D2F0', precip: '#8DB4E2', cloud: '#B9C3CF', sunrise: '#F2C66D', sunset: '#F39A72', moon: '#EFE3CC', aqi: '#C9C2B8', normal: '#C9C2B8' };
-    const tile = (id, title, value, sub, note, extra = '', aside = '') => tiles.push(`<div class="tile dt" data-tile="${id}" style="--acc:${acc[id] || '#C9C2B8'}"><h3 class="eyebrow">${title}${aside}</h3>` +
-      `<div class="dv">${value}</div>${sub ? `<div class="ds">${sub}</div>` : ''}${extra}${note ? `<div class="dn">${note}</div>` : ''}</div>`);
-    // Every city shows the same eight tiles; one whose data isn't there yet shows a dash. Pollen, measured
-    // only in some places, is a line on the air quality tile.
-    const missing = (id, title) => tile(id, title, '–', '', 'Not available right now.');
+  const cloudBars = (h) => `<div class="clbars gfx" aria-hidden="true">` +
+    [['High', h.hi], ['Mid', h.mi], ['Low', h.lo]].map(([k, v]) => `<span>${k}</span><div>${v >= 0.5 ? `<i style="width:${Math.min(100, v).toFixed(0)}%"></i>` : ''}</div>`).join('') + '</div>';
+  // A compass with the wind's arrow pointing where it's blowing, its tail (a small ring) on the side it
+  // comes from. No arrow when the direction isn't known.
+  function compass(from) {
+    const c = 28, r = 27.5, f = (n) => n.toFixed(1);
+    // A point at a bearing (0 = north, clockwise) and a distance from the centre.
+    const at = (bearing, d) => { const a = bearing * Math.PI / 180; return [c + d * Math.sin(a), c - d * Math.cos(a)]; };
+    let ticks = '';
+    for (let b = 0; b < 360; b += 30) { const [x1, y1] = at(b, r - 1), [x2, y2] = at(b, r - 4); ticks += `M${f(x1)} ${f(y1)}L${f(x2)} ${f(y2)}`; }
+    const letters = [['N', 0], ['E', 90], ['S', 180], ['W', 270]].map(([l, b]) => { const [x, y] = at(b, r - 10); return `<text x="${f(x)}" y="${f(y)}">${l}</text>`; }).join('');
+    let arrow = '';
+    if (from != null) {
+      // The wind comes from `from`, so it blows toward the opposite side.
+      const toward = (((from + 180) % 360) + 360) % 360, len = r - 14, a = toward * Math.PI / 180, ax = Math.sin(a), ay = -Math.cos(a);
+      const [hx, hy] = at(toward, len), [tx, ty] = at(from, len), bx = hx - ax * 6, by = hy - ay * 6;
+      arrow = `<g class="arrow" data-toward="${Math.round(toward)}"><path d="M${f(tx)} ${f(ty)}L${f(bx)} ${f(by)}" stroke="var(--acc)" stroke-width="2" stroke-linecap="round"/>` +
+        `<path class="head" d="M${f(hx)} ${f(hy)}L${f(bx - ay * 3.5)} ${f(by + ax * 3.5)}L${f(bx + ay * 3.5)} ${f(by - ax * 3.5)}z" fill="var(--acc)"/>` +
+        `<circle class="tail" cx="${f(tx)}" cy="${f(ty)}" r="2.5" fill="none" stroke="var(--acc)" stroke-width="1.5"/></g>`;
+    }
+    return `<svg class="compass gfx" viewBox="0 0 56 56" aria-hidden="true"><circle cx="${c}" cy="${c}" r="${r}" fill="none" stroke="#fff" stroke-opacity=".25"/>` +
+      `<path d="${ticks}" stroke="#fff" stroke-opacity=".35" stroke-linecap="round"/>${letters}${arrow}</svg>`;
+  }
+
+  // The twelve tiles, in the apps' order. Every city shows all twelve: one whose data isn't there yet
+  // shows a dash. Pollen, measured only in some places, is a line on the air quality tile.
+  function renderDetails(city, data, today, hours) {
+    const cur = data.current, d0 = data.daily[0], u = state.unit, o = other(u), tiles = [];
+    // A reading in words ("18° above normal") is set smaller, on up to two lines.
+    const tile = (id, title, icon, accent, value, sub, note, gfx = '') => tiles.push(`<div class="card dt" data-tile="${id}" style="--acc:${accent}"><h3 class="eyebrow">${TITLE[icon]}<span>${title}</span></h3>` +
+      `<div class="dv${value.length > 7 ? ' words' : ''}">${esc(value)}</div>${sub ? `<div class="ds">${esc(sub)}</div>` : ''}${gfx}${note ? `<div class="dn">${note}</div>` : ''}</div>`);
+    const missing = (id, title, icon, accent = ACCENT.neutral) => tile(id, title, icon, accent, '–', '', 'Not available right now.');
+    const nw = (t) => `<span style="white-space:nowrap">${both(t)}</span>`;
+
+    tile('feels', 'Feels like', 'thermo', ACCENT.temperature(cur.feels), `${deg(cur.feels, u)}°${u}`, `${deg(cur.feels, o)}°${o}`, feelsNote(cur));
+    tile('humidity', 'Humidity', 'humidity', ACCENT.humidity, `${Math.round(cur.hum)}%`, '', `The dew point is ${nw(dewPoint(cur.t, cur.hum))} right now.`);
+    const [windMain, windOther] = fmtWind(cur.wind);
+    tile('wind', 'Wind', 'wind', ACCENT.wind, windMain, windOther, windNote(cur), compass(cur.wdir));
+    tile('rain', 'Rain', 'drop', ACCENT.rain, `${today.pop}%`, 'chance today', rainNote(hours));
+
+    // The next sunrise or sunset: its time, how colourful it's likely to be, the sun's path today, and
+    // the other one's time.
+    const nowT = parseLocal(cur.time);
+    let next = null;
+    for (const d of data.daily) {
+      if (d.sunrise && parseLocal(d.sunrise) > nowT) { next = { id: 'sunrise', when: d.sunrise }; break; }
+      if (d.sunset && parseLocal(d.sunset) > nowT) { next = { id: 'sunset', when: d.sunset }; break; }
+    }
+    if (next) {
+      const isSet = next.id === 'sunset', sky = skyAt(data, next.when), nextT = parseLocal(next.when);
+      const then = isSet ? data.daily.map((d) => d.sunrise).find((x) => x && parseLocal(x) > nextT) : (data.daily.find((d) => d.date === next.when.slice(0, 10)) || {}).sunset;
+      tile(next.id, isSet ? 'Sunset' : 'Sunrise', next.id, ACCENT[next.id], clock(next.when), sky ? sky.line : '',
+        `${sky ? sky.why + ' ' : ''}${isSet ? 'Sunrise' : 'Sunset'} ${then ? clock(then) : '–'}.`, d0.sunrise && d0.sunset ? sunPath(cur.time, d0.sunrise, d0.sunset) : '');
+    } else missing('sunset', 'Sunset', 'sunset', ACCENT.sunset);
+
+    if (d0.uv != null) tile('uv', 'UV index', 'sun', ACCENT.uv(d0.uv), String(Math.round(d0.uv)), uvLevel(d0.uv), d0.uv >= 3 ? 'Use sun protection around midday.' : 'Low for the rest of the day.',
+      `<div class="sbar uvbar gfx" aria-hidden="true"><u style="left:${dotAt(d0.uv / 11 * 100)}"></u></div>`);
+    else missing('uv', 'UV index', 'sun');
+
     const aq = state.aq[keyOf(city)], aqr = aq && aqReading(city, aq);
     let pollen = '';
     if (aq && aq.pollen) {
       const kinds = POLLEN.filter(([k]) => aq.pollen[k] != null).map(([k, name]) => [name, aq.pollen[k]]).sort((a, b) => b[1] - a[1]);
       if (kinds.length) pollen = ` Pollen: ${kinds[0][0].toLowerCase()} ${pollenLevel(kinds[0][1]).toLowerCase()}.`;
     }
-    if (aqr) acc.aqi = aqr.color;   // the category's own colour
-    if (aqr) tile('aqi', 'Air quality', `${aqr.v} <span class="cat" style="color:${aqr.color}">${esc(aqr.cat)}</span>`, aqr.scale, esc(aqr.note + (pollen ? '.' + pollen : '')),
-      `<div class="aqbar" style="background:${aqr.bar}" aria-hidden="true"><u style="left:${aqr.at}%"></u></div>`);
-    else missing('aqi', 'Air quality');
-    const n = normalsFor(city, data.daily[0].date);
-    const nw = (t) => `<span style="white-space:nowrap">${both(t)}</span>`;
-    if (n) { const dlt = today.max - n[0]; acc.normal = dlt >= 1.5 ? '#F2A65A' : dlt <= -1.5 ? '#8CC0F5' : '#C9C2B8'; }
-    if (n) tile('normal', 'Averages', vsNormal(today.max, n[0]), '', `Normal high ${nw(n[0])}, low ${nw(n[1])}`, rangeBar(n, today.min, today.max));
-    else missing('normal', 'Averages');
-    if (cur.vis != null) tile('visibility', 'Visibility', fmtVis(cur.vis), fmtVisOther(cur.vis), visLabel(cur.vis));
-    else missing('visibility', 'Visibility');
-    if (data.daily[0].psum != null) {
-      const [v, s] = fmtRain(data.daily[0].psum);
-      const next = upcoming(data).map((h) => h.precip).filter((x) => x != null);
-      const sum = next.reduce((x, y) => x + y, 0);
-      tile('precip', 'Precipitation', v, s, !next.length ? '' : sum < 0.05 ? 'None expected' : `Expected in the next 24 hours: ${fmtRain(sum)[0]}`);
-    } else missing('precip', 'Precipitation');
+    if (aqr) tile('aqi', 'Air quality', 'aqi', aqr.accent, String(aqr.v), aqr.cat, esc(`${aqr.scale}. ${aqr.note || aqr.cat + '.'}${pollen}`),
+      `<div class="sbar aqbar gfx" style="background:${aqr.bar}" aria-hidden="true"><u style="left:${dotAt(+aqr.at)}"></u></div>`);
+    else missing('aqi', 'Air quality', 'aqi');
+
+    const n = normalsFor(city, d0.date);
+    if (n) tile('normal', 'Averages', 'chart', ACCENT.versusNormal(today.max - n[0]), vsNormal(today.max, n[0]), '', `Normal high ${nw(n[0])}, low ${nw(n[1])}.`, rangeBar(n, today.min, today.max));
+    else missing('normal', 'Averages', 'chart');
+
+    if (cur.vis != null) tile('visibility', 'Visibility', 'eye', ACCENT.visibility, fmtVis(cur.vis), fmtVisOther(cur.vis), visLabel(cur.vis));
+    else missing('visibility', 'Visibility', 'eye', ACCENT.visibility);
+
+    if (d0.psum != null) {
+      const [v, s] = fmtRain(d0.psum);
+      const coming = hours.map((h) => h.precip).filter((x) => x != null), sum = coming.reduce((x, y) => x + y, 0);
+      tile('precip', 'Precipitation', 'drop', ACCENT.rain, v, `${s} today`, !coming.length ? '' : sum < 0.1 ? 'None expected in the next 24 hours.' : `Expected in the next 24 hours: ${fmtRain(sum)[0]}.`);
+    } else missing('precip', 'Precipitation', 'drop', ACCENT.rain);
+
     const hNow = data.hourly[nowIndex(data)] || {};
     const layers = hNow.lo == null || hNow.mi == null || hNow.hi == null ? ''
       : Math.max(hNow.lo, hNow.mi, hNow.hi) < 10 ? 'No cloud at any height.'
       : [hNow.lo, hNow.mi, hNow.hi].filter((x) => x >= 50).length >= 2 ? 'Cloud at several heights.'
       : hNow.lo >= hNow.mi && hNow.lo >= hNow.hi ? 'Mostly low cloud.' : hNow.mi >= hNow.hi ? 'Mostly mid-level cloud.' : 'Mostly high, thin cloud.';
-    if (cur.cloud != null) tile('cloud', 'Cloud cover', `${Math.round(cur.cloud)}%`, cloudLabel(cur.cloud), layers, layers ? cloudBars(hNow) : '');
-    else missing('cloud', 'Cloud cover');
-    // The next sunrise and the next sunset, and how colourful each is likely to be.
-    const nowT = parseLocal(data.current.time), d0 = data.daily[0];
-    const sun = d0.sunrise && d0.sunset ? sunPath(data.current.time, d0.sunrise, d0.sunset) : '';
-    for (const [id, title, key] of [['sunrise', 'Sunrise', 'sunrise'], ['sunset', 'Sunset', 'sunset']]) {
-      const when = data.daily.map((d) => d[key]).find((x) => x && parseLocal(x) > nowT);
-      const sky = skyAt(data, when);
-      if (when) tile(id, title, clock(when), sky ? sky.line : '', sky ? sky.why : '', sun);
-      else missing(id, title);
-    }
+    if (cur.cloud != null) tile('cloud', 'Cloud cover', 'cloud', ACCENT.cloud, `${Math.round(cur.cloud)}%`, cloudLabel(cur.cloud), layers, layers ? cloudBars(hNow) : '');
+    else missing('cloud', 'Cloud cover', 'cloud', ACCENT.cloud);
+
     const moon = moonPhase();
-    tile('moon', 'Moon', moon.name, `${moon.lit}% lit`, moonNext(moon.f), '', moonGlyph(moon.f));
+    tile('moon', 'Moon', 'moon', ACCENT.moon, moon.name, `${moon.lit}% lit`, moonNext(moon.f), moonGlyph(moon.f));
     $('#dgrid').innerHTML = tiles.join('');
-    $('#details').hidden = !tiles.length;
+    $('#details').hidden = false;
   }
 
   const RADAR_URL = 'https://bradleycowdrey.github.io/two-degrees/radar.html';
   function renderMap(city) {
     $('#mapLink').href = `${RADAR_URL}?lat=${city.lat.toFixed(3)}&lon=${city.lon.toFixed(3)}&z=7&units=${state.unit}`;
     $('#mapLink').setAttribute('aria-label', `Open the rain map for ${city.name}, in a new tab`);
-    $('#mapText').textContent = navigator.onLine === false ? 'The map needs an internet connection.' : `Radar for the past two hours, around ${city.name}.`;
+    $('#mapText').textContent = navigator.onLine === false ? 'The map needs an internet connection.' : 'Radar for the last two hours';
+  }
+
+  // Up to ten days. Today's range always includes the reading right now, so no two numbers disagree.
+  function tenDays(data) {
+    const cur = data.current;
+    return data.daily.slice(0, 10).map((d, i) => (i === 0 ? { ...d, min: Math.min(d.min, cur.t), max: Math.max(d.max, cur.t) } : d));
   }
 
   function render() {
@@ -1317,121 +1425,80 @@
     renderCities();
     const city = state.cities[state.active];
     const data = state.data[keyOf(city)];
+    applySky(data);
     $('#unitF').setAttribute('aria-pressed', state.unit === 'F');
     $('#unitC').setAttribute('aria-pressed', state.unit === 'C');
+    $('#footLead').textContent = `Weather for ${city.name}`;
+    const here = isHere(city) ? `<div class="here">${TITLE.here}My Location</div>` : '';
     if (!data) {
       // A city whose forecast hasn't arrived yet: say so, never show the previous city's numbers.
-      $('#now').innerHTML = `<div class="place"><h2>${esc(city.name)}</h2><span class="local">${esc(city.region)}</span></div><div class="skeleton">Loading the forecast…</div>`;
+      $('#now').innerHTML = `${here}<div class="place"><h2>${esc(city.name)}</h2><span class="local">${esc(city.region)}</span></div>
+        <div class="waiting" aria-hidden="true">––°</div><div class="skeleton">Loading the forecast…</div>`;
       $('#hours').innerHTML = '';
-      $('#hoursAside').textContent = '';
       $('#days').innerHTML = '';
-      $('#dayTicks').innerHTML = '';
       $('#statusText').textContent = 'Loading…';
-      for (const id of ['#alerts', '#soon', '#details']) $(id).hidden = true;
+      for (const id of ['#alerts', '#soon', '#hourly', '#daily', '#details']) $(id).hidden = true;
       renderMap(city);
       return;
     }
     const u = state.unit, o = other(u);
     const cur = data.current;
-    const [condName, kind] = codeInfo(cur.code);
-    const hours = upcoming(data);
-    const today = { ...data.daily[0], min: Math.min(data.daily[0].min, cur.t), max: Math.max(data.daily[0].max, cur.t) };
-    const [windMain, windOther] = fmtWind(cur.wind), gusts = gustNote(cur.wind, cur.gust);
+    const hours = upcoming(data), days = tenDays(data), today = days[0];
 
-    const now = $('#now');
-    now.style.setProperty('--glow', glowFor(kind, cur.isDay));
-    now.innerHTML = `
+    // The reading: the larger unit big with its unit raised, the other whole beside it on the same baseline.
+    $('#now').innerHTML = `${here}
       <div class="place"><h2>${esc(city.name)}</h2><span class="local">${esc(city.region ? city.region + ' · ' : '')}${clock(cur.time)}</span></div>
-      <div class="reading">
-        <div class="big-icon">${icon(cur.code, cur.isDay, '')}</div>
-        <div class="temps" role="img" aria-label="${speak(cur.t)}">
-          <span class="primary" aria-hidden="true">${deg(cur.t, u)}<sup>°${u}</sup></span>
-          <span class="divider" aria-hidden="true"></span>
-          <span class="secondary" aria-hidden="true">${deg(cur.t, o)}<sup>°${o}</sup></span>
-        </div>
+      <div class="temps${String(deg(cur.t, u)).length + String(deg(cur.t, o)).length > 5 ? ' long' : ''}" role="img" aria-label="${speak(cur.t)}">
+        <span class="primary" aria-hidden="true">${deg(cur.t, u)}<sup>°${u}</sup></span>
+        <span class="secondary" aria-hidden="true">${deg(cur.t, o)}°${o}</span>
       </div>
-      <p class="cond">${esc(condName)}</p>
-      <p class="summary">${esc(summaryLine(data, hours))}</p>
-      <div class="stats">
-        <div class="stat"><div class="k">Feels like</div><div class="v">${deg(cur.feels, u)}°${u}</div><div class="s">${deg(cur.feels, o)}°${o}</div></div>
-        <div class="stat"><div class="k">Today</div><div class="v">${deg(today.min, u)}–${deg(today.max, u)}°${u}</div><div class="s">${deg(today.min, o)}–${deg(today.max, o)}°${o}</div></div>
-        <div class="stat"><div class="k">Wind</div><div class="v">${windMain}</div><div class="s${gusts ? ' wrap' : ''}">${gusts || windOther}</div></div>
-        <div class="stat"><div class="k">Rain today</div><div class="v">${today.pop}%</div><div class="s">${Math.round(cur.hum)}% humid</div></div>
-      </div>`;
+      <p class="cond">${esc(codeInfo(cur.code)[0])}</p>
+      <p class="hilo"><span>H:${deg(today.max, u)}°${u}</span><span>L:${deg(today.min, u)}°${u}</span></p>
+      <p class="hilo other"><span>H:${deg(today.max, o)}°${o}</span><span>L:${deg(today.min, o)}°${o}</span></p>`;
 
-    // Next 24 hours, with a temperature line drawn to one scale across the strip.
-    const COL = 48, SPARK_H = 26, PAD = 4;
-    const ts = hours.map((h) => h.t);
-    const tMin = Math.min(...ts), tMax = Math.max(...ts), span = Math.max(tMax - tMin, 1);
-    const y = (t) => PAD + (1 - (t - tMin) / span) * (SPARK_H - PAD * 2);
-    const pts = hours.map((h, i) => [i * COL + COL / 2, y(h.t)]);
-    const path = pts.map(([x, yy], i) => (i ? 'L' : 'M') + x.toFixed(1) + ' ' + yy.toFixed(1)).join('');
-    const area = path + `L${pts[pts.length - 1][0].toFixed(1)} ${SPARK_H}L${pts[0][0].toFixed(1)} ${SPARK_H}Z`;
-    const width = hours.length * COL;
+    // Next 24 hours: what's coming, in a line, then a column an hour. "Now" is the reading above.
+    const summary = summaryLine(data, hours), chance = hours.some((h) => h.pop >= 20);
+    $('#summary').textContent = summary;
+    $('#summary').hidden = $('#summaryRule').hidden = !summary;
     $('#hours').innerHTML = hours.map((h, i) => {
-      const first = i === 0, midnight = !first && h.time.slice(11, 13) === '00';
-      return `<div class="hour${first ? ' is-now' : ''}${midnight ? ' day-start' : ''}${h.pop >= 20 ? ' wet' : ''}" role="img" aria-label="${first ? 'Now' : hour12(h.time)}: ${esc(codeInfo(h.code)[0])}, ${speak(h.t)}${h.pop >= 20 ? ', ' + h.pop + ' percent chance of rain' : ''}">
-        <div class="h">${first ? 'Now' : midnight ? weekday(h.time) : hour12(h.time)}</div>
-        <div class="ic">${icon(h.code, h.isDay, '')}</div>
-        <div class="p">${h.pop >= 20 ? h.pop + '%' : ''}</div>
-        <div class="spark"></div>
-        <div class="f">${deg(h.t, u)}°</div>
-        <div class="c">${deg(h.t, o)}°${o}</div>
+      const first = i === 0, t = first ? cur.t : h.t, code = first ? cur.code : h.code;
+      return `<div class="hour" role="img" aria-label="${first ? 'Now' : hour12(h.time)}: ${esc(codeInfo(code)[0])}, ${speak(t)}${h.pop >= 20 ? ', ' + h.pop + ' percent chance of rain' : ''}">
+        <div class="h">${first ? 'Now' : hour12(h.time)}</div>
+        <div class="sym"><div class="ic">${icon(code, first ? cur.isDay : h.isDay, '')}</div>${chance ? `<div class="p">${h.pop >= 20 ? h.pop + '%' : ''}</div>` : ''}</div>
+        <div class="f">${deg(t, u)}°</div>
+        <div class="c">${deg(t, o)}°${o}</div>
       </div>`;
-    }).join('') + `<svg class="sparkline" width="${width}" height="${SPARK_H}" viewBox="0 0 ${width} ${SPARK_H}" aria-hidden="true">
-        <defs><linearGradient id="sparkFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFF1E5" stop-opacity=".16"/><stop offset="1" stop-color="#FFF1E5" stop-opacity="0"/></linearGradient></defs>
-        <path d="${area}" fill="url(#sparkFill)"/>
-        <path d="${path}" fill="none" stroke="var(--cream)" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" opacity=".85"/>
-        ${pts.map(([x, yy], i) => `<circle cx="${x.toFixed(1)}" cy="${yy.toFixed(1)}" r="${i === 0 ? 3.6 : 2}" fill="${i === 0 ? 'var(--text)' : 'var(--cream)'}"${i === 0 ? ' stroke="var(--tile)" stroke-width="2"' : ''}/>`).join('')}
-      </svg>`;
-    $('#hoursAside').textContent = `${deg(tMin, u)}–${deg(tMax, u)}°${u} · ${deg(tMin, o)}–${deg(tMax, o)}°${o}`;
+    }).join('');
+    $('#hourly').hidden = false;
 
-    // Five days, each range bar on one shared scale.
-    // One shared scale for all five bars (including right now), with ticks every 10°F or 5°C.
-    const days = data.daily.slice(0, 5);
+    // Up to 10 days, each low to high on one shared scale (which includes right now).
     const lo = Math.min(cur.t, ...days.map((d) => d.min)), hi = Math.max(cur.t, ...days.map((d) => d.max)), range = Math.max(hi - lo, 1);
     const pct = (t) => ((t - lo) / range * 100).toFixed(1);
-    const step = u === 'F' ? 10 : 5, toC = (v) => (u === 'F' ? (v - 32) * 5 / 9 : v);
-    const ticks = [];
-    for (let v = Math.ceil((u === 'F' ? toF(lo) : lo) / step) * step; toC(v) <= hi; v += step) {
-      const at = +pct(toC(v));
-      if (at > 5 && at < 95) ticks.push([v, at]);
-    }
-    const tickMarks = ticks.map(([, at]) => `<s style="left:${at}%"></s>`).join('');
     // A re-draw (late data) replaces the rows: keep keyboard focus on the same day.
     const focusedDay = document.activeElement && document.activeElement.closest && document.activeElement.closest('#days [data-day]');
     const keepDay = focusedDay ? focusedDay.dataset.day : null;
     queueMicrotask(() => { if (keepDay != null && (!document.activeElement || document.activeElement === document.body)) { const el = document.querySelector(`#days [data-day="${keepDay}"]`); if (el) el.focus({ preventScroll: true }); } });
-    $('#days').innerHTML = days.map((d0, i) => {
-      // Today's range always includes the reading right now, so no two numbers disagree.
-      const d = i === 0 ? { ...d0, min: Math.min(d0.min, cur.t), max: Math.max(d0.max, cur.t) } : d0;
+    $('#daysTitle').textContent = `${days.length}-day forecast`;
+    $('#days').innerHTML = days.map((d, i) => {
       const [name] = codeInfo(d.code);
-      const dot = i === 0 ? `<u style="left:${pct(cur.t)}%" title="Now ${deg(cur.t, u)}°${u}"></u>` : '';
+      const dot = i === 0 ? `<u style="left:${dotAt(+pct(cur.t), 4)}" title="Now ${deg(cur.t, u)}°${u}"></u>` : '';
       return `<button type="button" class="day" data-day="${i}" aria-haspopup="dialog" aria-label="${i === 0 ? 'Today' : weekday(d.date)}: ${esc(name)}. Low ${speak(d.min)}. High ${speak(d.max)}.${d.pop >= 20 ? ' ' + d.pop + ' percent chance of rain.' : ''} Show details.">
         <span class="d">${i === 0 ? 'Today' : weekday(d.date)}</span>
         <span class="ic">${icon(d.code, true, '')}${d.pop >= 20 ? `<span class="p">${d.pop}%</span>` : ''}</span>
-        <span class="track"><span class="bar">${tickMarks}<i style="left:${pct(d.min)}%;right:${(100 - pct(d.max)).toFixed(1)}%;background:linear-gradient(90deg,${tempColor(d.min)},${tempColor(d.max)})"></i>${dot}
-          <span class="lo" style="right:${(100 - pct(d.min)).toFixed(1)}%"><b>${deg(d.min, u)}°</b><span>${deg(d.min, o)}°${o}</span></span>
-          <span class="hi" style="left:${pct(d.max)}%"><b>${deg(d.max, u)}°</b><span>${deg(d.max, o)}°${o}</span></span></span></span>
+        <span class="lo"><b>${deg(d.min, u)}°</b><span>${deg(d.min, o)}°${o}</span></span>
+        <span class="bar"><i style="left:min(${pct(d.min)}%, calc(100% - 5px));right:${(100 - pct(d.max)).toFixed(1)}%;background:linear-gradient(90deg,${tempColor(d.min)},${tempColor(d.max)})"></i>${dot}</span>
+        <span class="hi"><b>${deg(d.max, u)}°</b><span>${deg(d.max, o)}°${o}</span></span>
       </button>`;
     }).join('');
-    // Closed: the five-day range in both units. Open: the bars and their scale.
-    const open = state.daysOpen;
-    $('#daysToggle').setAttribute('aria-expanded', String(open));
-    $('#days').hidden = !open;
-    const dLo = Math.min(...days.map((d) => d.min)), dHi = Math.max(...days.map((d) => d.max));
-    $('#dayTicks').innerHTML = open ? ticks.map(([v, at]) => `<span style="left:${at}%">${v}°</span>`).join('')
-      : `<span class="range">${deg(dLo, u)}–${deg(dHi, u)}°${u} · ${deg(dLo, o)}–${deg(dHi, o)}°${o}</span>`;
+    $('#daily').hidden = false;
 
     renderAlerts(city, data);
     renderSoon(data);
-    renderDetails(city, data, today);
+    renderDetails(city, data, today, hours);
     renderMap(city);
     if (state.sheet) renderSheet();
 
-    // Status line: where the numbers came from, and how fresh they are.
-    const status = $('#status');
-    status.classList.toggle('live', data.source === 'live' && !data.stale);
+    // Footer: where the numbers came from, and how fresh they are.
     $('#statusText').title = data.source === 'live' ? '' : 'Live data couldn’t load here, so this is an example forecast.';
     $('#statusText').textContent = data.source === 'live'
       ? `${data.stale ? 'Offline · from' : 'Updated'} ${new Date(data.fetchedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`
@@ -1441,7 +1508,6 @@
 
   /* ---------- Sheets: a day's detail, an alert's full text ---------- */
   const SVG = {
-    close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>',
     prev: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 5-7 7 7 7"/></svg>',
     next: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg>',
   };
@@ -1472,7 +1538,7 @@
     const y = (v) => f.T + (1 - (v - a) / (b - a)) * f.plotH;
     let grid = '', left = '', right = '';
     for (let v = a; v <= b + 1e-9; v += step) {
-      grid += `<path d="M${f.L} ${y(v).toFixed(1)}H${W - f.R}" stroke="var(--border-strong)" stroke-width="0.5"/>`;
+      grid += `<path d="M${f.L} ${y(v).toFixed(1)}H${W - f.R}" stroke="#fff" stroke-opacity=".18" stroke-width="0.5"/>`;
       left += `<text x="${f.L - 6}" y="${(y(v) + 3.5).toFixed(1)}" text-anchor="end">${fmt1(v)}°</text>`;
     }
     const oa = Math.min(toO(a), toO(b)), ob = Math.max(toO(a), toO(b)), ostep = niceStep(ob - oa);
@@ -1484,15 +1550,15 @@
     if (nowPos != null) {
       const nx = f.L + nowPos * (W - f.L - f.R), k = Math.min(hrs.length - 1, Math.max(0, nowPos * hrs.length - 0.5));
       const i0 = Math.floor(k), i1 = Math.min(hrs.length - 1, i0 + 1), ny = pts[i0][1] + (pts[i1][1] - pts[i0][1]) * (k - i0);
-      now = `<path d="M${nx.toFixed(1)} ${f.T}V${f.H - f.B}" stroke="var(--cream)" stroke-width="1" stroke-dasharray="2 3" opacity=".7"/>` +
-        `<circle cx="${nx.toFixed(1)}" cy="${ny.toFixed(1)}" r="3.6" fill="var(--text)" stroke="var(--bg)" stroke-width="2"/>` +
+      now = `<path d="M${nx.toFixed(1)} ${f.T}V${f.H - f.B}" stroke="#fff" stroke-width="1" stroke-dasharray="2 3" opacity=".6"/>` +
+        `<circle cx="${nx.toFixed(1)}" cy="${ny.toFixed(1)}" r="3.6" fill="#fff" stroke="rgba(0,0,0,.35)" stroke-width="1.5"/>` +
         `<text class="now" x="${Math.min(W - f.R - 12, Math.max(f.L + 12, nx)).toFixed(1)}" y="${f.T - 6}" text-anchor="middle">Now</text>`;
     }
     const lo = hrs.reduce((p, h) => (h.t < p.t ? h : p)), hi = hrs.reduce((p, h) => (h.t > p.t ? h : p));
     const label = `Temperature through the day: low ${both(lo.t)} around ${hour12(lo.time)}, high ${both(hi.t)} around ${hour12(hi.time)}.`;
     return `<svg class="chart" data-chart="temp" width="${W}" height="${f.H}" viewBox="0 0 ${W} ${f.H}" role="img" aria-label="${esc(label)}">
       <defs><linearGradient id="${id}" gradientUnits="userSpaceOnUse" x1="0" y1="${y(b).toFixed(1)}" x2="0" y2="${y(a).toFixed(1)}">${stops}</linearGradient>
-      <linearGradient id="${id}f" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFF1E5" stop-opacity=".12"/><stop offset="1" stop-color="#FFF1E5" stop-opacity="0"/></linearGradient></defs>
+      <linearGradient id="${id}f" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".1"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient></defs>
       ${grid}<text x="${f.L - 6}" y="${f.T - 12}" text-anchor="end">°${u}</text><text x="${W - f.R + 6}" y="${f.T - 12}">°${o}</text>${left}${right}
       <path d="${path}L${pts[pts.length - 1][0].toFixed(1)} ${f.H - f.B}L${pts[0][0].toFixed(1)} ${f.H - f.B}Z" fill="url(#${id}f)"/>
       <path d="${path}" fill="none" stroke="url(#${id})" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>${now}${hourLabels(f, hrs)}</svg>`;
@@ -1500,7 +1566,7 @@
 
   function chartRain(hrs, W) {
     const f = chartFrame(W, 100, hrs.length, 12, 22), y = (p) => f.T + (1 - p / 100) * f.plotH;
-    const grid = [0, 50, 100].map((p) => `<path d="M${f.L} ${y(p).toFixed(1)}H${W - f.R}" stroke="var(--border-strong)" stroke-width="0.5"/><text x="${f.L - 6}" y="${(y(p) + 3.5).toFixed(1)}" text-anchor="end">${p}%</text>`).join('');
+    const grid = [0, 50, 100].map((p) => `<path d="M${f.L} ${y(p).toFixed(1)}H${W - f.R}" stroke="#fff" stroke-opacity=".18" stroke-width="0.5"/><text x="${f.L - 6}" y="${(y(p) + 3.5).toFixed(1)}" text-anchor="end">${p}%</text>`).join('');
     const bw = Math.max(1, f.slot - 2);
     const bars = hrs.map((h, i) => (h.pop > 0 ? `<rect x="${(f.x(i) - bw / 2).toFixed(1)}" y="${y(h.pop).toFixed(1)}" width="${bw.toFixed(1)}" height="${(f.plotH * h.pop / 100).toFixed(1)}" rx="1.5" fill="var(--rain)" opacity="${h.pop >= 50 ? 1 : 0.65}"/>` : '')).join('');
     const top = hrs.reduce((p, h) => (h.pop > p.pop ? h : p));
@@ -1514,23 +1580,19 @@
     const step = niceStep(Math.max(5, ...gusts, ...speeds), 3), top = Math.max(step, Math.ceil(Math.max(...gusts, ...speeds) / step) * step);
     const y = (v) => f.T + (1 - v / top) * f.plotH;
     let grid = '';
-    for (let v = 0; v <= top + 1e-9; v += step) grid += `<path d="M${f.L} ${y(v).toFixed(1)}H${W - f.R}" stroke="var(--border-strong)" stroke-width="0.5"/><text x="${f.L - 6}" y="${(y(v) + 3.5).toFixed(1)}" text-anchor="end">${v}</text>`;
+    for (let v = 0; v <= top + 1e-9; v += step) grid += `<path d="M${f.L} ${y(v).toFixed(1)}H${W - f.R}" stroke="#fff" stroke-opacity=".18" stroke-width="0.5"/><text x="${f.L - 6}" y="${(y(v) + 3.5).toFixed(1)}" text-anchor="end">${v}</text>`;
     const sp = linePath(speeds.map((v, i) => [f.x(i), y(v)])), gp = linePath(gusts.map((v, i) => [f.x(i), y(v)]));
     const maxS = Math.max(...speeds), maxG = Math.max(...gusts);
     const label = `Wind through the day, in ${WIND[unit][1]}: up to ${Math.round(maxS)}, gusts to ${Math.round(maxG)}.`;
     return `<svg class="chart" data-chart="wind" width="${W}" height="${f.H}" viewBox="0 0 ${W} ${f.H}" role="img" aria-label="${esc(label)}">${grid}
       <text x="${f.L - 6}" y="${f.T - 12}" text-anchor="end">${WIND[unit][1]}</text>
-      <path d="${gp}" fill="none" stroke="var(--muted)" stroke-width="1.4" stroke-linejoin="round" opacity=".7"/>
-      <path d="${sp}" fill="none" stroke="var(--cream)" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>${hourLabels(f, hrs)}</svg>`;
+      <path d="${gp}" fill="none" stroke="#fff" stroke-opacity=".5" stroke-width="1.4" stroke-linejoin="round"/>
+      <path d="${sp}" fill="none" stroke="#fff" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>${hourLabels(f, hrs)}</svg>`;
   }
 
   // A day: its summary, the three charts, then the facts.
-  function dayDays(data) {
-    const cur = data.current;
-    return data.daily.slice(0, 5).map((d, i) => (i === 0 ? { ...d, min: Math.min(d.min, cur.t), max: Math.max(d.max, cur.t) } : d));
-  }
   function daySheet(city, data, i, W) {
-    const days = dayDays(data), d = days[i];
+    const days = tenDays(data), d = days[i];
     const hrs = data.hourly.filter((h) => h.time.startsWith(d.date));
     const isToday = i === 0 && data.current.time.startsWith(d.date);
     const nowPos = isToday ? (parseLocal(data.current.time) - parseLocal(d.date + 'T00:00')) / 864e5 : null;
@@ -1549,30 +1611,33 @@
     const [tMain, tOther] = total != null ? fmtRain(total) : ['', ''];
     const hasWind = hrs.some((h) => h.wind != null);
     const title = i === 0 ? `Today, ${longDate(d.date).split(', ')[1]}` : longDate(d.date);
+    const u = state.unit, o = other(u);
     return `<div class="sh-head">
-        <button type="button" class="circle" id="sheetClose" aria-label="Close" title="Close (Esc)">${SVG.close}</button>
+        <button type="button" class="done" id="sheetClose" title="Close (Esc)">Done</button>
         <h2 id="sheetTitle">${esc(title)}</h2>
         <button type="button" class="circle" id="sheetPrev" aria-label="Previous day" title="Previous day"${i === 0 ? ' disabled' : ''}>${SVG.prev}</button>
         <button type="button" class="circle" id="sheetNext" aria-label="Next day" title="Next day"${i >= days.length - 1 ? ' disabled' : ''}>${SVG.next}</button>
       </div>
-      <section class="tile sh-sum" aria-label="Summary">${icon(d.code, true, '')}<div>
+      <section class="sh-sum" aria-label="Summary">${icon(d.code, true, '')}<div class="tx">
         <p class="cond">${esc(cond)}</p>
-        <div class="hl">High <b>${deg(d.max, state.unit)}°${state.unit}</b> ${deg(d.max, other(state.unit))}°${other(state.unit)} · Low <b>${deg(d.min, state.unit)}°${state.unit}</b> ${deg(d.min, other(state.unit))}°${other(state.unit)}</div>
-        <div class="hl">Rain chance ${d.pop}%</div></div></section>
-      ${hrs.length >= 2 ? `<section class="tile" aria-label="Temperature"><h3 class="eyebrow">Temperature<span class="sp"></span><span class="aside">°${state.unit} left · °${other(state.unit)} right</span></h3>${chartTemp(hrs, W, nowPos)}</section>
-      <section class="tile" aria-label="Rain"><h3 class="eyebrow">Rain<span class="sp"></span><span class="aside">${total != null ? `${esc(tMain)} · ${esc(tOther)}` : ''}</span></h3>${chartRain(hrs, W)}</section>
-      ${hasWind ? `<section class="tile" aria-label="Wind"><h3 class="eyebrow">Wind<span class="sp"></span><span class="aside">${d.wdir != null ? fromDir(d.wdir) : ''}</span></h3>${chartWind(hrs, W)}
-        <div class="eyebrow" style="margin:6px 0 0;font-weight:500"><span class="legend"><i></i>Speed</span><span class="legend"><i class="g"></i>Gusts</span></div></section>` : ''}` : ''}
-      <section class="tile" aria-label="Details"><dl class="facts">${facts}</dl></section>`;
+        <div class="hl">H:${deg(d.max, u)}°${u}&ensp;L:${deg(d.min, u)}°${u}</div>
+        <div class="hl other">H:${deg(d.max, o)}°${o}&ensp;L:${deg(d.min, o)}°${o}</div></div>
+        ${d.pop > 0 ? `<div class="pop" role="img" aria-label="Rain chance ${d.pop}%"><b>${d.pop}%</b>rain</div>` : ''}</section>
+      ${hrs.length >= 2 ? `<section class="card" aria-label="Temperature"><h3 class="eyebrow">${TITLE.thermo}<span>Temperature</span><span class="sp"></span><span class="aside">°${u} left · °${o} right</span></h3>${chartTemp(hrs, W, nowPos)}</section>
+      <section class="card" aria-label="Rain"><h3 class="eyebrow">${TITLE.drop}<span>Rain</span><span class="sp"></span><span class="aside">${total != null ? `${esc(tMain)} · ${esc(tOther)}` : ''}</span></h3>${chartRain(hrs, W)}</section>
+      ${hasWind ? `<section class="card" aria-label="Wind"><h3 class="eyebrow">${TITLE.wind}<span>Wind</span><span class="sp"></span><span class="aside">${d.wdir != null ? fromDir(d.wdir) : ''}</span></h3>${chartWind(hrs, W)}
+        <div class="legends"><span class="legend"><i></i>Speed</span><span class="legend"><i class="g"></i>Gusts</span></div></section>` : ''}` : ''}
+      <section class="card" aria-label="Details"><h3 class="eyebrow">${TITLE.list}<span>Details</span></h3><dl class="facts">${facts}</dl></section>`;
   }
 
   function alertSheet(city, a) {
     const point = `lat=${city.lat.toFixed(4)}&lon=${city.lon.toFixed(4)}`;
     return `<div class="sh-head">
-        <button type="button" class="circle" id="sheetClose" aria-label="Close" title="Close (Esc)">${SVG.close}</button>
+        <button type="button" class="done" id="sheetClose" title="Close (Esc)">Done</button>
         <h2 id="sheetTitle">${esc(a.event)}</h2>
+        <span class="done" aria-hidden="true"></span>
       </div>
-      <section class="tile" style="display:flex;flex-direction:column;gap:12px;box-shadow:inset 3px 0 0 ${sevColor(a.severity)}">
+      <section class="card al-card" style="box-shadow:inset 3px 0 0 ${sevColor(a.severity)}">
         <p class="al-note">${esc([untilText(a, (state.data[keyOf(city)] || {}).tz || city.tz), a.senderName, a.severity && a.severity !== 'Unknown' ? a.severity : ''].filter(Boolean).join(' · '))}</p>
         ${a.headline ? `<p class="al-text lead">${esc(a.headline)}</p>` : ''}
         ${a.description ? `<p class="al-text">${esc(a.description)}</p>` : ''}
@@ -1585,7 +1650,7 @@
   let sheetReturn = null;   // where focus goes back to on close
   function chartWidth() {
     // The tile's content width, in the sheet's own (unzoomed) pixels.
-    const probe = $('#sheet .tile');
+    const probe = $('#sheet .card');
     if (!probe) return 320;
     const cs = getComputedStyle(probe), w = probe.getBoundingClientRect().width / zoomOf() - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
     return Math.max(200, Math.round(w));
@@ -1597,7 +1662,7 @@
     if (!data) return closeSheet();
     const focused = sheet.contains(document.activeElement) ? document.activeElement.id : '';
     if (spec.kind === 'day') {
-      spec.i = Math.max(0, Math.min(spec.i, dayDays(data).length - 1));
+      spec.i = Math.max(0, Math.min(spec.i, tenDays(data).length - 1));
       sheet.innerHTML = daySheet(city, data, spec.i, 320);   // lay out once, then draw the charts at the real width
       sheet.innerHTML = daySheet(city, data, spec.i, chartWidth());
       sheet.setAttribute('aria-label', `${$('#sheetTitle').textContent}: the day in detail`);
@@ -1638,23 +1703,34 @@
   }
   function stepDay(by) {
     if (!state.sheet || state.sheet.kind !== 'day') return;
-    const city = state.cities[state.active], n = dayDays(state.data[keyOf(city)]).length, i = state.sheet.i + by;
+    const city = state.cities[state.active], n = tenDays(state.data[keyOf(city)]).length, i = state.sheet.i + by;
     if (i < 0 || i >= n) return;
     state.sheet.i = i;
     renderSheet();
   }
 
-  /* ---------- Widget mode: the Mac app's small, medium and large widgets (WidgetViews.swift) ---------- */
-  function widgetNow(city, d, u, big = 40) {
-    const o = other(u);
-    if (!d) return `<div class="wn"><div class="wn-top"><b>${esc(city.name)}</b></div><div class="wload">Loading…</div></div>`;
-    const cur = d.current, lo = Math.min(d.daily[0].min, cur.t), hi = Math.max(d.daily[0].max, cur.t);
-    const foot = d.source !== 'live' ? 'Sample forecast'
+  /* ---------- Widget mode: the small, medium and large widgets, as on the iPhone (WidgetViews.swift) ---------- */
+  // The big reading: the number with its unit smaller and raised, then the other unit whole.
+  const widgetReading = (cur, u, big) => `<div class="wn-temp" style="--big:${big}px" role="img" aria-label="${speak(cur.t)}"><span>${deg(cur.t, u)}<sup>°${u}</sup></span><small>${deg(cur.t, other(u))}°${other(u)}</small></div>`;
+  // Under the sky's name: today's range, or where the numbers came from when they aren't live.
+  function widgetFoot(d, u) {
+    const o = other(u), cur = d.current, lo = Math.min(d.daily[0].min, cur.t), hi = Math.max(d.daily[0].max, cur.t);
+    return d.source !== 'live' ? 'Sample forecast'
       : d.stale ? `Offline · from ${new Date(d.fetchedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`
       : `${deg(lo, u)}–${deg(hi, u)}°${u} · ${deg(lo, o)}–${deg(hi, o)}°${o}`;
-    return `<div class="wn"><div class="wn-top"><b>${esc(city.name)}</b>${icon(cur.code, cur.isDay, '')}</div>
-      <div class="wn-temp" style="--big:${big}px" role="img" aria-label="${speak(cur.t)}"><span>${deg(cur.t, u)}°</span><small>${deg(cur.t, o)}°${o}</small></div>
-      <div class="wn-cond">${esc(codeInfo(cur.code)[0])}</div><div class="wn-range">${foot}</div></div>`;
+  }
+  function widgetNow(city, d, u, big = 40) {
+    if (!d) return `<div class="wn"><b class="wn-city">${esc(city.name)}</b><div class="wload">Loading…</div></div>`;
+    const cur = d.current;
+    return `<div class="wn"><b class="wn-city">${esc(city.name)}</b>${widgetReading(cur, u, big)}
+      <div class="wn-foot">${icon(cur.code, cur.isDay, '')}<div class="wn-cond">${esc(codeInfo(cur.code)[0])}</div><div class="wn-range">${widgetFoot(d, u)}</div></div></div>`;
+  }
+  // The large widget's top: today's range is in the first day row below, so it isn't repeated here.
+  function widgetLargeNow(city, d, u) {
+    if (!d) return widgetNow(city, d, u);
+    const cur = d.current, live = d.source === 'live' && !d.stale;
+    return `<div class="wl-now"><div><b class="wn-city">${esc(city.name)}</b>${widgetReading(cur, u, 46)}${live ? '' : `<div class="wn-range">${widgetFoot(d, u)}</div>`}</div>
+      <div class="wl-sky">${icon(cur.code, cur.isDay, '')}<div class="wn-cond">${esc(codeInfo(cur.code)[0])}</div></div></div>`;
   }
   function widgetHours(d, u, count) {
     if (!d) return '<div class="wh"></div>';
@@ -1663,27 +1739,28 @@
   }
   function widgetDays(d, u) {
     if (!d) return '';
-    const o = other(u), cur = d.current, days = d.daily.slice(0, 5);
+    const o = other(u), cur = d.current, days = d.daily.slice(0, 6);
     const lo = Math.min(cur.t, ...days.map((x) => x.min)), hi = Math.max(cur.t, ...days.map((x) => x.max)), span = Math.max(hi - lo, 1);
     const pct = (t) => ((t - lo) / span * 100).toFixed(1);
     return `<div class="wd">${days.map((d0, i) => {
       const x = i === 0 ? { ...d0, min: Math.min(d0.min, cur.t), max: Math.max(d0.max, cur.t) } : d0;
       return `<div class="wd-row" role="img" aria-label="${i ? weekday(x.date) : 'Today'}: ${esc(codeInfo(x.code)[0])}. Low ${speak(x.min)}. High ${speak(x.max)}."><span>${i ? weekday(x.date) : 'Today'}</span>${icon(x.code, true, '')}
-        <span class="wd-track"><span class="wd-bar"><i style="left:${pct(x.min)}%;right:${(100 - pct(x.max)).toFixed(1)}%;background:linear-gradient(90deg,${tempColor(x.min)},${tempColor(x.max)})"></i>${i === 0 ? `<u style="left:${pct(cur.t)}%"></u>` : ''}
+        <span class="wd-track"><span class="wd-bar"><i style="left:${pct(x.min)}%;right:${(100 - pct(x.max)).toFixed(1)}%;background:linear-gradient(90deg,${tempColor(x.min)},${tempColor(x.max)})"></i>${i === 0 ? `<u style="left:${dotAt(+pct(cur.t), 4)}"></u>` : ''}
         <span class="wd-lo" style="right:${(100 - pct(x.min)).toFixed(1)}%">${deg(x.min, u)}°</span><span class="wd-hi" style="left:${pct(x.max)}%">${deg(x.max, u)}°</span></span></span>
         <span class="wd-o">${deg(x.min, o)}–${deg(x.max, o)}°${o}</span></div>`;
     }).join('')}</div>`;
   }
   function renderWidgets() {
     // The active city in the visitor's unit, plus a second small widget showing the next city with the other
-    // unit large: each widget picks its own city and unit, as on the Mac.
+    // unit large: each widget picks its own city and unit, and sits on that city's sky.
     const n = state.cities.length, a = state.cities[state.active], b = state.cities[(state.active + 1) % n];
     const u = state.unit, ub = other(u), da = state.data[keyOf(a)], db = state.data[keyOf(b)];
+    const sky = (d) => { const [top, bottom] = skyOf(d); return ` style="background:linear-gradient(${top},${bottom})"`; };
     $('#widgets').innerHTML =
-      `<div class="w large">${widgetNow(a, da, u, 44)}<hr>${widgetHours(da, u, 6)}<hr>${widgetDays(da, u)}</div>` +
-      `<div class="w medium">${widgetNow(a, da, u)}<hr>${widgetHours(da, u, 5)}</div>` +
-      `<div class="w small a">${widgetNow(a, da, u)}</div>` +
-      `<div class="w small b">${widgetNow(b, db, ub)}</div>`;
+      `<div class="w large"${sky(da)}>${widgetLargeNow(a, da, u)}<hr>${widgetHours(da, u, 6)}<hr>${widgetDays(da, u)}</div>` +
+      `<div class="w medium"${sky(da)}>${widgetNow(a, da, u)}<hr>${widgetHours(da, u, 5)}</div>` +
+      `<div class="w small a"${sky(da)}>${widgetNow(a, da, u)}</div>` +
+      `<div class="w small b"${sky(db)}>${widgetNow(b, db, ub)}</div>`;
   }
   function fitWidgets() {
     // Four columns when they fit, two below that; scaled down (never up) to the frame's width.
@@ -1923,7 +2000,6 @@
   $('#askLocYes').addEventListener('click', () => setUseLocation(true));
   $('#askLocNo').addEventListener('click', () => setUseLocation(false));
   $('#moreBtn').addEventListener('click', () => toggleMore());
-  $('#daysToggle').addEventListener('click', () => { state.daysOpen = !state.daysOpen; render(); });
   $('#moreMenu').addEventListener('click', (e) => {
     const b = e.target.closest('button'); if (!b) return;
     toggleMore(false);
@@ -2049,7 +2125,7 @@
   }
   // Read by tests/web.test.js. inject: put sample alerts or air quality on the city showing, as if they'd loaded.
   window.__twoDegreesTest = {
-    deg, moonPhase, moonNext, skyRule, stepDay, distance,
+    deg, moonPhase, moonNext, skyRule, stepDay, distance, sky: skyColors,
     inject(kind, value) { state[kind][keyOf(state.cities[state.active])] = value; render(); },
   };
   applyLook();

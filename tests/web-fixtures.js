@@ -3,11 +3,13 @@
 // live path, slow answers included: Open-Meteo's forecast, air quality and archive, the NWS alerts,
 // and the Inter font from Google Fonts (so text measures as it does for visitors).
 //
-//   await serveApis(context, { delay, alerts, fail, offline })
+//   await serveApis(context, { delay, alerts, fail, offline, now, offset })
 //     delay:   ms per service, e.g. { forecast: 150, aq: 700, alerts: 400, archive: 2000 }
 //     alerts:  NWS alert properties to return for every US point (default none)
 //     fail:    services that answer 500, e.g. ['aq', 'archive']
 //     offline: true makes every weather service unreachable, so the app shows its sample forecast
+//     now:     the weather right now for every city, e.g. { code: 63, isDay: false } for a rainy night
+//     offset:  °C added to every temperature, e.g. -40 for a deep freeze (-20°F and colder)
 const fs = require('fs');
 const path = require('path');
 
@@ -24,14 +26,15 @@ function climate(lat, doy) {
 }
 const doyOf = (d) => (Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) - Date.UTC(d.getUTCFullYear(), 0, 1)) / 864e5;
 
-function forecast(lat, lon) {
+// As many days as the app asks for (forecast_days), with the fields it reads.
+function forecast(lat, lon, days = 7, sky = null, offset = 0) {
   const now = new Date(), start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
   const wobble = Math.sin(lat * 3 + lon), codes = [1, 2, 61, 3, 0, 80];
   const h = { time: [], temperature_2m: [], weather_code: [], precipitation_probability: [], is_day: [], precipitation: [], wind_speed_10m: [], wind_gusts_10m: [], pressure_msl: [], visibility: [], cloud_cover_low: [], cloud_cover_mid: [], cloud_cover_high: [] };
   const d = { time: [], weather_code: [], temperature_2m_max: [], temperature_2m_min: [], precipitation_probability_max: [], sunrise: [], sunset: [], precipitation_sum: [], rain_sum: [], snowfall_sum: [],
     wind_speed_10m_max: [], wind_gusts_10m_max: [], wind_direction_10m_dominant: [], uv_index_max: [] };
-  for (let i = 0; i < 6; i++) {
-    const date = new Date(start.getTime() + i * 864e5), mid = climate(lat, doyOf(date)) + wobble * 2 + (i % 3) - 1, code = codes[(i + Math.round(Math.abs(lon))) % codes.length];
+  for (let i = 0; i < days; i++) {
+    const date = new Date(start.getTime() + i * 864e5), mid = climate(lat, doyOf(date)) + wobble * 2 + (i % 3) - 1 + offset, code = codes[(i + Math.round(Math.abs(lon))) % codes.length];
     const temps = [], winds = [], gusts = [];
     let wet = 0;
     for (let hr = 0; hr < 24; hr++) {
@@ -56,7 +59,7 @@ function forecast(lat, lon) {
   return {
     latitude: lat, longitude: lon, timezone: 'GMT', utc_offset_seconds: 0,
     current: { time: iso(step0), temperature_2m: h.temperature_2m[ci], apparent_temperature: +(h.temperature_2m[ci] - 1.4).toFixed(1), relative_humidity_2m: 64,
-      weather_code: h.weather_code[ci], wind_speed_10m: h.wind_speed_10m[ci], is_day: h.is_day[ci], pressure_msl: h.pressure_msl[ci], cloud_cover: 58,
+      weather_code: sky ? sky.code : h.weather_code[ci], wind_speed_10m: h.wind_speed_10m[ci], wind_direction_10m: 225, is_day: sky ? +sky.isDay : h.is_day[ci], pressure_msl: h.pressure_msl[ci], cloud_cover: 58,
       wind_gusts_10m: h.wind_gusts_10m[ci], visibility: h.visibility[ci], precipitation: 0 },
     hourly: h, daily: d,
     minutely_15: { time: shower.map((_, k) => iso(new Date(step0.getTime() + k * 9e5))), precipitation: shower },
@@ -108,7 +111,7 @@ async function serveApis(context, opts = {}) {
     const n = (route.request().url().match(/inter-(\w+)\.ttf/) || [])[1];
     return n ? route.fulfill({ contentType: 'font/ttf', headers: { 'access-control-allow-origin': '*' }, body: fs.readFileSync(path.join(FONTS, `Inter-${n}.ttf`)) }) : route.abort();
   });
-  await context.route('https://api.open-meteo.com/**', service('forecast', (r) => forecast(+q(r).get('latitude'), +q(r).get('longitude'))));
+  await context.route('https://api.open-meteo.com/**', service('forecast', (r) => forecast(+q(r).get('latitude'), +q(r).get('longitude'), +q(r).get('forecast_days') || 7, opts.now, opts.offset)));
   await context.route('https://air-quality-api.open-meteo.com/**', service('aq', (r) => airQuality(+q(r).get('latitude'), +q(r).get('longitude'))));
   await context.route('https://archive-api.open-meteo.com/**', service('archive', (r) => archive(+q(r).get('latitude'), +q(r).get('longitude'), q(r).get('end_date'))));
   await context.route('https://api.weather.gov/**', service('alerts', () => ({ type: 'FeatureCollection', features: (opts.alerts || []).map((p) => ({ type: 'Feature', properties: p })) })));
