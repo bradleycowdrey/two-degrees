@@ -15,7 +15,7 @@ Made by <a href="https://bradcowdrey.com">Bradley Cowdrey · bradcowdrey.com</a>
 </p>
 
 <p align="center">
-  <a href="https://bradcowdrey.com/two-degrees"><img src="docs/screenshot-app.png" width="380" alt="Two Degrees: New York at 71°F with 22°C beside it, the next 24 hours, and a 5-day forecast with each day's low and high at the ends of its bar. Click to try it in your browser."></a><br>
+  <a href="https://bradcowdrey.com/two-degrees"><img src="docs/screenshot-app.png" width="380" alt="Two Degrees: New York with the temperature in °F and °C side by side on the city's sky, the next 24 hours, a 10-day forecast and twelve detail tiles. Click to try it in your browser."></a><br>
   <sub>Click the picture to try the live app at <a href="https://bradcowdrey.com/two-degrees">bradcowdrey.com/two-degrees</a> (also on <a href="https://bradleycowdrey.github.io/two-degrees/">GitHub Pages</a>).</sub>
 </p>
 
@@ -46,7 +46,7 @@ version is on [Releases](https://github.com/bradleycowdrey/two-degrees/releases)
 - **Widgets**: small, medium and large desktop / Notification Center widgets. Each picks its own city (search any place) and which unit is large. Right-click the desktop → **Edit Widgets** → search **Two Degrees**.
 - **Borrowed from Meridian**: drag the menu bar panel to tear it off into a window, window position (left, centre, right), keep on top, five sizes (⌘+ / ⌘−) and SF Pro or Inter.
 - **Next 24 hours**: a scrolling strip with a temperature line, icons, and rain chance when it's 20% or more.
-- **5-day forecast**: lows and highs in both units, on range bars drawn to one shared, labelled scale (ticks every 10°F / 5°C), with a dot for right now.
+- **10-day forecast**: lows and highs in both units, on range bars drawn to one shared scale, with a dot for right now. Click a day for its details.
 - **One plain sentence**: "Rain likely around 3 PM (60%)" or "Warming to 68°F / 20°C by 2 PM".
 - **Up to 20 cities**: search any place on Earth; switch with one click; Add | Edit works just like Meridian's.
 - **Share**: the same Share button as Meridian and Cowdrey.MD.
