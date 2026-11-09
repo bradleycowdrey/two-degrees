@@ -18,7 +18,7 @@ struct CityPage: View {
             ScrollView(.vertical) {
                 VStack(spacing: ui.pt(10)) {
                     CityHeader(city: city, forecast: forecast)
-                        .opacity(1 - collapse * 1.3)
+                        .opacity(Double(1 - collapse * 1.3))
                         .id("top")
                         .padding(.top, ui.pt(36))
                         .padding(.bottom, ui.pt(26))

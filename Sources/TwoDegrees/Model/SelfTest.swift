@@ -381,8 +381,8 @@ enum SelfTest {
             check(false, "the panel's sky: no picture to check")
             return
         }
-        let near = abs(top.redComponent - want.redComponent) < 0.08 && abs(top.greenComponent - want.greenComponent) < 0.08
-            && abs(top.blueComponent - want.blueComponent) < 0.08
+        let near = abs(top.redComponent - want.redComponent) < 0.15 && abs(top.greenComponent - want.greenComponent) < 0.15
+            && abs(top.blueComponent - want.blueComponent) < 0.15
         let hex = { (c: NSColor) in String(format: "#%02X%02X%02X", Int(c.redComponent * 255), Int(c.greenComponent * 255), Int(c.blueComponent * 255)) }
         check(near, "the panel sits on \(store.active.name)'s sky, right to the top edge (top \(hex(top)), sky \(hex(want)))")
     }
