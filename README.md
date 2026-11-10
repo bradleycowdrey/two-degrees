@@ -2,7 +2,7 @@
 
 <h1 align="center">Two Degrees</h1>
 <p align="center"><b>The weather in °F and °C at once.</b><br>
-A tiny, free, open-source weather app for your Mac's Dock, menu bar and desktop widgets.<br>
+A free, open-source weather app for Mac, iPhone, iPad and Android, with widgets on each, and on the web.<br>
 Made by <a href="https://bradcowdrey.com">Bradley Cowdrey · bradcowdrey.com</a></p>
 
 <p align="center">
@@ -15,8 +15,9 @@ Made by <a href="https://bradcowdrey.com">Bradley Cowdrey · bradcowdrey.com</a>
 </p>
 
 <p align="center">
-  <a href="https://bradcowdrey.com/two-degrees"><img src="docs/screenshot-app.png" width="380" alt="Two Degrees: New York with the temperature in °F and °C side by side on the city's sky, the next 24 hours, a 10-day forecast and twelve detail tiles. Click to try it in your browser."></a><br>
-  <sub>Click the picture to try the live app at <a href="https://bradcowdrey.com/two-degrees">bradcowdrey.com/two-degrees</a> (also on <a href="https://bradleycowdrey.github.io/two-degrees/">GitHub Pages</a>).</sub>
+  <img src="docs/screenshot-mac.png" width="380" alt="Two Degrees on the Mac: the menu bar panel with Share, Add and Edit cities, °F | °C, Refresh and More in its header, the city chips, New York at 48°F with 9°C beside it on the night sky, the next 24 hours, and the 10-day forecast folded to one line.">
+  <a href="https://bradcowdrey.com/two-degrees"><img src="docs/screenshot-app.png" width="300" alt="Two Degrees in the browser: New York with the temperature in °F and °C side by side on the city's sky, the next 2 and 24 hours, a 10-day forecast and twelve detail tiles. Click to try it in your browser."></a><br>
+  <sub>Left: the Mac app's menu bar panel. Right: the web app; click it to try it live at <a href="https://bradcowdrey.com/two-degrees">bradcowdrey.com/two-degrees</a> (also on <a href="https://bradleycowdrey.github.io/two-degrees/">GitHub Pages</a>).</sub>
 </p>
 
 ---
@@ -26,14 +27,13 @@ Pick which unit is large; the other always sits right next to it.
 
 ## What's new
 
-- **0.3.5**: fixed widgets staying blank after an update.
-- **0.3.4**: fixed a widget going blank after you picked a different city.
-- **0.3.3**: widgets redraw as soon as the app opens after an update.
-- **0.3.2**: a clearer 5-day forecast. Each day's low and high sit at the ends of its bar, on one shared scale,
-  in the app, the web app and the large widget.
-- **On the web**: [bradcowdrey.com/two-degrees](https://bradcowdrey.com/two-degrees) is now a full product page with
-  the app running in it, the [widgets live](https://bradcowdrey.com/two-degrees#widgets), and Share buttons.
-- **0.3.0**: an update banner, verified updates, and the 5-day forecast as an accordion.
+- **2.3.2**: Add and Edit cities from the Mac header, beside Share and °F | °C.
+- **2.3.1**: a smaller Mac panel. The 10-day forecast and the detail tiles fold away behind one line each.
+- **2.3.0**: the Mac and web apps in the iPhone's design: each city on its own sky, frosted cards, twelve
+  detail tiles with graphics, and a 10-day forecast. Mac widgets and the Dock tile sit on the sky too, and
+  tapping a widget opens its city.
+- **2.2.0**: a new icon, a wind compass, the sun's path, cloud at each height, and visibility in both systems.
+- **2.1.0**: a forecast of how colourful the next sunrise and sunset will be.
 
 The app updates itself: a banner offers each new version. Every change is in the [changelog](CHANGELOG.md), and every
 version is on [Releases](https://github.com/bradleycowdrey/two-degrees/releases).
@@ -43,12 +43,15 @@ version is on [Releases](https://github.com/bradleycowdrey/two-degrees/releases)
 - **Both units, always**: the current temperature, feels-like, today's range, every hour and every day, in °F and °C.
 - **Lives in the Dock**: the Dock icon shows the live reading (`57°` over `14°C`) and the sky. Right-click it for every saved city.
 - **And the menu bar**: `☁ 57° · 14°`, with the full panel one click away. Larger unit only, or icon only, if you prefer.
+- **A compact panel**: the reading and the next 24 hours up front; the 10-day forecast and the twelve detail tiles fold away behind one line each, and the window sizes itself to what's open.
 - **Widgets**: small, medium and large desktop / Notification Center widgets. Each picks its own city (search any place) and which unit is large. Right-click the desktop → **Edit Widgets** → search **Two Degrees**.
 - **Borrowed from Meridian**: drag the menu bar panel to tear it off into a window, window position (left, centre, right), keep on top, five sizes (⌘+ / ⌘−) and SF Pro or Inter.
-- **Next 24 hours**: a scrolling strip with a temperature line, icons, and rain chance when it's 20% or more.
+- **Next 24 hours**: a scrolling strip with the sky and temperature for each hour, and rain chance when it's 20% or more.
+- **Next 2 hours**: rain by the quarter hour when it's on the way, plus severe weather alerts (US) and a live rain map.
 - **10-day forecast**: lows and highs in both units, on range bars drawn to one shared scale, with a dot for right now. Click a day for its details.
 - **One plain sentence**: "Rain likely around 3 PM (60%)" or "Warming to 68°F / 20°C by 2 PM".
-- **Up to 20 cities**: search any place on Earth; switch with one click; Add | Edit works just like Meridian's.
+- **Twelve detail tiles**: feels like, humidity, wind with a compass, rain, sunrise and sunset with a colour forecast, UV, air quality, today against normal, visibility, precipitation, cloud at each height, and the moon.
+- **Up to 20 cities**: search any place on Earth; switch with one click; Add | Edit sits in the header, just like Meridian's.
 - **Share**: the same Share button as Meridian and Cowdrey.MD.
 - **The details**: open at login, `F` / `C` keys to swap units, VoiceOver reads both units.
 - **Automatic updates** from GitHub Releases, SHA-256 verified, one click to install.
@@ -73,8 +76,8 @@ pictures in this README from the web app.
 ## Widgets
 
 Small, medium and large widgets for your desktop and Notification Center, each with its own city and its own choice
-of which unit is large: New York in °F next to London in °C, if you like. The large one adds the next six hours and the
-5-day forecast.
+of which unit is large: New York in °F next to London in °C, if you like. Each sits on its city's sky, and a click opens
+that city in the app. The medium one adds the next five hours; the large one the next six hours and six days.
 
 <p align="center">
   <a href="https://bradcowdrey.com/two-degrees#widgets"><img src="docs/screenshot-widgets.png" width="760" alt="The large, medium and small Two Degrees widgets on a desktop: New York in °F and London with °C large."></a><br>
