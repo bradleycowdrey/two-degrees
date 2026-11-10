@@ -1,0 +1,68 @@
+name: TestFlight public link
+
+# Shares the iPhone and iPad app through a public TestFlight link until the App Store listing is live:
+# fills in the beta test information and Beta App Review contact, adds the build to the external group
+# "Public", submits it for Beta App Review, and turns on the group's public link. Runs after each
+# successful iPhone TestFlight upload, every six hours, or on demand. Safe to run again: it only does what's missing.
+# Uses the same App Store Connect API key as the upload, and App Review's contact from the
+# APP_REVIEW_PHONE and APP_REVIEW_EMAIL secrets. Without the key this does nothing.
+on:
+  # Every six hours too, to turn on and report the link once Beta App Review approves a build.
+  schedule:
+    - cron: "17 */6 * * *"
+  workflow_run:
+    workflows: ["iPhone TestFlight"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      build:
+        description: "Build number to share (empty: the newest processed build)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: testflight-public
+  cancel-in-progress: false
+
+jobs:
+  public:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      HAS_KEY: ${{ secrets.ASC_KEY_P8 != '' && secrets.ASC_KEY_ID != '' && secrets.ASC_ISSUER_ID != '' }}
+    steps:
+      - name: Waiting for the App Store Connect key
+        if: env.HAS_KEY != 'true'
+        run: echo "::notice::No App Store Connect API key yet (ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8), so nothing to share."
+      - uses: actions/checkout@v4
+        if: env.HAS_KEY == 'true'
+        with:
+          # After an upload, the commit it built, with full history to work out its build number.
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          fetch-depth: 0
+      - name: Share the build
+        if: env.HAS_KEY == 'true'
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+          CONTACT_NAME: Bradley Cowdrey
+          CONTACT_PHONE: ${{ secrets.APP_REVIEW_PHONE }}
+          CONTACT_EMAIL: ${{ secrets.APP_REVIEW_EMAIL }}
+          INPUT_BUILD: ${{ inputs.build }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          # The upload numbers each build by the commits on main, so the build it just sent is this count.
+          # Apple takes a while to process a new upload, so wait for it.
+          if [[ "$EVENT" == "workflow_run" ]]; then
+            export BUILD="$(git rev-list --count HEAD)" WAIT_MINUTES=45
+          else
+            export BUILD="$INPUT_BUILD" WAIT_MINUTES=0
+          fi
+          python3 -m venv "$RUNNER_TEMP/venv"
+          "$RUNNER_TEMP/venv/bin/pip" install --quiet "pyjwt[crypto]==2.9.0"
+          cd scripts && "$RUNNER_TEMP/venv/bin/python" appstore_testflight_public.py

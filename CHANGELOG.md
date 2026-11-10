@@ -271,6 +271,18 @@ Also new on [bradcowdrey.com/two-degrees](https://bradcowdrey.com/two-degrees) s
 - First release: the weather in °F and °C at once, in the Dock (a live temperature on the icon) and the menu bar,
   with the next 24 hours, a 5-day forecast, up to five cities and a Share button. Data from Open-Meteo.
 
+[2.3.3]: https://github.com/bradleycowdrey/two-degrees/releases/tag/v2.3.3
+[2.3.2]: https://github.com/bradleycowdrey/two-degrees/releases/tag/v2.3.2
+[2.3.1]: https://github.com/bradleycowdrey/two-degrees/releases/tag/v2.3.1
+[2.3.0]: https://github.com/bradleycowdrey/two-degrees/releases/tag/v2.3.0
+[2.2.0]: https://github.com/bradleycowdrey/two-degrees/releases/tag/v2.2.0
+[2.1.1]: https://github.com/bradleycowdrey/two-degrees/releases/tag/v2.1.1
+[2.1.0]: https://github.com/bradleycowdrey/two-degrees/releases/tag/v2.1.0
+[2.0.0]: https://github.com/bradleycowdrey/two-degrees/releases/tag/v2.0.0
+[0.5.1]: https://github.com/bradleycowdrey/two-degrees/releases/tag/v0.5.1
+[0.5.0]: https://github.com/bradleycowdrey/two-degrees/releases/tag/v0.5.0
+[0.4.7]: https://github.com/bradleycowdrey/two-degrees/releases/tag/v0.4.7
+[0.4.6]: https://github.com/bradleycowdrey/two-degrees/releases/tag/v0.4.6
 [0.4.5]: https://github.com/bradleycowdrey/two-degrees/releases/tag/v0.4.5
 [0.4.4]: https://github.com/bradleycowdrey/two-degrees/releases/tag/v0.4.4
 [0.4.3]: https://github.com/bradleycowdrey/two-degrees/releases/tag/v0.4.3

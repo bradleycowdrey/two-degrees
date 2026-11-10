@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Runs the Android app in the emulator (in CI): photographs the first-launch terms, runs the self-test
-# (live data), then photographs a city page at rest and scrolled, the city list, a day in detail
-# and the settings menu.
+# (live data), then photographs a city page at rest and scrolled, the city list, a day in detail,
+# the settings menu and the Home Screen widget in each size.
 # Usage: scripts/android-selftest.sh <apk> <output folder>
 set -uo pipefail
 APK="$1"; OUT="$2"; mkdir -p "$OUT"
@@ -51,6 +51,9 @@ launch --es show list; sleep 6; shot android-5-list; stop
 launch --es show day; sleep 8; shot android-6-day; stop
 launch --es show menu; sleep 5; shot android-7-menu; stop
 launch --es show units; sleep 5; shot android-8-units; stop
+# 6. The Home Screen widget in each size (small beside its offline state, medium, large), drawn by the
+# debug build off the Home Screen, since pinning widgets in the emulator isn't dependable.
+adb shell am start -W -n $ID/.widget.WidgetConfigActivity --ez shots true >/dev/null; sleep 8; shot android-9-widgets; stop
 adb shell getprop ro.build.version.release > "$OUT/device.txt"
 adb shell getprop ro.product.model >> "$OUT/device.txt"
 cat "$OUT/report.txt"

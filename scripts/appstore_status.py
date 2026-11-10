@@ -1,5 +1,5 @@
 """Reports where the iOS app stands in App Store Connect: each version's state and its latest review
-submission. Read-only. Env: ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8. Run by .github/workflows/appstore-status.yml.
+submission, and the public TestFlight link with the newest build's Beta App Review state. Read-only. Env: ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8. Run by .github/workflows/appstore-status.yml.
 """
 from appstore_upload import BUNDLE_ID, call
 
@@ -15,6 +15,18 @@ def main():
     for s in call("GET", f"/reviewSubmissions?filter[app]={app['id']}&filter[platform]=IOS&limit=3")["data"]:
         a = s["attributes"]
         print(f"::notice::Review submission {a.get('submittedDate') or 'not submitted'}: {a['state']}")
+    # The public TestFlight link (from appstore_testflight_public.py) and where the newest build is in beta review.
+    for g in call("GET", f"/betaGroups?filter[app]={app['id']}&filter[name]=Public")["data"]:
+        a = g["attributes"]
+        if not a.get("isInternalGroup"):
+            print(f"::notice::Public TestFlight link: {a.get('publicLink') or 'not made yet'} ({'on' if a.get('publicLinkEnabled') else 'off'})")
+    builds = call("GET", f"/builds?filter[app]={app['id']}&filter[preReleaseVersion.platform]=IOS&sort=-uploadedDate&limit=1")["data"]
+    if builds:
+        b = builds[0]
+        subs = call("GET", f"/betaAppReviewSubmissions?filter[build]={b['id']}")["data"]
+        beta = call("GET", f"/builds/{b['id']}/buildBetaDetail")["data"]["attributes"]
+        print(f"::notice::Newest build {b['attributes']['version']}: {b['attributes']['processingState']}, beta review "
+              f"{subs[0]['attributes']['betaReviewState'] if subs else 'not submitted'}, external testing {beta.get('externalBuildState')}")
     # Signing certificates (name, type, expiry), to see when the account is near Apple's limit.
     certs = call("GET", "/certificates?limit=200&fields[certificates]=name,certificateType,displayName,expirationDate")["data"]
     for c in certs:

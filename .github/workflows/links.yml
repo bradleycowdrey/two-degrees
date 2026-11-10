@@ -1,0 +1,23 @@
+name: Links
+
+# Checks every link in the README, the changelog, the web pages, the App Store metadata and the apps,
+# and crawls the live pages one level deep. The table goes to the run's summary, and each broken
+# link is marked on the line it is written on.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: "17 14 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  links:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check every link
+        run: python3 scripts/check-links.py

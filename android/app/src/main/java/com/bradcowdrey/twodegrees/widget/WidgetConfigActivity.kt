@@ -3,6 +3,10 @@ package com.bradcowdrey.twodegrees.widget
 import android.appwidget.AppWidgetManager
 import android.content.Intent
 import android.os.Bundle
+import android.view.Gravity
+import android.widget.FrameLayout
+import android.widget.LinearLayout
+import android.widget.ScrollView
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
@@ -39,11 +43,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.glance.appwidget.ExperimentalGlanceRemoteViewsApi
 import androidx.glance.appwidget.GlanceAppWidgetManager
+import androidx.glance.appwidget.GlanceRemoteViews
 import androidx.lifecycle.lifecycleScope
+import com.bradcowdrey.twodegrees.BuildConfig
 import com.bradcowdrey.twodegrees.City
 import com.bradcowdrey.twodegrees.OpenMeteo
 import com.bradcowdrey.twodegrees.WeatherStore
@@ -52,6 +62,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.math.roundToInt
 
 /**
  * A widget's settings, as on the iPhone: "Use Two Degrees' City" (on: it shows the app's current city;
@@ -61,6 +72,11 @@ class WidgetConfigActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge(statusBarStyle = SystemBarStyle.dark(0), navigationBarStyle = SystemBarStyle.dark(0))
         super.onCreate(savedInstanceState)
+        // The self-test's photo of the widgets (debug builds only): each size, drawn here off the Home Screen.
+        if (BuildConfig.DEBUG && intent?.getBooleanExtra("shots", false) == true) {
+            lifecycleScope.launch { showWidgets() }
+            return
+        }
         val id = intent?.extras?.getInt(AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID)
             ?: AppWidgetManager.INVALID_APPWIDGET_ID
         if (id == AppWidgetManager.INVALID_APPWIDGET_ID) { finish(); return }
@@ -82,6 +98,40 @@ class WidgetConfigActivity : ComponentActivity() {
             }
         }
     }
+}
+
+/**
+ * Draws the widget as the Home Screen would, in each size, for the self-test's photo: small beside the
+ * offline state, then medium, then large. It follows the app's city, as a new widget does.
+ */
+@OptIn(ExperimentalGlanceRemoteViewsApi::class)
+private suspend fun WidgetConfigActivity.showWidgets() {
+    val density = resources.displayMetrics.density
+    fun px(dp: Dp) = (dp.value * density).roundToInt()
+    val entry = WidgetData.entry(this, AppWidgetManager.INVALID_APPWIDGET_ID)
+    val unavailable = entry.copy(forecast = null, offline = true)
+    val column = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        gravity = Gravity.CENTER_HORIZONTAL
+        setBackgroundColor(Palette.bg.toArgb())
+        setPadding(0, px(56.dp), 0, px(24.dp))
+    }
+    suspend fun widget(size: DpSize, shown: WidgetEntry): FrameLayout {
+        val frame = FrameLayout(this)
+        val views = GlanceRemoteViews().compose(this, size) { WidgetContent(shown) }.remoteViews
+        frame.addView(views.apply(this, frame))
+        frame.layoutParams = LinearLayout.LayoutParams(px(size.width), px(size.height))
+        return frame
+    }
+    val (small, medium, large) = TwoDegreesWidget.SHOWN
+    val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+    row.addView(widget(small, entry))
+    row.addView(widget(small, unavailable).apply { (layoutParams as LinearLayout.LayoutParams).leftMargin = px(16.dp) })
+    column.addView(row)
+    for (size in listOf(medium, large)) {
+        column.addView(widget(size, entry).apply { (layoutParams as LinearLayout.LayoutParams).topMargin = px(16.dp) })
+    }
+    setContentView(ScrollView(this).apply { setBackgroundColor(Palette.bg.toArgb()); addView(column) })
 }
 
 @Composable

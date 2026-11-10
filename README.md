@@ -8,6 +8,7 @@ Made by <a href="https://bradcowdrey.com">Bradley Cowdrey · bradcowdrey.com</a>
 <p align="center">
   <a href="https://github.com/bradleycowdrey/two-degrees/releases/latest/download/TwoDegrees.dmg"><b>Download for Mac</b></a> ·
   <a href="https://github.com/bradleycowdrey/two-degrees/releases/latest/download/TwoDegrees.apk"><b>Android APK</b></a> ·
+  <a href="#iphone-and-ipad"><b>iPhone and iPad (TestFlight)</b></a> ·
   <a href="https://bradcowdrey.com/two-degrees">Try it in your browser</a> ·
   <a href="#widgets">Widgets</a> ·
   <a href="CHANGELOG.md">What's new</a> ·
@@ -98,6 +99,19 @@ Two Degrees is distributed directly, not through the Mac App Store.
 3. Open it. Two Degrees is signed with a Developer ID and notarized by Apple (since 0.3.7), so it opens with a
    double-click. The first time, it asks you to agree to the [Terms of Use and Privacy](https://bradcowdrey.com/legal).
 4. Add your cities with the **+** button.
+
+## iPhone and iPad
+
+Until the App Store listing is live (it is waiting for App Review), the iPhone and iPad app is a free
+public beta through Apple's TestFlight. It needs iOS or iPadOS 17 or later.
+
+1. Install [TestFlight](https://apps.apple.com/app/testflight/id899247664) from the App Store.
+2. Open the public TestFlight link on your iPhone or iPad. The current link is the **Get it on TestFlight** button in the
+   [download section](https://bradcowdrey.com/two-degrees#download) of the product page.
+3. Tap **Accept**, then **Install**. Two Degrees appears on your Home Screen like any other app.
+
+TestFlight offers each new version as it comes out. Once the app is on the App Store, install it from there instead;
+your cities carry over. Each beta lasts 90 days, so update when TestFlight asks.
 
 ## Build from source
 
