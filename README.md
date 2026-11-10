@@ -28,6 +28,7 @@ Pick which unit is large; the other always sits right next to it.
 
 ## What's new
 
+- **2.3.4**: Android widgets like the iPhone's, and iPhone and iPad through TestFlight.
 - **2.3.3**: the app's name back in the Mac header, beside the icon.
 - **2.3.2**: Add and Edit cities from the Mac header, beside Share and °F | °C.
 - **2.3.1**: a smaller Mac panel. The 10-day forecast and the detail tiles fold away behind one line each.

@@ -8,6 +8,14 @@ A **patch** (2.0.1) fixes things, a **minor** version (2.1.0) adds features, and
 (3.0.0) is a big redesign or a change that stops something working the way it did. The build number
 counts every change ever made, so each build is higher than the last.
 
+## [2.3.4] - 2026-11-10
+
+- **Android widgets like the iPhone's**: the other unit beside the reading, the condition and today's
+  range in both units on small, the next five hours on medium, and the next hours plus six days of range
+  bars on large.
+- **iPhone and iPad through TestFlight**: until the App Store listing is live, the product page offers a
+  public TestFlight link.
+
 ## [2.3.3] - 2026-11-10
 
 - **The app's name back in the Mac header**, beside the icon. The menu bar panel's Open as Window is in the ⋯ menu.
@@ -271,6 +279,7 @@ Also new on [bradcowdrey.com/two-degrees](https://bradcowdrey.com/two-degrees) s
 - First release: the weather in °F and °C at once, in the Dock (a live temperature on the icon) and the menu bar,
   with the next 24 hours, a 5-day forecast, up to five cities and a Share button. Data from Open-Meteo.
 
+[2.3.4]: https://github.com/bradleycowdrey/two-degrees/releases/tag/v2.3.4
 [2.3.3]: https://github.com/bradleycowdrey/two-degrees/releases/tag/v2.3.3
 [2.3.2]: https://github.com/bradleycowdrey/two-degrees/releases/tag/v2.3.2
 [2.3.1]: https://github.com/bradleycowdrey/two-degrees/releases/tag/v2.3.1
