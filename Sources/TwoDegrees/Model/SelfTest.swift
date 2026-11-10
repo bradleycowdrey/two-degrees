@@ -94,8 +94,8 @@ enum SelfTest {
         store.windUnit = .auto
         check(store.windUnit.text(36, temp: .fahrenheit).main == "22 mph" && store.windUnit.text(36, temp: .celsius).main == "36 km/h", "wind follows the larger unit when automatic")
 
-        // 2. Every size × state: base (the top of the page), scrolled to the 10-day forecast, scrolled to the
-        //    foot of the detail tiles, adding, editing, °C. Window must fit its content and stay on screen.
+        // 2. Every size × state: base (the top of the page, both sections folded), the 10-day forecast opened,
+        //    the detail tiles opened and scrolled to their foot, adding, editing, °C. Window must fit its content and stay on screen.
         let states: [(String, () -> Void)] = [
             ("base", { adding.wrappedValue = false; editing.wrappedValue = false; shown.wrappedValue = "top"; store.unit = .fahrenheit }),
             ("days", { shown.wrappedValue = "days" }),

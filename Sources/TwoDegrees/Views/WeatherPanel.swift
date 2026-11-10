@@ -28,6 +28,10 @@ private struct WeatherPanelContent: View {
     @State private var day: Date?
     /// The part of the page the self-test has scrolled to ("top", "days", "tiles"), to photograph all of it.
     @State private var shown = "top"
+    /// The 10-day forecast and the detail tiles are folded away until asked for, so the panel opens
+    /// small: the reading and the next 24 hours, as a menu bar panel should be.
+    @State private var daysOpen = false
+    @State private var tilesOpen = false
     @State private var contentHeight: CGFloat = 0
     /// Height of the window's hidden title bar. The panel draws under it (so the sky and the header
     /// reach the very top), and SwiftUI still adds it to the window height, so it's subtracted
@@ -85,10 +89,10 @@ private struct WeatherPanelContent: View {
                             AlertCards(city: store.active)
                             NextHoursCard(forecast: forecast)
                             HourlyCard(forecast: forecast)
-                            DailyCard(forecast: forecast, city: store.active, selected: $day).id("days")
+                            daysSection(forecast).id("days")
                             RainMapCard(arrow: "arrow.up.right") { RainMap.open(store.active, unit: store.unit) }
                                 .help("Open the rain map for \(store.active.name) in your browser")
-                            DetailTiles(forecast: forecast, city: store.active).id("tiles")
+                            tilesSection(forecast).id("tiles")
                         } else {
                             Card(title: "Forecast", icon: "clock") {
                                 HStack(spacing: ui.m) {
@@ -135,7 +139,14 @@ private struct WeatherPanelContent: View {
                     day = nil
                     reader.scrollTo("top", anchor: .top)
                 }
-                .onChange(of: shown) { _, part in reader.scrollTo(part, anchor: part == "tiles" ? .bottom : .top) }
+                // The self-test opens the section it wants to photograph, then scrolls to it once it's laid out.
+                .onChange(of: shown) { _, part in
+                    daysOpen = part == "days"
+                    tilesOpen = part == "tiles"
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                        reader.scrollTo(part, anchor: part == "tiles" ? .bottom : .top)
+                    }
+                }
             }
         }
         // Watch the panel's own size and fit the hosting window to it.
@@ -160,6 +171,8 @@ private struct WeatherPanelContent: View {
         .environment(\.colorScheme, .dark)
         .animation(.snappy, value: adding)
         .animation(.snappy, value: editing)
+        .animation(.snappy, value: daysOpen)
+        .animation(.snappy, value: tilesOpen)
         .onAppear { Task { await updater.checkIfDue() } }
         .task {
             if !compact && SelfTest.isActive {
@@ -183,6 +196,34 @@ private struct WeatherPanelContent: View {
             guard press.modifiers.contains(.command) else { return .ignored }
             store.stepSize(press.characters == "-" ? -1 : 1)
             return .handled
+        }
+    }
+
+    /// The 10-day forecast: one line until it's opened. Open, the card's own title is the line to click.
+    @ViewBuilder
+    private func daysSection(_ forecast: Forecast) -> some View {
+        let title = "\(DailyCard.days(forecast).count)-day forecast"
+        if daysOpen {
+            DailyCard(forecast: forecast, city: store.active, selected: $day)
+                .overlay(alignment: .top) {
+                    FoldBar(title: title, icon: "calendar", open: true, bare: true) {
+                        day = nil
+                        daysOpen = false
+                    }
+                }
+        } else {
+            FoldBar(title: title, icon: "calendar", open: false) { daysOpen = true }
+        }
+    }
+
+    /// The twelve detail tiles, behind one line until they're opened.
+    private func tilesSection(_ forecast: Forecast) -> some View {
+        VStack(spacing: ui.pt(10)) {
+            FoldBar(title: "Details", icon: "square.grid.2x2", open: tilesOpen) { tilesOpen.toggle() }
+            if tilesOpen {
+                DetailTiles(forecast: forecast, city: store.active)
+                    .transition(.opacity)
+            }
         }
     }
 
@@ -367,6 +408,41 @@ private struct UpdateBanner: View {
             .padding(.vertical, ui.pt(6))
             .background { Frost(radius: ui.pt(22)) }
             .transition(.move(edge: .top).combined(with: .opacity))
+    }
+}
+
+/// One line that folds a section of the page away or opens it: a card's title with a chevron at the
+/// trailing edge, the whole line clickable. `bare` draws only the chevron and the click area, to lay
+/// over the title of a card that's already open.
+private struct FoldBar: View {
+    @Environment(\.metrics) private var ui
+    let title: String
+    let icon: String
+    let open: Bool
+    var bare = false
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: ui.pt(8)) {
+                Label(title.uppercased(), systemImage: icon)
+                    .opacity(bare ? 0 : 1)
+                Spacer(minLength: ui.s)
+                Image(systemName: "chevron.right")
+                    .rotationEffect(.degrees(open ? 90 : 0))
+            }
+            .font(ui.font(12, .semibold))
+            .foregroundStyle(.white.opacity(0.6))
+            .padding(ui.pt(14))
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background { if !bare { Frost(radius: ui.pt(16)) } }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help(open ? "Hide the \(title.lowercased())" : "Show the \(title.lowercased())")
+        .accessibilityLabel(title)
+        .accessibilityValue(open ? "Open" : "Closed")
+        .accessibilityHint(open ? "Folds this section away" : "Opens this section")
     }
 }
 
