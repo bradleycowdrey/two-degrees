@@ -8,6 +8,11 @@ A **patch** (2.0.1) fixes things, a **minor** version (2.1.0) adds features, and
 (3.0.0) is a big redesign or a change that stops something working the way it did. The build number
 counts every change ever made, so each build is higher than the last.
 
+## [2.3.1] - 2026-11-10
+
+- **A smaller Mac panel**: the 10-day forecast and the detail tiles each fold away behind one line,
+  closed to start. Click a line to open it; the window sizes itself to what's open.
+
 ## [2.3.0] - 2026-11-10
 
 - **The Mac and web apps in the iPhone's design**: each city on its own sky, a centred reading, frosted
