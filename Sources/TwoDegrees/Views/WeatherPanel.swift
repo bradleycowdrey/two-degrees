@@ -234,29 +234,19 @@ private struct WeatherPanelContent: View {
         window.backgroundColor = NSColor(Sky.colors(code: sky.code, isDay: sky.isDay).bottom)
     }
 
-    /// The app's name, then its controls: Share, Add | Edit cities, °F | °C, Refresh and ⋯. When the
-    /// panel is too narrow for all of it (the menu bar panel, small sizes), the name gives way and the
-    /// icon stays.
+    /// The icon and the app's name, then its controls: Share, Add | Edit cities, °F | °C, Refresh and ⋯.
+    /// The name always shows; where the header is tight it shrinks a little rather than giving way.
+    /// (The menu bar panel's Open as Window lives in the ⋯ menu, and dragging the header tears it off.)
     private var header: some View {
-        ViewThatFits(in: .horizontal) {
-            headerRow(showsName: true)
-            headerRow(showsName: false)
-        }
-    }
-
-    private func headerRow(showsName: Bool) -> some View {
-        HStack(spacing: ui.m) {
+        HStack(spacing: ui.s) {
             AppMark(size: ui.pt(28))
-                .help(showsName ? "" : Brand.appName)
-            if showsName {
-                Text(Brand.appName)
-                    .font(ui.title)
-                    .tracking(-0.2)
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
-                    .fixedSize()
-                    .layoutPriority(1)
-            }
+            Text(Brand.appName)
+                .font(ui.title)
+                .tracking(-0.2)
+                .foregroundStyle(.white)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+                .accessibilityAddTraits(.isHeader)
             Spacer(minLength: ui.s)
             HStack(spacing: ui.s) {
                 shareButton
@@ -266,11 +256,10 @@ private struct WeatherPanelContent: View {
                     Task { await store.refresh() }
                 }
                 .disabled(store.loading)
-                if compact {
-                    HeaderCircleButton(symbol: "macwindow", help: "Open as Window") { tearOff() }
-                }
                 MoreMenu(compact: compact, closeHost: { host.window?.close() })
             }
+            .fixedSize()
+            .layoutPriority(1)
         }
     }
 
