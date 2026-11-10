@@ -234,19 +234,33 @@ private struct WeatherPanelContent: View {
         window.backgroundColor = NSColor(Sky.colors(code: sky.code, isDay: sky.isDay).bottom)
     }
 
+    /// The app's name, then its controls: Share, Add | Edit cities, °F | °C, Refresh and ⋯. When the
+    /// panel is too narrow for all of it (the menu bar panel, small sizes), the name gives way and the
+    /// icon stays.
     private var header: some View {
+        ViewThatFits(in: .horizontal) {
+            headerRow(showsName: true)
+            headerRow(showsName: false)
+        }
+    }
+
+    private func headerRow(showsName: Bool) -> some View {
         HStack(spacing: ui.m) {
             AppMark(size: ui.pt(28))
-            Text(Brand.appName)
-                .font(ui.title)
-                .tracking(-0.2)
-                .foregroundStyle(.white)
-                .lineLimit(1)
-                .fixedSize()
-                .layoutPriority(1)
+                .help(showsName ? "" : Brand.appName)
+            if showsName {
+                Text(Brand.appName)
+                    .font(ui.title)
+                    .tracking(-0.2)
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                    .fixedSize()
+                    .layoutPriority(1)
+            }
             Spacer(minLength: ui.s)
             HStack(spacing: ui.s) {
                 shareButton
+                ListControls(adding: $adding, editing: $editing)
                 UnitToggle()
                 HeaderCircleButton(symbol: "arrow.clockwise", help: "Refresh") {
                     Task { await store.refresh() }

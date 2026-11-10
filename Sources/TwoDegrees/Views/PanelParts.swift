@@ -103,7 +103,7 @@ struct CityChips: View {
                                 .accessibilityLabel("My Location:")
                         }
                         // Always as wide as the semibold (selected) name, so selecting a city never
-                        // changes the row's width and the Add | Edit capsule stays put.
+                        // changes the row's width and the chips after it stay put.
                         ZStack {
                             Text(city.name).font(ui.font(13, .semibold)).hidden()
                             Text(city.name).font(ui.font(13, on ? .semibold : .medium))
@@ -145,7 +145,6 @@ struct CityChips: View {
                 }
                 .accessibilityAddTraits(on ? .isSelected : [])
             }
-            ListControls(adding: $adding, editing: $editing)
         }
         .padding(.top, editing ? ui.pt(6) : 0)
     }
@@ -157,7 +156,7 @@ struct CityChips: View {
     }
 }
 
-/// Meridian's Add | Edit capsule, icon-only so the city row stays on one line.
+/// Meridian's Add | Edit capsule, icon-only, in the header between Share and the °F | °C toggle.
 struct ListControls: View {
     @EnvironmentObject private var store: WeatherStore
     @Environment(\.metrics) private var ui
