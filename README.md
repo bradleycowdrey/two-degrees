@@ -107,7 +107,8 @@ public beta through Apple's TestFlight. It needs iOS or iPadOS 17 or later.
 
 1. Install [TestFlight](https://apps.apple.com/app/testflight/id899247664) from the App Store.
 2. Open the public TestFlight link on your iPhone or iPad. The current link is the **Get it on TestFlight** button in the
-   [download section](https://bradcowdrey.com/two-degrees#download) of the product page.
+   [download section](https://bradcowdrey.com/two-degrees#download) of the product page. (While Apple reviews the
+   beta, that tile says Coming soon.)
 3. Tap **Accept**, then **Install**. Two Degrees appears on your Home Screen like any other app.
 
 TestFlight offers each new version as it comes out. Once the app is on the App Store, install it from there instead;
