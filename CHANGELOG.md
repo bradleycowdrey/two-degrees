@@ -8,6 +8,10 @@ A **patch** (2.0.1) fixes things, a **minor** version (2.1.0) adds features, and
 (3.0.0) is a big redesign or a change that stops something working the way it did. The build number
 counts every change ever made, so each build is higher than the last.
 
+## [2.3.3] - 2026-11-10
+
+- **The app's name back in the Mac header**, beside the icon. The menu bar panel's Open as Window is in the ⋯ menu.
+
 ## [2.3.2] - 2026-11-10
 
 - **Add and Edit cities from the Mac header**: the + and edit buttons now sit with the other controls,
