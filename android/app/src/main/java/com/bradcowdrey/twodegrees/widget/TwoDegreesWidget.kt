@@ -102,7 +102,7 @@ class TwoDegreesWidget : GlanceAppWidget() {
 
     override val sizeMode = SizeMode.Responsive(setOf(
         SMALL, SMALL_ROOMY, MEDIUM, MEDIUM_WIDE, MEDIUM_ROOMY, LARGE, LARGE_TALL, LARGE_ROOMY,
-    )))
+    ))
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val appWidgetId = GlanceAppWidgetManager(context).getAppWidgetId(id)
