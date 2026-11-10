@@ -39,12 +39,12 @@ private struct WeatherPanelContent: View {
     @State private var titleBarInset: CGFloat = 0
     @State private var host = HostWindow()
 
-    /// Tallest the scrolling page may be: about a phone's worth of it, and never more than the screen
-    /// has room for at any size. The rest scrolls.
+    /// Tallest the scrolling page may be: enough for the whole page with both sections folded, and never
+    /// more than the screen has room for at any size. The rest scrolls.
     private var maxBodyHeight: CGFloat {
         let screen = NSScreen.main?.visibleFrame.height ?? 800
         let chrome = ui.pt(compact ? 21 : 34) + ui.pt(32)   // the header
-        return max(ui.pt(320), min(ui.pt(700), screen - chrome - ui.pt(compact ? 32 : 64)))
+        return max(ui.pt(320), min(ui.pt(900), screen - chrome - ui.pt(compact ? 32 : 64)))
     }
 
     /// The sky behind the panel: the active city's, or a plain overcast one until its forecast arrives.
