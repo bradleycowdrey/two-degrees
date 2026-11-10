@@ -102,7 +102,7 @@ jobs:
           head -1 "$RUNNER_TEMP/shots/report.txt" | grep -q "ALL PASSED"
 
   web-tests:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - name: Web tests (phone, tablet, desktop × 5 sizes)
