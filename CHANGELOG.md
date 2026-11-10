@@ -8,6 +8,19 @@ A **patch** (2.0.1) fixes things, a **minor** version (2.1.0) adds features, and
 (3.0.0) is a big redesign or a change that stops something working the way it did. The build number
 counts every change ever made, so each build is higher than the last.
 
+## [2.3.0] - 2026-11-10
+
+- **The Mac and web apps in the iPhone's design**: each city on its own sky, a centred reading, frosted
+  cards, the twelve tiles with their graphics, and the same footer.
+- **10-day forecast on the Mac and the web**, on one shared scale. Click a day on the Mac for its
+  temperature, rain and wind charts.
+- **Mac widgets and the Dock tile on the city's sky**, matching the iPhone widgets.
+- **Tap a widget to open its city** on iPhone, iPad, Mac and Android.
+- **Small refinements** across every app: steadier spacing in the hourly strip and the 10-day list,
+  clearer cloud-layer labels, and shorter menu names.
+- **Web fixes**: the Share and ⋯ menus stay on top in older Safari, and both readings stay on one line
+  in a deep freeze.
+
 ## [2.2.0] - 2026-11-07
 
 - **A new icon**: the two degree rings, cream and a sunset coral, on the dusk sky of the city pages.
