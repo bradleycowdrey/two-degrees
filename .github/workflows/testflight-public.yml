@@ -4,8 +4,10 @@ name: TestFlight public link
 # fills in the beta test information and Beta App Review contact, adds the build to the external group
 # "Public", submits it for Beta App Review, and turns on the group's public link. Runs after each
 # successful iPhone TestFlight upload, every six hours, or on demand. Safe to run again: it only does what's missing.
-# Uses the same App Store Connect API key as the upload, and App Review's contact from the
-# APP_REVIEW_PHONE and APP_REVIEW_EMAIL secrets. Without the key this does nothing.
+# Once the link exists it is saved to docs/testflight.json on main, which turns the product pages'
+# "Coming soon" into a Get it on TestFlight button. Uses the same App Store Connect API key as the
+# upload, and App Review's contact from the APP_REVIEW_PHONE and APP_REVIEW_EMAIL secrets, or else the
+# contact already on the App Store submission. Without the key this does nothing.
 on:
   # Every six hours too, to turn on and report the link once Beta App Review approves a build.
   schedule:
@@ -21,7 +23,7 @@ on:
         default: ""
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: testflight-public
@@ -54,6 +56,7 @@ jobs:
           CONTACT_PHONE: ${{ secrets.APP_REVIEW_PHONE }}
           CONTACT_EMAIL: ${{ secrets.APP_REVIEW_EMAIL }}
           INPUT_BUILD: ${{ inputs.build }}
+          LINK_FILE: ${{ runner.temp }}/testflight.json
           EVENT: ${{ github.event_name }}
         run: |
           # The upload numbers each build by the commits on main, so the build it just sent is this count.
@@ -66,3 +69,17 @@ jobs:
           python3 -m venv "$RUNNER_TEMP/venv"
           "$RUNNER_TEMP/venv/bin/pip" install --quiet "pyjwt[crypto]==2.9.0"
           cd scripts && "$RUNNER_TEMP/venv/bin/python" appstore_testflight_public.py
+      - name: Save the link for the download buttons
+        if: env.HAS_KEY == 'true'
+        run: |
+          [[ -f "$RUNNER_TEMP/testflight.json" ]] || { echo "No public link yet."; exit 0; }
+          git fetch --quiet origin main
+          git checkout --quiet -B save-link origin/main
+          if cmp -s "$RUNNER_TEMP/testflight.json" docs/testflight.json; then echo "Link unchanged."; exit 0; fi
+          cp "$RUNNER_TEMP/testflight.json" docs/testflight.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/testflight.json
+          git commit --quiet -m "The public TestFlight link for the download buttons"
+          git push --quiet origin HEAD:main
+          echo "::notice::Saved the TestFlight link to docs/testflight.json."

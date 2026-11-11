@@ -8,7 +8,7 @@ Made by <a href="https://bradcowdrey.com">Bradley Cowdrey · bradcowdrey.com</a>
 <p align="center">
   <a href="https://github.com/bradleycowdrey/two-degrees/releases/latest/download/TwoDegrees.dmg"><b>Download for Mac</b></a> ·
   <a href="https://github.com/bradleycowdrey/two-degrees/releases/latest/download/TwoDegrees.apk"><b>Android APK</b></a> ·
-  <a href="#iphone-and-ipad"><b>iPhone and iPad (TestFlight)</b></a> ·
+  <a href="https://apps.apple.com/app/id6826694344"><b>iPhone and iPad (App Store)</b></a> ·
   <a href="https://bradcowdrey.com/two-degrees">Try it in your browser</a> ·
   <a href="#widgets">Widgets</a> ·
   <a href="CHANGELOG.md">What's new</a> ·
@@ -103,17 +103,12 @@ Two Degrees is distributed directly, not through the Mac App Store.
 
 ## iPhone and iPad
 
-Until the App Store listing is live (it is waiting for App Review), the iPhone and iPad app is a free
-public beta through Apple's TestFlight. It needs iOS or iPadOS 17 or later.
+Two Degrees is free on the [App Store](https://apps.apple.com/app/id6826694344) for iPhone and iPad, with Home Screen and
+Lock Screen widgets. It needs iOS or iPadOS 17 or later.
 
-1. Install [TestFlight](https://apps.apple.com/app/testflight/id899247664) from the App Store.
-2. Open the public TestFlight link on your iPhone or iPad. The current link is the **Get it on TestFlight** button in the
-   [download section](https://bradcowdrey.com/two-degrees#download) of the product page. (While Apple reviews the
-   beta, that tile says Coming soon.)
-3. Tap **Accept**, then **Install**. Two Degrees appears on your Home Screen like any other app.
-
-TestFlight offers each new version as it comes out. Once the app is on the App Store, install it from there instead;
-your cities carry over. Each beta lasts 90 days, so update when TestFlight asks.
+**Want the newest version first?** Join the public [TestFlight beta](https://testflight.apple.com/join/JENqJ1mE): install
+[TestFlight](https://apps.apple.com/app/testflight/id899247664) from the App Store, open the link on your iPhone or iPad,
+then tap **Accept** and **Install**. Your cities carry over between the App Store and beta versions.
 
 ## Build from source
 

@@ -69,11 +69,38 @@ def find_build(app, number, wait_minutes):
         time.sleep(30)
 
 
+def store_contact(app):
+    """The contact already given to App Review for an App Store version: (first, last, phone, email), or Nones.
+    Read only; the version and its review are left untouched."""
+    versions = call("GET", f"/apps/{app['id']}/appStoreVersions?limit=20").get("data") or []
+    for version in versions:
+        detail = soft_call("GET", f"/appStoreVersions/{version['id']}/appStoreReviewDetail")
+        a = ((detail or {}).get("data") or {}).get("attributes") or {}
+        if a.get("contactEmail") and a.get("contactPhone"):
+            return a.get("contactFirstName"), a.get("contactLastName"), a["contactPhone"], a["contactEmail"]
+    return None, None, None, None
+
+
+def private(value):
+    # The repository is public, so its logs are too: keep contact details out of them.
+    if value:
+        print(f"::add-mask::{value}")
+    return value
+
+
 def main():
     step("App")
     app = call("GET", f"/apps?filter[bundleId]={BUNDLE_ID}")["data"][0]
     print(f"{app['attributes']['name']} ({app['id']})")
-    email = os.environ.get("CONTACT_EMAIL", "").strip()
+    email = private(os.environ.get("CONTACT_EMAIL", "").strip())
+    phone = private(os.environ.get("CONTACT_PHONE", "").strip())
+    first, last = (os.environ.get("CONTACT_NAME", "").strip().split(" ", 1) + [""])[:2]
+    if not (email and phone):
+        # Without the secrets, use the contact already on the App Store submission.
+        s_first, s_last, s_phone, s_email = store_contact(app)
+        email, phone = email or private(s_email or ""), phone or private(s_phone or "")
+        first, last = first or (s_first or ""), last or (s_last or "")
+        print("contact taken from the App Store submission's App Review details" if s_email else "no contact found on the App Store submission")
 
     step("Test information")
     attrs = {"description": META["description"][:4000], "privacyPolicyUrl": PRIVACY_URL, "marketingUrl": MARKETING_URL}
@@ -94,9 +121,8 @@ def main():
     step("Beta App Review contact and notes")
     detail = call("GET", f"/apps/{app['id']}/betaAppReviewDetail")["data"]
     review = {"demoAccountRequired": False, "notes": re.sub(r"Two Degrees \d+(\.\d+)+ ", "Two Degrees ", META["reviewNotes"])[:4000]}
-    name = os.environ.get("CONTACT_NAME", "").strip().split(" ", 1)
-    for key, value in [("contactFirstName", name[0]), ("contactLastName", name[1] if len(name) > 1 else ""),
-                       ("contactPhone", os.environ.get("CONTACT_PHONE", "").strip()), ("contactEmail", email)]:
+    for key, value in [("contactFirstName", first), ("contactLastName", last),
+                       ("contactPhone", phone), ("contactEmail", email)]:
         if value:
             review[key] = value
     call("PATCH", f"/betaAppReviewDetails/{detail['id']}", {"data": {"type": "betaAppReviewDetails", "id": detail["id"], "attributes": review}})
@@ -162,12 +188,16 @@ def main():
         print("::warning::Apple hasn't made the public link yet (it may need the build through Beta App Review first). A later scheduled run turns it on once the build is approved.")
         return
     print(f"::notice::Public TestFlight link: {link} (build {number}, beta review {state})")
+    # The download buttons on the product pages read the link from docs/testflight.json; the workflow commits it.
+    out = os.environ.get("LINK_FILE")
+    if out:
+        with open(out, "w", encoding="utf-8") as f:
+            f.write(json.dumps({"url": link}) + "\n")
     summary = os.environ.get("GITHUB_STEP_SUMMARY")
     if summary:
         with open(summary, "a", encoding="utf-8") as f:
             f.write(f"## Two Degrees on TestFlight\n\nPublic link: {link}\n\nBuild {number}, Beta App Review: {state}.\n\n"
-                    "For the download buttons, commit this as `docs/testflight.json`:\n\n"
-                    f"```json\n{json.dumps({'url': link})}\n```\n")
+                    "The workflow saves it as `docs/testflight.json`, which the download buttons read.\n")
 
 
 if __name__ == "__main__":
