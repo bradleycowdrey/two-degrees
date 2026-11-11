@@ -218,9 +218,8 @@
       <h3>On your Home Screen and Lock Screen.</h3>
       <p>Swipe between your cities, with Home Screen and Lock Screen widgets.</p>
       <div class="get">
-        <!-- "Coming soon" until docs/testflight.json holds the public TestFlight link; the script below then makes it a button. -->
-        <span class="pill soon" id="iosGet" aria-disabled="true">Coming soon</span>
-        <p class="fine">Free beta through Apple’s <a href="https://apps.apple.com/app/testflight/id899247664">TestFlight app</a> until the App Store listing is live · iOS and iPadOS 17 or later · <a href="https://github.com/bradleycowdrey/two-degrees#iphone-and-ipad">How to install</a></p>
+        <a class="pill" href="https://apps.apple.com/app/id6826694344">Download on the App Store</a>
+        <p class="fine">iOS and iPadOS 17 or later · <span id="iosBeta">Want the newest version first? <a href="https://testflight.apple.com/join/JENqJ1mE">Join the TestFlight beta</a></span></p>
       </div>
     </div>
     <div class="ftile">
@@ -293,15 +292,12 @@
   });
   if (new URLSearchParams(location.search).has('c')) document.getElementById('demo').scrollIntoView();
 
-  // iPhone and iPad: the public TestFlight link until the App Store listing is live. It is kept in
-  // docs/testflight.json on GitHub, so it can change without a new page. Until it can be read, the tile says Coming soon.
+  // iPhone and iPad: the TestFlight beta's link is kept in docs/testflight.json on GitHub, so it can change
+  // without a new page; the link written above is used until it can be read.
   fetch('https://raw.githubusercontent.com/bradleycowdrey/two-degrees/main/docs/testflight.json', { cache: 'no-store' })
     .then((r) => (r.ok ? r.json() : null))
     .then((j) => {
-      if (!j || !/^https:\/\/testflight\.apple\.com\/join\/\w+$/.test(j.url)) return;
-      const a = document.createElement('a');
-      a.className = 'pill'; a.id = 'iosGet'; a.href = j.url; a.textContent = 'Get it on TestFlight';
-      document.getElementById('iosGet').replaceWith(a);
+      if (j && /^https:\/\/testflight\.apple\.com\/join\/\w+$/.test(j.url)) document.querySelector('#iosBeta a').href = j.url;
     })
     .catch(() => {});
 
