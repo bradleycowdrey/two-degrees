@@ -122,10 +122,16 @@
   .ftile .sample b { color: var(--text); font-weight: 600; }
   .ftile .sample span { color: var(--faint); margin: 0 6px; }
 
-  .platforms .ftile { min-height: 0; }
-  .platforms .get { margin-top: auto; padding-top: 24px; }
-  .platforms .get .fine { margin-top: 12px; font-size: 13px; }
-  .platforms .get .fine a { color: var(--cream); text-decoration: underline; text-underline-offset: 2px; }
+  .platforms { grid-template-rows: repeat(5, auto); }
+  .platforms .ftile { min-height: 0; display: grid; grid-row: span 5; grid-template-rows: subgrid; row-gap: 0; align-content: start; }
+  .platforms .os { width: 30px; height: 30px; color: var(--cream); margin-bottom: 18px; }
+  .platforms h3 { margin-bottom: 6px; }
+  .platforms .req { color: var(--muted); font-size: 15px; margin-bottom: 22px; }
+  .platforms .get { margin-bottom: 22px; }
+  .platforms .pill { white-space: nowrap; }
+  .platforms .ftile > p:last-child { font-size: 15px; color: var(--muted); }
+  .platforms a.more { color: var(--cream); text-decoration: underline; text-underline-offset: 2px; }
+  @media (max-width: 900px) { .platforms { grid-template-rows: none; } .platforms .ftile { grid-row: auto; grid-template-rows: none; } }
 
   .steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; }
   @media (max-width: 1000px) { .steps { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
@@ -203,33 +209,28 @@
 
   <h2 class="section-h" id="download">Get Two Degrees.</h2>
   <p class="section-p">Free on every device, with widgets on each. Your cities and settings stay on your device.</p>
+  <!-- Each tile's parts sit on shared rows (subgrid), so the buttons line up across the three. -->
   <div class="tiles platforms">
     <div class="ftile">
-      <div class="k">Mac</div>
-      <h3>In your Dock and menu bar.</h3>
-      <p>The live reading in the Dock and menu bar, plus desktop widgets. Updates itself.</p>
-      <div class="get">
-        <a class="pill" href="https://github.com/bradleycowdrey/two-degrees/releases/latest/download/TwoDegrees.dmg">Download for Mac</a>
-        <p class="fine">macOS 14 or later · Apple silicon and Intel · <a href="#install">How to install</a></p>
-      </div>
+      <svg class="os" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.365 1.43c0 1.14-.493 2.27-1.177 3.08-.744.9-1.99 1.57-2.987 1.57-.12 0-.23-.02-.3-.03-.01-.06-.04-.22-.04-.39 0-1.15.572-2.27 1.206-2.98.804-.94 2.142-1.64 3.248-1.68.03.13.05.28.05.43zm4.565 15.71c-.03.07-.463 1.58-1.518 3.12-.945 1.34-1.94 2.71-3.43 2.71-1.517 0-1.9-.88-3.63-.88-1.698 0-2.302.91-3.67.91-1.377 0-2.332-1.26-3.428-2.8-1.287-1.82-2.323-4.63-2.323-7.28 0-4.28 2.797-6.55 5.552-6.55 1.448 0 2.675.95 3.6.95.865 0 2.222-1.01 3.902-1.01.613 0 2.886.06 4.374 2.19-.13.09-2.383 1.37-2.383 4.19 0 3.26 2.854 4.42 2.955 4.45z"/></svg>
+      <h3>Mac</h3>
+      <p class="req">macOS 14 or later · Apple silicon and Intel</p>
+      <div class="get"><a class="pill" href="https://github.com/bradleycowdrey/two-degrees/releases/latest/download/TwoDegrees.dmg">Download for Mac</a></div>
+      <p>The live reading in your Dock and menu bar, plus desktop widgets. It updates itself. <a class="more" href="#install">How to install</a></p>
     </div>
     <div class="ftile">
-      <div class="k">iPhone and iPad</div>
-      <h3>On your Home Screen and Lock Screen.</h3>
-      <p>Swipe between your cities, with Home Screen and Lock Screen widgets.</p>
-      <div class="get">
-        <a class="pill" href="https://apps.apple.com/app/id6826694344">Download on the App Store</a>
-        <p class="fine">iOS and iPadOS 17 or later · <span id="iosBeta">Want the newest version first? <a href="https://testflight.apple.com/join/JENqJ1mE">Join the TestFlight beta</a></span></p>
-      </div>
+      <svg class="os" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.365 1.43c0 1.14-.493 2.27-1.177 3.08-.744.9-1.99 1.57-2.987 1.57-.12 0-.23-.02-.3-.03-.01-.06-.04-.22-.04-.39 0-1.15.572-2.27 1.206-2.98.804-.94 2.142-1.64 3.248-1.68.03.13.05.28.05.43zm4.565 15.71c-.03.07-.463 1.58-1.518 3.12-.945 1.34-1.94 2.71-3.43 2.71-1.517 0-1.9-.88-3.63-.88-1.698 0-2.302.91-3.67.91-1.377 0-2.332-1.26-3.428-2.8-1.287-1.82-2.323-4.63-2.323-7.28 0-4.28 2.797-6.55 5.552-6.55 1.448 0 2.675.95 3.6.95.865 0 2.222-1.01 3.902-1.01.613 0 2.886.06 4.374 2.19-.13.09-2.383 1.37-2.383 4.19 0 3.26 2.854 4.42 2.955 4.45z"/></svg>
+      <h3>iPhone and iPad</h3>
+      <p class="req">iOS and iPadOS 17 or later</p>
+      <div class="get"><a class="pill" href="https://apps.apple.com/app/id6826694344">Download on the App Store</a></div>
+      <p>Swipe between your cities, with Home Screen and Lock Screen widgets. <span id="iosBeta">Want the newest version first? <a class="more" href="https://testflight.apple.com/join/JENqJ1mE">Join the TestFlight beta</a></span></p>
     </div>
     <div class="ftile">
-      <div class="k">Android</div>
-      <h3>On your phone and Home Screen.</h3>
-      <p>The same pages and widgets, and city search that works offline.</p>
-      <div class="get">
-        <a class="pill" href="https://github.com/bradleycowdrey/two-degrees/releases/latest/download/TwoDegrees.apk">Download the APK</a>
-        <p class="fine">Android 8 or later · Open the file to install, and allow your browser to install apps if asked</p>
-      </div>
+      <svg class="os" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.6 9.48l1.84-3.18c.16-.31.04-.69-.26-.85a.637.637 0 0 0-.83.22l-1.88 3.24a11.43 11.43 0 0 0-8.94 0L5.65 5.67a.643.643 0 0 0-.87-.2c-.28.18-.37.54-.22.83L6.4 9.48A10.78 10.78 0 0 0 1 18h22a10.78 10.78 0 0 0-5.4-8.52zM7 15.25a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5zm10 0a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5z"/></svg>
+      <h3>Android</h3>
+      <p class="req">Android 8 or later</p>
+      <div class="get"><a class="pill" href="https://github.com/bradleycowdrey/two-degrees/releases/latest/download/TwoDegrees.apk">Download for Android</a></div>
+      <p>The same pages and Home Screen widgets, and city search that works offline. Open the file to install, and allow your browser to install apps if asked.</p>
     </div>
   </div>
 
