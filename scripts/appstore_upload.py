@@ -104,7 +104,7 @@ def main():
         versions = [created["data"]]
     version = versions[0]
     # Anything already on the App Store means this is an update, which needs What's New text.
-    is_update = bool(call("GET", f"/apps/{app['id']}/appStoreVersions?filter[platform]=IOS&filter[appStoreState]=READY_FOR_DISTRIBUTION,READY_FOR_SALE&limit=1")["data"])
+    is_update = bool(call("GET", f"/apps/{app['id']}/appStoreVersions?filter[platform]=IOS&filter[appStoreState]=READY_FOR_SALE&limit=1")["data"])
     print(f"app {app['attributes']['name']}, version {version['attributes']['versionString']} ({version['attributes']['appStoreState']})")
 
     step("Categories")
