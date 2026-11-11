@@ -115,6 +115,17 @@ def main():
          "secondaryCategory": {"data": {"type": "appCategories", "id": meta["secondaryCategory"]}}}}})
     print(f"{meta['primaryCategory']}, {meta['secondaryCategory']}")
 
+    step("Subtitle")
+    # The line under the name on the App Store, which search weighs heavily. Only the version being
+    # prepared can change it.
+    if meta.get("subtitle"):
+        info_locs = call("GET", f"/appInfos/{info['id']}/appInfoLocalizations")["data"]
+        info_loc = next((l for l in info_locs if l["attributes"]["locale"] == meta["locale"]), None)
+        if info_loc:
+            call("PATCH", f"/appInfoLocalizations/{info_loc['id']}", {"data": {"type": "appInfoLocalizations", "id": info_loc["id"],
+                 "attributes": {"subtitle": meta["subtitle"]}}})
+            print(meta["subtitle"])
+
     step("Content rights")
     call("PATCH", f"/apps/{app['id']}", {"data": {"type": "apps", "id": app["id"],
          "attributes": {"contentRightsDeclaration": "USES_THIRD_PARTY_CONTENT"}}})
