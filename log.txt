@@ -1,0 +1,180 @@
+iPhone: FA1105A3-CFB2-45AC-B4DB-EBAC55DD946D  iPad: 04A9C222-F4D9-4FD4-98BE-4054EEE6F66B
+Monitoring boot status for iPhone 16 Pro Max (FA1105A3-CFB2-45AC-B4DB-EBAC55DD946D).
+[2026-11-11 19:48:31 +0000] Status=2, isTerminal=NO, Elapsed=01:01.
+	Waiting on Data Migration
+		Reason:Running plugin com.apple.-0LaunchServicesMigrator (00LaunchServicesMigrator.migrator, user-agnostic)
+		Migration Elapsed:00:45 seconds
+
+[2026-11-11 19:48:32 +0000] Status=2, isTerminal=NO, Elapsed=01:02.
+	Waiting on Data Migration
+		Reason:Running plugin com.apple.-0LaunchServicesMigrator (00LaunchServicesMigrator.migrator, user-agnostic)
+		Migration Elapsed:00:46 seconds
+
+[2026-11-11 19:48:33 +0000] Status=2, isTerminal=NO, Elapsed=01:03.
+	Waiting on Data Migration
+		Reason:Running plugin com.apple.-0LaunchServicesMigrator (00LaunchServicesMigrator.migrator, user-agnostic)
+		Migration Elapsed:00:47 seconds
+
+[2026-11-11 19:48:34 +0000] Status=2, isTerminal=NO, Elapsed=01:04.
+	Waiting on Data Migration
+		Reason:Running plugin com.apple.-0LaunchServicesMigrator (00LaunchServicesMigrator.migrator, user-agnostic)
+		Migration Elapsed:00:48 seconds
+
+[2026-11-11 19:48:35 +0000] Status=2, isTerminal=NO, Elapsed=01:05.
+	Waiting on Data Migration
+		Reason:Running plugin com.apple.-0LaunchServicesMigrator (00LaunchServicesMigrator.migrator, user-agnostic)
+		Migration Elapsed:00:49 seconds
+
+[2026-11-11 19:48:36 +0000] Status=2, isTerminal=NO, Elapsed=01:06.
+	Waiting on Data Migration
+		Reason:Running plugin com.apple.-0LaunchServicesMigrator (00LaunchServicesMigrator.migrator, user-agnostic)
+		Migration Elapsed:00:50 seconds
+
+[2026-11-11 19:48:37 +0000] Status=2, isTerminal=NO, Elapsed=01:07.
+	Waiting on Data Migration
+		Reason:Running plugin com.apple.-0LaunchServicesMigrator (00LaunchServicesMigrator.migrator, user-agnostic)
+		Migration Elapsed:00:51 seconds
+
+[2026-11-11 19:48:38 +0000] Status=2, isTerminal=NO, Elapsed=01:08.
+	Waiting on Data Migration
+		Reason:Running plugin com.apple.-0LaunchServicesMigrator (00LaunchServicesMigrator.migrator, user-agnostic)
+		Migration Elapsed:00:52 seconds
+
+[2026-11-11 19:48:39 +0000] Status=2, isTerminal=NO, Elapsed=01:09.
+	Waiting on Data Migration
+		Reason:Running plugin com.apple.-0LaunchServicesMigrator (00LaunchServicesMigrator.migrator, user-agnostic)
+		Migration Elapsed:00:53 seconds
+
+[2026-11-11 19:48:45 +0000] Status=2, isTerminal=NO, Elapsed=01:15.
+	Waiting on Data Migration
+		Reason:Running plugin com.apple.securityd.KeychainMigrator (KeychainMigrator.migrator, user-agnostic)
+		Migration Elapsed:00:54 seconds
+
+[2026-11-11 19:48:50 +0000] Status=2, isTerminal=NO, Elapsed=01:20.
+	Waiting on Data Migration
+		Reason:Running plugin com.apple.locationd.migrator (CoreLocationMigrator.migrator)
+		Migration Elapsed:00:59 seconds
+
+[2026-11-11 19:48:53 +0000] Status=4, isTerminal=NO, Elapsed=01:23.
+	Waiting on System App
+
+[2026-11-11 19:48:56 +0000] Status=4, isTerminal=NO, Elapsed=01:26.
+	Waiting on System App
+
+[2026-11-11 19:48:58 +0000] Status=4, isTerminal=NO, Elapsed=01:27.
+	Waiting on System App
+
+[2026-11-11 19:48:58 +0000] Status=4, isTerminal=NO, Elapsed=01:28.
+	Waiting on System App
+
+[2026-11-11 19:48:59 +0000] Status=4, isTerminal=NO, Elapsed=01:29.
+	Waiting on System App
+
+[2026-11-11 19:49:00 +0000] Status=4, isTerminal=NO, Elapsed=01:30.
+	Waiting on System App
+
+[2026-11-11 19:49:01 +0000] Status=4, isTerminal=NO, Elapsed=01:31.
+	Waiting on System App
+
+[2026-11-11 19:49:01 +0000] Status=4, isTerminal=NO, Elapsed=01:31.
+	Waiting on System App
+
+[2026-11-11 19:49:03 +0000] Status=4, isTerminal=NO, Elapsed=01:33.
+	Waiting on System App
+
+[2026-11-11 19:49:12 +0000] Status=4294967295, isTerminal=YES, Elapsed=01:41.
+	Finished
+
+com.bradcowdrey.twodegrees: 7005
+Detected file type 'PNG' from extension
+Wrote screenshot to: /Users/runner/work/_temp/shots/iphone-1.png
+com.bradcowdrey.twodegrees: 7851
+Detected file type 'PNG' from extension
+Wrote screenshot to: /Users/runner/work/_temp/shots/iphone-2.png
+com.bradcowdrey.twodegrees: 11417
+Detected file type 'PNG' from extension
+Wrote screenshot to: /Users/runner/work/_temp/shots/iphone-3.png
+com.bradcowdrey.twodegrees: 12090
+Detected file type 'PNG' from extension
+Wrote screenshot to: /Users/runner/work/_temp/shots/iphone-4.png
+Monitoring boot status for iPad Pro 13-inch (M4) (04A9C222-F4D9-4FD4-98BE-4054EEE6F66B).
+[2026-11-11 19:55:26 +0000] Status=2, isTerminal=NO, Elapsed=01:00.
+	Waiting on Data Migration
+		Reason:Running plugin com.apple.securityd.KeychainMigrator (KeychainMigrator.migrator, user-agnostic)
+		Migration Elapsed:00:51 seconds
+
+[2026-11-11 19:55:30 +0000] Status=2, isTerminal=NO, Elapsed=01:04.
+	Waiting on Data Migration
+		Reason:Running plugin com.apple.MobileSafari.migrator (MobileSafari.migrator)
+		Migration Elapsed:00:56 seconds
+
+[2026-11-11 19:55:33 +0000] Status=4, isTerminal=NO, Elapsed=01:07.
+	Waiting on System App
+
+[2026-11-11 19:55:34 +0000] Status=4, isTerminal=NO, Elapsed=01:08.
+	Waiting on System App
+
+[2026-11-11 19:55:36 +0000] Status=4, isTerminal=NO, Elapsed=01:10.
+	Waiting on System App
+
+[2026-11-11 19:55:37 +0000] Status=4, isTerminal=NO, Elapsed=01:10.
+	Waiting on System App
+
+[2026-11-11 19:55:37 +0000] Status=4, isTerminal=NO, Elapsed=01:11.
+	Waiting on System App
+
+[2026-11-11 19:55:38 +0000] Status=4, isTerminal=NO, Elapsed=01:12.
+	Waiting on System App
+
+[2026-11-11 19:55:39 +0000] Status=4, isTerminal=NO, Elapsed=01:12.
+	Waiting on System App
+
+[2026-11-11 19:55:40 +0000] Status=4, isTerminal=NO, Elapsed=01:14.
+	Waiting on System App
+
+[2026-11-11 19:55:40 +0000] Status=4, isTerminal=NO, Elapsed=01:14.
+	Waiting on System App
+
+[2026-11-11 19:55:41 +0000] Status=4, isTerminal=NO, Elapsed=01:15.
+	Waiting on System App
+
+[2026-11-11 19:55:42 +0000] Status=4, isTerminal=NO, Elapsed=01:16.
+	Waiting on System App
+
+[2026-11-11 19:55:43 +0000] Status=4, isTerminal=NO, Elapsed=01:17.
+	Waiting on System App
+
+[2026-11-11 19:55:45 +0000] Status=4, isTerminal=NO, Elapsed=01:19.
+	Waiting on System App
+
+[2026-11-11 19:55:49 +0000] Status=4, isTerminal=NO, Elapsed=01:23.
+	Waiting on System App
+
+[2026-11-11 19:55:55 +0000] Status=4294967295, isTerminal=YES, Elapsed=01:28.
+	Finished
+
+com.bradcowdrey.twodegrees: 16584
+Detected file type 'PNG' from extension
+Wrote screenshot to: /Users/runner/work/_temp/shots/ipad-1.png
+com.bradcowdrey.twodegrees: 17293
+Detected file type 'PNG' from extension
+Wrote screenshot to: /Users/runner/work/_temp/shots/ipad-2.png
+com.bradcowdrey.twodegrees: 17832
+Detected file type 'PNG' from extension
+Wrote screenshot to: /Users/runner/work/_temp/shots/ipad-3.png
+com.bradcowdrey.twodegrees: 18573
+Detected file type 'PNG' from extension
+Wrote screenshot to: /Users/runner/work/_temp/shots/ipad-4.png
+
+[notice] A new release of pip is available: 26.2.2 -> 26.3
+[notice] To update, run: /Users/runner/work/_temp/venv/bin/python3.15 -m pip install --upgrade pip
+wrote /Users/runner/work/_temp/shots/iphone-5.png
+iphone-1.png: 1320 2868 
+iphone-2.png: 1320 2868 
+iphone-3.png: 1320 2868 
+iphone-4.png: 1320 2868 
+iphone-5.png: 1320 2868 
+ipad-1.png: 2064 2752 
+ipad-2.png: 2064 2752 
+ipad-3.png: 2064 2752 
+ipad-4.png: 2064 2752 
