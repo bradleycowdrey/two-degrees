@@ -170,7 +170,21 @@ def main():
     for key, value in [("contactFirstName", name[0] if name[0] else ""), ("contactLastName", name[1] if len(name) > 1 else ""),
                        ("contactPhone", os.environ.get("CONTACT_PHONE", "").strip()), ("contactEmail", os.environ.get("CONTACT_EMAIL", "").strip())]:
         if value:
+            print(f"::add-mask::{value}")   # the repository and its logs are public
             attrs[key] = value
+    if not (attrs.get("contactPhone") and attrs.get("contactEmail")):
+        # Without them, reuse the contact App Review already has from an earlier version.
+        for other in call("GET", f"/apps/{app['id']}/appStoreVersions?filter[platform]=IOS&limit=20")["data"]:
+            if other["id"] == version["id"]:
+                continue
+            got = (call("GET", f"/appStoreVersions/{other['id']}/appStoreReviewDetail").get("data") or {}).get("attributes") or {}
+            if got.get("contactPhone") and got.get("contactEmail"):
+                for key in ("contactFirstName", "contactLastName", "contactPhone", "contactEmail"):
+                    if got.get(key) and not attrs.get(key):
+                        print(f"::add-mask::{got[key]}")
+                        attrs[key] = got[key]
+                print(f"contact reused from version {other['attributes']['versionString']}")
+                break
     if "contactPhone" in attrs:
         print("contact details set")
     if detail:
