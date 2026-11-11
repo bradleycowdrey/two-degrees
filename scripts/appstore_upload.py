@@ -94,9 +94,17 @@ def main():
         take_out_of_review(app)
     versions = call("GET", f"/apps/{app['id']}/appStoreVersions?filter[platform]=IOS&filter[appStoreState]={EDITABLE}")["data"]
     if not versions:
-        print("::error::No iOS version waiting to be submitted. Create one in App Store Connect (＋ next to iOS App).")
-        raise SystemExit(1)
+        # An update to the live app: start the next version, numbered from VERSION (the build check below
+        # renames it if the build says otherwise). The live version is not touched.
+        wanted = open(os.path.join(ROOT, "..", "VERSION")).read().strip()
+        created = call("POST", "/appStoreVersions", {"data": {"type": "appStoreVersions",
+                       "attributes": {"platform": "IOS", "versionString": wanted, "releaseType": "AFTER_APPROVAL"},
+                       "relationships": {"app": {"data": {"type": "apps", "id": app["id"]}}}}})
+        print(f"started version {wanted}, released as soon as Apple approves it")
+        versions = [created["data"]]
     version = versions[0]
+    # Anything already on the App Store means this is an update, which needs What's New text.
+    is_update = bool(call("GET", f"/apps/{app['id']}/appStoreVersions?filter[platform]=IOS&filter[appStoreState]=READY_FOR_DISTRIBUTION,READY_FOR_SALE&limit=1")["data"])
     print(f"app {app['attributes']['name']}, version {version['attributes']['versionString']} ({version['attributes']['appStoreState']})")
 
     step("Categories")
@@ -121,8 +129,9 @@ def main():
     loc = next((l for l in locs if l["attributes"]["locale"] == meta["locale"]), locs[0])
     call("PATCH", f"/appStoreVersionLocalizations/{loc['id']}", {"data": {
         "type": "appStoreVersionLocalizations", "id": loc["id"],
-        "attributes": {k: meta[k] for k in ("description", "keywords", "promotionalText", "supportUrl", "marketingUrl")}}})
-    print(f"{loc['attributes']['locale']}: description, keywords, promotional text, support and marketing URLs")
+        "attributes": {**{k: meta[k] for k in ("description", "keywords", "promotionalText", "supportUrl", "marketingUrl")},
+                       **({"whatsNew": meta["whatsNew"]} if is_update and meta.get("whatsNew") else {})}}})
+    print(f"{loc['attributes']['locale']}: description, keywords, promotional text, support and marketing URLs" + (", what's new" if is_update else ""))
 
     step("Build")
     number = os.environ.get("BUILD", "").strip()
