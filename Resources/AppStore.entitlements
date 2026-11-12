@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- The Mac App Store build's entitlements. The Developer ID build keeps Resources/App.entitlements.
+
+     The workflow builds this variant by passing these settings to xcodebuild archive, on top of the
+     automatic signing settings (CODE_SIGN_STYLE=Automatic, DEVELOPMENT_TEAM, -allowProvisioningUpdates and
+     the API key):
+       SWIFT_ACTIVE_COMPILATION_CONDITIONS='$(inherited) MAC_APP_STORE'
+       TWO_DEGREES_APP_ENTITLEMENTS=Resources/AppStore.entitlements
+       MARKETING_VERSION=<version> CURRENT_PROJECT_VERSION=<build number>
+     The entitlements go through TWO_DEGREES_APP_ENTITLEMENTS (see project.yml), not CODE_SIGN_ENTITLEMENTS,
+     because a command line setting applies to every target and the widget keeps its own. -->
+<plist version="1.0">
+<dict>
+    <!-- Required for the Mac App Store. -->
+    <key>com.apple.security.app-sandbox</key>
+    <true/>
+    <!-- The forecast, alerts, air quality, rain map and city search all come over HTTPS. -->
+    <key>com.apple.security.network.client</key>
+    <true/>
+    <!-- Use My Location (Core Location). -->
+    <key>com.apple.security.personal-information.location</key>
+    <true/>
+    <!-- Shares the saved cities with the widget, the same group as Resources/Widget.entitlements. -->
+    <key>com.apple.security.application-groups</key>
+    <array>
+        <string>2XV97FZ86G.com.bradcowdrey.twodegrees</string>
+    </array>
+</dict>
+</plist>

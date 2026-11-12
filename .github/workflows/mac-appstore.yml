@@ -1,0 +1,99 @@
+name: Mac App Store
+
+# Uploads the Mac App Store version of the Mac app to App Store Connect whenever VERSION changes on main, or on
+# demand. It goes to the same App Store record as the iPhone app (bundle ID com.bradcowdrey.twodegrees,
+# universal purchase), under the macOS platform. The Developer ID DMG from release.yml is unaffected: this is a
+# second variant of the same app, built with the MAC_APP_STORE compilation condition (no self-updater) and the
+# app's sandboxed Resources/AppStore.entitlements (TWO_DEGREES_APP_ENTITLEMENTS in project.yml). scripts/mac-appstore.sh does the work.
+#
+# Needs the App Store Connect API key in ASC_KEY_ID, ASC_ISSUER_ID and ASC_KEY_P8; without it this does nothing.
+# Signing is automatic through the key, as in ios-testflight.yml. If development signing of the archive fails,
+# run it by hand with archive signing set to local (see scripts/mac-appstore.sh).
+on:
+  push:
+    branches: [main]
+    paths: [VERSION]
+  workflow_dispatch:
+    inputs:
+      archive_signing:
+        description: "How the archive is signed before the export signs it for the Mac App Store"
+        type: choice
+        options: [development, local]
+        default: development
+
+permissions:
+  contents: read
+
+concurrency:
+  # Shared with ios-testflight.yml once it has the same group, so one run never revokes the other's certificate mid-build.
+  group: app-store-signing
+  cancel-in-progress: false
+
+jobs:
+  upload:
+    # App Store Connect only accepts apps built with the 26 SDKs (Xcode 26) or later.
+    runs-on: macos-26
+    timeout-minutes: 60
+    env:
+      HAS_KEY: ${{ secrets.ASC_KEY_P8 != '' && secrets.ASC_KEY_ID != '' && secrets.ASC_ISSUER_ID != '' }}
+    steps:
+      - name: Waiting for the App Store Connect key
+        if: env.HAS_KEY != 'true'
+        run: echo "::notice::No App Store Connect API key yet (ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8), so nothing to upload."
+      - uses: actions/checkout@v4
+        if: env.HAS_KEY == 'true'
+        with:
+          fetch-depth: 0
+      - name: Newest Xcode
+        if: env.HAS_KEY == 'true'
+        run: |
+          XC="$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)"
+          sudo xcode-select -s "$XC"
+          xcodebuild -version
+      - name: Team
+        if: env.HAS_KEY == 'true'
+        env:
+          DEVELOPER_ID_P12: ${{ secrets.DEVELOPER_ID_P12 }}
+          DEVELOPER_ID_P12_PASSWORD: ${{ secrets.DEVELOPER_ID_P12_PASSWORD }}
+          NOTARY_APPLE_ID: ${{ secrets.NOTARY_APPLE_ID }}
+          NOTARY_PASSWORD: ${{ secrets.NOTARY_PASSWORD }}
+          NOTARY_TEAM_ID: ${{ secrets.NOTARY_TEAM_ID }}
+        run: |
+          # The team comes from the secret if set, else from the Developer ID certificate (same team).
+          if [[ -n "$NOTARY_TEAM_ID" ]]; then echo "DERIVED_TEAM_ID=$NOTARY_TEAM_ID" >> "$GITHUB_ENV"; else scripts/import-signing-cert.sh; fi
+      - name: Version and build number
+        if: env.HAS_KEY == 'true'
+        run: |
+          # The same build numbers as the iPhone app; Mac and iPhone builds are counted separately.
+          echo "VERSION=$(tr -d '[:space:]' < VERSION)" >> "$GITHUB_ENV"
+          echo "BUILD=$(git rev-list --count HEAD)" >> "$GITHUB_ENV"
+      - name: Python tools
+        if: env.HAS_KEY == 'true'
+        run: |
+          python3 -m venv "$RUNNER_TEMP/venv"
+          "$RUNNER_TEMP/venv/bin/pip" install --quiet "pyjwt[crypto]==2.9.0"
+      - name: Check App Store Connect
+        id: preflight
+        if: env.HAS_KEY == 'true'
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: cd scripts && "$RUNNER_TEMP/venv/bin/python" mac-appstore-preflight.py
+      - name: Clear the last build's throwaway signing certificates
+        if: env.HAS_KEY == 'true' && steps.preflight.outputs.skip != 'true'
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: |
+          # Each run's development certificate dies with its machine, and Apple caps how many an account holds.
+          cd scripts && "$RUNNER_TEMP/venv/bin/python" appstore_certs.py
+      - name: Archive and upload
+        if: env.HAS_KEY == 'true' && steps.preflight.outputs.skip != 'true'
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+          ARCHIVE_SIGNING: ${{ inputs.archive_signing || 'development' }}
+        run: scripts/mac-appstore.sh

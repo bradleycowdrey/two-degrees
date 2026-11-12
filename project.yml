@@ -20,6 +20,12 @@ settings:
     ONLY_ACTIVE_ARCH: NO
     GENERATE_INFOPLIST_FILE: NO
 targets:
+  # The Mac app. One target, two variants chosen at build time:
+  # - Developer ID (scripts/build-app.sh, release.yml): built as is, then signed with Resources/App.entitlements
+  #   and notarized; it updates itself from GitHub.
+  # - Mac App Store: the workflow passes SWIFT_ACTIVE_COMPILATION_CONDITIONS='$(inherited) MAC_APP_STORE' and
+  #   TWO_DEGREES_APP_ENTITLEMENTS=Resources/AppStore.entitlements (sandboxed, no updater), with automatic
+  #   signing. The full list is at the top of Resources/AppStore.entitlements.
   TwoDegrees:
     type: application
     platform: macOS
@@ -30,11 +36,20 @@ targets:
       - path: Resources/Fonts
         type: folder
         buildPhase: resources
+      # The App Store takes the Mac icon from an asset catalog; the DMG build also writes AppIcon.icns.
+      - path: Resources/Assets.xcassets
+      - path: Resources/PrivacyInfo.xcprivacy
+        buildPhase: resources
     settings:
       base:
         PRODUCT_NAME: TwoDegrees
         PRODUCT_BUNDLE_IDENTIFIER: com.bradcowdrey.twodegrees
         INFOPLIST_FILE: Resources/Info.plist
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        # Empty for the Developer ID build, which scripts/build-app.sh signs afterwards. A setting of its own,
+        # so the App Store build can set the app's entitlements without touching the widget's.
+        TWO_DEGREES_APP_ENTITLEMENTS: ""
+        CODE_SIGN_ENTITLEMENTS: "$(TWO_DEGREES_APP_ENTITLEMENTS)"
     dependencies:
       - target: TwoDegreesWidget
         embed: true
@@ -53,6 +68,8 @@ targets:
       - path: Sources/TwoDegrees/Views/WeatherSymbol.swift
       - path: Sources/TwoDegrees/Views/Sky.swift
       - path: Sources/TwoDegrees/Views/WidgetViews.swift
+      - path: Resources/PrivacyInfo.xcprivacy
+        buildPhase: resources
     settings:
       base:
         PRODUCT_NAME: TwoDegreesWidget

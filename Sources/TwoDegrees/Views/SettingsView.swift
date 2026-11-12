@@ -83,6 +83,19 @@ private struct CitiesSettings: View {
     }
 }
 
+#if MAC_APP_STORE
+/// The App Store build: the App Store keeps it up to date, so this only shows the version.
+private struct UpdateSettings: View {
+    private let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
+
+    var body: some View {
+        Section("Updates") {
+            LabeledContent("Version", value: version)
+            Text("The App Store keeps Two Degrees up to date.").font(.caption).foregroundStyle(.secondary)
+        }
+    }
+}
+#else
 private struct UpdateSettings: View {
     @EnvironmentObject private var updater: Updater
 
@@ -111,6 +124,7 @@ private struct UpdateSettings: View {
         }
     }
 }
+#endif
 
 private struct AboutView: View {
     var body: some View {

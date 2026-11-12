@@ -2,6 +2,10 @@ import Foundation
 import AppKit
 import CryptoKit
 
+// The Developer ID build updates itself from GitHub. The Mac App Store build has no updater at all:
+// the App Store updates it, and the sandbox forbids the download, install script and processes below.
+#if !MAC_APP_STORE
+
 /// Checks GitHub Releases for a newer Two Degrees and installs it in place.
 ///
 /// Flow: fetch the latest release → compare versions → download the versioned DMG →
@@ -410,3 +414,5 @@ enum UpdateError: LocalizedError {
         }
     }
 }
+
+#endif

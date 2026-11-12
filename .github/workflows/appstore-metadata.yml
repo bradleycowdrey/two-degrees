@@ -1,12 +1,20 @@
 name: App Store listing
 
-# Fills in the iOS version waiting to be submitted in App Store Connect: description, keywords,
+# Fills in the iOS or Mac version waiting to be submitted in App Store Connect: description, keywords,
 # promotional text, URLs, copyright, App Review notes, the screenshots in appstore/screenshots, and the
 # build, and App Review's contact (from the APP_REVIEW_PHONE and APP_REVIEW_EMAIL secrets unless given).
+# The Mac is a second platform on the iPhone app's record, with its own version page.
 # Uses the same App Store Connect API key as the TestFlight upload. Run it from the Actions tab.
 on:
   workflow_dispatch:
     inputs:
+      platform:
+        description: "Which version page to fill in"
+        type: choice
+        options:
+          - ios
+          - mac
+        default: ios
       build:
         description: "Build number to submit (empty: the newest processed build)"
         required: false
@@ -49,6 +57,7 @@ jobs:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
           ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+          PLATFORM: ${{ inputs.platform == 'mac' && 'MAC_OS' || 'IOS' }}
           BUILD: ${{ inputs.build }}
           CONTACT_NAME: ${{ inputs.contact_name }}
           CONTACT_PHONE: ${{ inputs.contact_phone || secrets.APP_REVIEW_PHONE }}

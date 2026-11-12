@@ -7,16 +7,22 @@ import CoreServices
 struct TwoDegreesApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
     @ObservedObject private var store = WeatherStore.shared
+    #if !MAC_APP_STORE
     @ObservedObject private var updater = Updater.shared
+    #endif
 
     init() {
+        #if !MAC_APP_STORE
         // For CI: print the updater's install script, so the update-in-place test runs the real one.
         if CommandLine.arguments.contains("--print-install-script") {
             print(Updater.installScript)
             exit(0)
         }
+        #endif
         FontRegistry.registerBundledFonts()
+        #if !MAC_APP_STORE
         Task { @MainActor in Updater.shared.start() }
+        #endif
     }
 
     var body: some Scene {
@@ -24,7 +30,9 @@ struct TwoDegreesApp: App {
         Window(Brand.appName, id: "main") {
             WeatherPanel()
                 .environmentObject(store)
+                #if !MAC_APP_STORE
                 .environmentObject(updater)
+                #endif
                 .background(WindowConfigurator(floatOnTop: store.floatOnTop))
                 // A tapped widget: its city, in this window, brought forward.
                 .onOpenURL { url in
@@ -61,14 +69,20 @@ struct TwoDegreesApp: App {
         MenuBarExtra {
             WeatherPanel(compact: true)
                 .environmentObject(store)
+                #if !MAC_APP_STORE
                 .environmentObject(updater)
+                #endif
         } label: {
             MenuBarLabel().environmentObject(store)
         }
         .menuBarExtraStyle(.window)
 
         Settings {
+            #if MAC_APP_STORE
+            SettingsView().environmentObject(store)
+            #else
             SettingsView().environmentObject(store).environmentObject(updater)
+            #endif
         }
     }
 }
@@ -80,7 +94,9 @@ extension WeatherStore {
 
 struct MenuBarLabel: View {
     @EnvironmentObject private var store: WeatherStore
+    #if !MAC_APP_STORE
     @ObservedObject private var updater = Updater.shared
+    #endif
 
     /// The menu bar text for a reading: "57° · 14°", "57°", or nil for icon only.
     static func reading(_ celsius: Double, unit: TempUnit, style: MenuBarStyle) -> String? {
@@ -92,8 +108,12 @@ struct MenuBarLabel: View {
     }
 
     var body: some View {
-        // A trailing dot whenever an update is waiting.
+        // A trailing dot whenever an update is waiting (never in the App Store build, which has no updater).
+        #if MAC_APP_STORE
+        let dot = ""
+        #else
         let dot = updater.latest == nil ? "" : " •"
+        #endif
         if let forecast = store.activeForecast, let reading = Self.reading(forecast.now.temperature, unit: store.unit, style: store.menuBarStyle) {
             HStack(spacing: 4) {
                 Image(systemName: Condition.symbol(forecast.now.code, isDay: forecast.now.isDay))
@@ -113,14 +133,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @MainActor
     func applicationDidFinishLaunching(_ notification: Notification) {
         WeatherStore.shared.refreshDock()   // the cached reading, until fresh numbers arrive
+        #if !MAC_APP_STORE
         // Make sure LaunchServices has this exact build registered. macOS checks the widget's version
         // against it and throws the widget's content away on a mismatch (an app swapped in place by an
         // update keeps the old record), which leaves the widget blank. Re-registering heals that.
+        // The App Store installs and registers its build itself, and the sandbox allows neither step.
         LSRegisterURL(Bundle.main.bundleURL as CFURL, true)
         // A widget process left over from before an update keeps running the old code, and its network is
         // cut, so widgets go grey (and a newly picked city never loads). End it; macOS starts this
         // version's widget as soon as a widget needs it.
         Self.endWidgetProcesses()
+        #endif
         // Then redraw the widgets, so after an update they show the new version right away instead of
         // at their next scheduled refresh.
         WidgetCenter.shared.reloadAllTimelines()
@@ -147,6 +170,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return alert.runModal() == .alertFirstButtonReturn
     }
 
+    #if !MAC_APP_STORE
     static func endWidgetProcesses() {
         guard !SelfTest.isActive else { return }
         let pkill = Process()
@@ -155,6 +179,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         try? pkill.run()
         pkill.waitUntilExit()
     }
+    #endif
 
     @MainActor
     func applicationDockMenu(_ sender: NSApplication) -> NSMenu? {

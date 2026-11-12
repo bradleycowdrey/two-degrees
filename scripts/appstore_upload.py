@@ -6,6 +6,11 @@ processed one), CONTACT_NAME / CONTACT_PHONE / CONTACT_EMAIL (App Review's conta
 SUBMIT=1 to submit the version for App Review once it's filled in, SKIP_SCREENSHOTS=1 to keep the
 screenshots already uploaded, REPLACE_WAITING=1 to take a version out of review first (a submission that's
 waiting for review is cancelled, so its version can be edited and given a newer build). Run by .github/workflows/appstore-metadata.yml. Needs PyJWT and cryptography.
+PLATFORM is IOS (the default) or MAC_OS. The Mac shares the iPhone app's App Store record; its version page
+has its own text (the "mac" entries in metadata.json, over the shared ones) and screenshots ("screenshotsMac").
+App-level settings (categories, subtitle, content rights) are shared by both, so on the Mac they are only
+changed when App Store Connect lets them be, and a version waiting for review, in review or on sale is
+never changed.
 Screenshots replace whatever is in each set, so running it twice is safe.
 """
 import hashlib
@@ -22,6 +27,11 @@ API = "https://api.appstoreconnect.apple.com/v1"
 BUNDLE_ID = "com.bradcowdrey.twodegrees"
 EDITABLE = "PREPARE_FOR_SUBMISSION,DEVELOPER_REJECTED,REJECTED,METADATA_REJECTED,INVALID_BINARY"
 ROOT = os.path.join(os.path.dirname(__file__), "..", "appstore")
+PLATFORM = (os.environ.get("PLATFORM") or "IOS").strip().upper()
+if PLATFORM not in ("IOS", "MAC_OS"):
+    raise SystemExit(f"::error::PLATFORM must be IOS or MAC_OS, not {PLATFORM}")
+# App-level details can only be changed while the app info is being prepared (not while a version waits for review).
+INFO_EDITABLE = ("PREPARE_FOR_SUBMISSION", "DEVELOPER_REJECTED", "REJECTED", "METADATA_REJECTED")
 
 
 def token():
@@ -30,7 +40,8 @@ def token():
                       os.environ["ASC_KEY_P8"], algorithm="ES256", headers={"kid": os.environ["ASC_KEY_ID"], "typ": "JWT"})
 
 
-def call(method, path, body=None):
+def call(method, path, body=None, soft=False):
+    """Calls the API. A failure stops the run, or with soft=True is reported as a warning and returns None."""
     url = path if path.startswith("http") else API + path
     data = json.dumps(body).encode() if body is not None else None
     req = urllib.request.Request(url, data=data, method=method,
@@ -50,7 +61,9 @@ def call(method, path, body=None):
             detail = " | ".join(parts) or detail
         except ValueError:
             pass
-        print(f"::error::{method} {path} → {e.code}: {' '.join(detail.split())[:1500]}")
+        print(f"::{'warning' if soft else 'error'}::{method} {path} → {e.code}: {' '.join(detail.split())[:1500]}")
+        if soft:
+            return None
         raise SystemExit(1)
 
 
@@ -59,8 +72,8 @@ def step(text):
 
 
 def take_out_of_review(app):
-    """Cancels an iOS review submission that's waiting for review, and waits until its version can be edited."""
-    waiting = call("GET", f"/reviewSubmissions?filter[app]={app['id']}&filter[platform]=IOS&filter[state]=WAITING_FOR_REVIEW")["data"]
+    """Cancels this platform's review submission that's waiting for review, and waits until its version can be edited."""
+    waiting = call("GET", f"/reviewSubmissions?filter[app]={app['id']}&filter[platform]={PLATFORM}&filter[state]=WAITING_FOR_REVIEW")["data"]
     if not waiting:
         print("nothing waiting for review")
         return
@@ -68,7 +81,7 @@ def take_out_of_review(app):
         call("PATCH", f"/reviewSubmissions/{sub['id']}", {"data": {"type": "reviewSubmissions", "id": sub["id"], "attributes": {"canceled": True}}})
         print(f"cancelled the submission from {sub['attributes'].get('submittedDate') or 'earlier'}")
     for _ in range(45):   # Apple takes a moment to hand the version back
-        if call("GET", f"/apps/{app['id']}/appStoreVersions?filter[platform]=IOS&filter[appStoreState]={EDITABLE}")["data"]:
+        if call("GET", f"/apps/{app['id']}/appStoreVersions?filter[platform]={PLATFORM}&filter[appStoreState]={EDITABLE}")["data"]:
             print("the version can be edited again")
             return
         time.sleep(20)
@@ -78,58 +91,83 @@ def take_out_of_review(app):
 
 def main():
     meta = json.load(open(os.path.join(ROOT, "metadata.json")))
+    mac = PLATFORM == "MAC_OS"
+    if mac:
+        # The Mac's own description, review notes and so on, over the shared ones.
+        # The iPhone's What's New is left out, so only a Mac one is ever used.
+        shared = {k: v for k, v in meta.items() if k != "whatsNew"}
+        meta = {**shared, **meta.get("mac", {}), "screenshots": meta.get("screenshotsMac", {})}
 
-    step("App and version")
+    step(f"App and version ({PLATFORM})")
     app = call("GET", f"/apps?filter[bundleId]={BUNDLE_ID}")["data"][0]
     if os.environ.get("REPLACE_WAITING") == "1":
         # Only take a version out of review once the build that replaces it is ready, so it is never left
         # out of review with nothing to submit.
         number = os.environ.get("BUILD", "").strip()
-        ready = call("GET", f"/builds?filter[app]={app['id']}&filter[preReleaseVersion.platform]=IOS&filter[processingState]=VALID"
+        ready = call("GET", f"/builds?filter[app]={app['id']}&filter[preReleaseVersion.platform]={PLATFORM}&filter[processingState]=VALID"
                             + (f"&filter[version]={number}" if number else "") + "&limit=1")["data"]
         if not ready:
             print(f"::error::Build {number or '(newest)'} isn't processed yet, so the waiting version was left in review. Try again in a few minutes.")
             raise SystemExit(1)
         step("Taking the waiting version out of review")
         take_out_of_review(app)
-    versions = call("GET", f"/apps/{app['id']}/appStoreVersions?filter[platform]=IOS&filter[appStoreState]={EDITABLE}")["data"]
+    versions = call("GET", f"/apps/{app['id']}/appStoreVersions?filter[platform]={PLATFORM}&filter[appStoreState]={EDITABLE}")["data"]
+    if not versions and mac:
+        # Apple allows one Mac version in flight; one waiting for review or in review is left alone.
+        busy = call("GET", f"/apps/{app['id']}/appStoreVersions?filter[platform]=MAC_OS&filter[appStoreState]="
+                           "WAITING_FOR_REVIEW,IN_REVIEW,PENDING_DEVELOPER_RELEASE,PENDING_APPLE_RELEASE,PROCESSING_FOR_APP_STORE")["data"]
+        if busy:
+            a = busy[0]["attributes"]
+            print(f"::error::Mac version {a['versionString']} is {a['appStoreState']}, so there's nothing to fill in. Run with replace_waiting to take it out of review first.")
+            raise SystemExit(1)
     if not versions:
-        # An update to the live app: start the next version, numbered from VERSION (the build check below
-        # renames it if the build says otherwise). The live version is not touched.
+        # An update to the live app (or the Mac's first version): start the next version, numbered from
+        # VERSION (the build check below renames it if the build says otherwise). The live version is not touched.
         wanted = open(os.path.join(ROOT, "..", "VERSION")).read().strip()
         created = call("POST", "/appStoreVersions", {"data": {"type": "appStoreVersions",
-                       "attributes": {"platform": "IOS", "versionString": wanted, "releaseType": "AFTER_APPROVAL"},
+                       "attributes": {"platform": PLATFORM, "versionString": wanted, "releaseType": "AFTER_APPROVAL"},
                        "relationships": {"app": {"data": {"type": "apps", "id": app["id"]}}}}})
         print(f"started version {wanted}, released as soon as Apple approves it")
         versions = [created["data"]]
     version = versions[0]
-    # Anything already on the App Store means this is an update, which needs What's New text.
-    is_update = bool(call("GET", f"/apps/{app['id']}/appStoreVersions?filter[platform]=IOS&filter[appStoreState]=READY_FOR_SALE&limit=1")["data"])
+    # Anything already on the App Store for this platform means this is an update, which needs What's New
+    # text. The Mac's first version has none, and Apple refuses What's New on a first version.
+    is_update = bool(call("GET", f"/apps/{app['id']}/appStoreVersions?filter[platform]={PLATFORM}&filter[appStoreState]=READY_FOR_SALE&limit=1")["data"])
     print(f"app {app['attributes']['name']}, version {version['attributes']['versionString']} ({version['attributes']['appStoreState']})")
 
     step("Categories")
-    info = next(i for i in call("GET", f"/apps/{app['id']}/appInfos")["data"]
-                if i["attributes"].get("appStoreState") not in ("READY_FOR_SALE", "REPLACED_WITH_NEW_INFO"))
-    call("PATCH", f"/appInfos/{info['id']}", {"data": {"type": "appInfos", "id": info["id"], "relationships": {
-         "primaryCategory": {"data": {"type": "appCategories", "id": meta["primaryCategory"]}},
-         "secondaryCategory": {"data": {"type": "appCategories", "id": meta["secondaryCategory"]}}}}})
-    print(f"{meta['primaryCategory']}, {meta['secondaryCategory']}")
+    infos = call("GET", f"/apps/{app['id']}/appInfos")["data"]
+    if mac:
+        # Shared with the iPhone app. Only change them while they are being prepared, never while the
+        # iPhone version that carries them waits for review or is in review.
+        info = next((i for i in infos if (i["attributes"].get("state") or i["attributes"].get("appStoreState")) in INFO_EDITABLE), None)
+    else:
+        info = next(i for i in infos if i["attributes"].get("appStoreState") not in ("READY_FOR_SALE", "REPLACED_WITH_NEW_INFO"))
+    if info:
+        done = call("PATCH", f"/appInfos/{info['id']}", {"data": {"type": "appInfos", "id": info["id"], "relationships": {
+                    "primaryCategory": {"data": {"type": "appCategories", "id": meta["primaryCategory"]}},
+                    "secondaryCategory": {"data": {"type": "appCategories", "id": meta["secondaryCategory"]}}}}}, soft=mac)
+        print(f"{meta['primaryCategory']}, {meta['secondaryCategory']}" if done is not None else "kept as they are")
+    else:
+        print("shared with the iPhone app and not editable right now; kept as they are")
 
     step("Subtitle")
     # The line under the name on the App Store, which search weighs heavily. Only the version being
     # prepared can change it.
-    if meta.get("subtitle"):
+    if meta.get("subtitle") and info:
         info_locs = call("GET", f"/appInfos/{info['id']}/appInfoLocalizations")["data"]
         info_loc = next((l for l in info_locs if l["attributes"]["locale"] == meta["locale"]), None)
         if info_loc:
-            call("PATCH", f"/appInfoLocalizations/{info_loc['id']}", {"data": {"type": "appInfoLocalizations", "id": info_loc["id"],
-                 "attributes": {"subtitle": meta["subtitle"]}}})
-            print(meta["subtitle"])
+            if call("PATCH", f"/appInfoLocalizations/{info_loc['id']}", {"data": {"type": "appInfoLocalizations", "id": info_loc["id"],
+                    "attributes": {"subtitle": meta["subtitle"]}}}, soft=mac) is not None:
+                print(meta["subtitle"])
+    elif not info:
+        print("kept as it is")
 
     step("Content rights")
-    call("PATCH", f"/apps/{app['id']}", {"data": {"type": "apps", "id": app["id"],
-         "attributes": {"contentRightsDeclaration": "USES_THIRD_PARTY_CONTENT"}}})
-    print("uses third-party content (weather data, alerts, radar and map tiles under their free licences, credited in the app)")
+    if call("PATCH", f"/apps/{app['id']}", {"data": {"type": "apps", "id": app["id"],
+            "attributes": {"contentRightsDeclaration": "USES_THIRD_PARTY_CONTENT"}}}, soft=mac) is not None:
+        print("uses third-party content (weather data, alerts, radar and map tiles under their free licences, credited in the app)")
 
     step("Copyright")
     call("PATCH", f"/appStoreVersions/{version['id']}",
@@ -146,7 +184,7 @@ def main():
 
     step("Build")
     number = os.environ.get("BUILD", "").strip()
-    query = f"/builds?filter[app]={app['id']}&filter[preReleaseVersion.platform]=IOS&filter[processingState]=VALID&sort=-uploadedDate&limit=20"
+    query = f"/builds?filter[app]={app['id']}&filter[preReleaseVersion.platform]={PLATFORM}&filter[processingState]=VALID&sort=-uploadedDate&limit=20"
     if number:
         query += f"&filter[version]={number}"
     builds = call("GET", query)["data"]
@@ -173,8 +211,9 @@ def main():
             print(f"::add-mask::{value}")   # the repository and its logs are public
             attrs[key] = value
     if not (attrs.get("contactPhone") and attrs.get("contactEmail")):
-        # Without them, reuse the contact App Review already has from an earlier version.
-        for other in call("GET", f"/apps/{app['id']}/appStoreVersions?filter[platform]=IOS&limit=20")["data"]:
+        # Without them, reuse the contact App Review already has from an earlier version, of any platform
+        # (the Mac's first version takes the iPhone app's).
+        for other in call("GET", f"/apps/{app['id']}/appStoreVersions?limit=20")["data"]:
             if other["id"] == version["id"]:
                 continue
             got = (call("GET", f"/appStoreVersions/{other['id']}/appStoreReviewDetail").get("data") or {}).get("attributes") or {}
@@ -244,9 +283,9 @@ def main():
             print(f"{states.count('COMPLETE')} of {len(states)} ready")
             time.sleep(20)
         step("Submit for App Review")
-        open_subs = call("GET", f"/reviewSubmissions?filter[app]={app['id']}&filter[platform]=IOS&filter[state]=READY_FOR_REVIEW")["data"]
+        open_subs = call("GET", f"/reviewSubmissions?filter[app]={app['id']}&filter[platform]={PLATFORM}&filter[state]=READY_FOR_REVIEW")["data"]
         sub = open_subs[0] if open_subs else call("POST", "/reviewSubmissions", {"data": {"type": "reviewSubmissions",
-              "attributes": {"platform": "IOS"}, "relationships": {"app": {"data": {"type": "apps", "id": app["id"]}}}}})["data"]
+              "attributes": {"platform": PLATFORM}, "relationships": {"app": {"data": {"type": "apps", "id": app["id"]}}}}})["data"]
         if not call("GET", f"/reviewSubmissions/{sub['id']}/items")["data"]:
             call("POST", "/reviewSubmissionItems", {"data": {"type": "reviewSubmissionItems", "relationships": {
                  "reviewSubmission": {"data": {"type": "reviewSubmissions", "id": sub["id"]}},

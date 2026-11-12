@@ -18,7 +18,9 @@ struct WeatherPanel: View {
 
 private struct WeatherPanelContent: View {
     @EnvironmentObject private var store: WeatherStore
+    #if !MAC_APP_STORE
     @EnvironmentObject private var updater: Updater
+    #endif
     @Environment(\.metrics) private var ui
     @Environment(\.openWindow) private var openWindow
     let compact: Bool
@@ -66,10 +68,12 @@ private struct WeatherPanelContent: View {
             ScrollViewReader { reader in
                 ScrollView(.vertical) {
                     VStack(alignment: .leading, spacing: ui.pt(10)) {
-                        // Only takes space when there's something to say.
+                        // Only takes space when there's something to say. The App Store build has no updater.
+                        #if !MAC_APP_STORE
                         if updater.latest != nil || updater.notice != nil || updater.userChecking {
                             UpdateBanner()
                         }
+                        #endif
                         CityChips(adding: $adding, editing: $editing)
                         if adding {
                             CitySearchField(adding: $adding)
@@ -173,7 +177,9 @@ private struct WeatherPanelContent: View {
         .animation(.snappy, value: editing)
         .animation(.snappy, value: daysOpen)
         .animation(.snappy, value: tilesOpen)
+        #if !MAC_APP_STORE
         .onAppear { Task { await updater.checkIfDue() } }
+        #endif
         .task {
             if !compact && SelfTest.isActive {
                 await SelfTest.run(store: store, adding: $adding, editing: $editing, shown: $shown, host: host)
@@ -316,6 +322,7 @@ private struct WeatherPanelContent: View {
     }
 }
 
+#if !MAC_APP_STORE
 /// Shown only when a newer version is out: one line and one button, frosted like the page's cards.
 private struct UpdateBanner: View {
     @EnvironmentObject private var updater: Updater
@@ -413,6 +420,7 @@ private struct UpdateBanner: View {
             .transition(.move(edge: .top).combined(with: .opacity))
     }
 }
+#endif
 
 /// One line that folds a section of the page away or opens it: a card's title with a chevron at the
 /// trailing edge, the whole line clickable. `bare` draws only the chevron and the click area, to lay
@@ -456,7 +464,9 @@ private struct ContentHeightKey: PreferenceKey {
 
 private struct MoreMenu: View {
     @EnvironmentObject private var store: WeatherStore
+    #if !MAC_APP_STORE
     @EnvironmentObject private var updater: Updater
+    #endif
     @Environment(\.metrics) private var ui
     @Environment(\.openSettings) private var openSettings
     @Environment(\.openWindow) private var openWindow
@@ -466,11 +476,13 @@ private struct MoreMenu: View {
 
     var body: some View {
         Menu {
+            #if !MAC_APP_STORE
             if let release = updater.latest {
                 Button("Install Two Degrees \(release.version)…") { Task { await updater.install() } }
                     .disabled(updater.isBusy)
                 Divider()
             }
+            #endif
             Button("Copy Current Reading") { store.copyReading() }
             Button("Remove \(store.active.name)", role: .destructive) { store.remove(store.active) }
                 .disabled(store.cities.count < 2)
@@ -515,8 +527,10 @@ private struct MoreMenu: View {
                 NSApp.activate(ignoringOtherApps: true)
             }
             Button("Terms & Privacy") { NSWorkspace.shared.open(Brand.legal) }
+            #if !MAC_APP_STORE
             Button("Check for Updates…") { Task { await updater.check(userInitiated: true) } }
                 .disabled(updater.isBusy || !updater.canSelfUpdate)
+            #endif
             Divider()
             Button("Quit Two Degrees") { NSApp.terminate(nil) }
         } label: {
@@ -526,9 +540,11 @@ private struct MoreMenu: View {
                 .frame(width: ui.pt(32), height: ui.pt(32))
                 .background(Circle().fill(SkyControl.fill))
                 .overlay(alignment: .topTrailing) {
+                    #if !MAC_APP_STORE
                     if updater.latest != nil {
                         Circle().fill(Palette.pink).frame(width: ui.pt(8), height: ui.pt(8))
                     }
+                    #endif
                 }
                 .contentShape(Circle())
         }

@@ -10,9 +10,14 @@ import CoreServices
 @MainActor
 enum SelfTest {
     nonisolated static let outputDir: URL? = {
+        // Never in the App Store build: the self-test writes wherever it's told, which the sandbox forbids.
+        #if MAC_APP_STORE
+        return nil
+        #else
         let args = CommandLine.arguments
         guard let i = args.firstIndex(of: "--selftest"), i + 1 < args.count else { return nil }
         return URL(fileURLWithPath: args[i + 1], isDirectory: true)
+        #endif
     }()
 
     nonisolated static var isActive: Bool { outputDir != nil }
@@ -48,7 +53,9 @@ enum SelfTest {
         started = true
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         let screen = NSScreen.main?.visibleFrame ?? .zero
+        #if !MAC_APP_STORE
         note("screen visible frame \(Int(screen.width))x\(Int(screen.height)), version \(Updater.shared.currentVersion)")
+        #endif
 
         // 1. Live data for every saved city.
         for _ in 0..<40 where store.cities.contains(where: { store.forecasts[$0.id] == nil }) {
@@ -182,6 +189,7 @@ enum SelfTest {
         }
 
         // 6. Updates: a real check against GitHub, then a real download, checksum and unpack.
+        #if !MAC_APP_STORE
         let updater = Updater.shared
         await updater.check(userInitiated: true)
         try? await Task.sleep(for: .seconds(0.6))
@@ -200,6 +208,7 @@ enum SelfTest {
         try? await Task.sleep(for: .seconds(0.6))
         snapshot(host: host, dir: dir, name: "update-4-error.png")
         updater.selfTestShow(phase: .idle, notice: nil)
+        #endif
 
         // 7. Dock tile and widgets, rendered offscreen at 2x; each must have real content.
         if let forecast = store.activeForecast {
@@ -337,10 +346,12 @@ enum SelfTest {
         }
 
         // 9. Logic checks that need no UI.
+        #if !MAC_APP_STORE
         let fromTag = try? Updater.release(fromTagPage: URL(string: "https://github.com/bradleycowdrey/two-degrees/releases/tag/v1.2.3")!)
         check(fromTag?.version == "1.2.3" && fromTag?.dmg.lastPathComponent == "TwoDegrees-1.2.3.dmg", "update fallback reads the version from the release page")
         check(Updater.isNewer("0.2.10", than: "0.2.9") && !Updater.isNewer("0.2.0", than: "0.2.0") && Updater.isNewer("1.0", than: "0.9.9-dev"),
               "version comparison")
+        #endif
         let mild = Forecast.Day(date: Date(), code: 0, high: 20, low: 10, rainChance: 0, sunrise: nil, sunset: nil)
         let span = DailyCard.scale([mild], now: 25)
         check(span.low == 10 && span.high == 25, "10-day scale stretches to take in right now (got \(span.low) to \(span.high))")
