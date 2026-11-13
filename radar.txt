@@ -1,0 +1,13 @@
+PASS phone: the time bar shows
+PASS phone: OpenFreeMap map loaded (11 responses)
+PASS phone: RainViewer radar tiles loaded (195)
+PASS phone: no keyed or CARTO tiles 
+PASS phone: no script errors 
+PASS phone: top-left corner free for the close button 
+PASS desktop: the time bar shows
+PASS desktop: OpenFreeMap map loaded (14 responses)
+PASS desktop: RainViewer radar tiles loaded (105)
+PASS desktop: no keyed or CARTO tiles 
+PASS desktop: no script errors 
+PASS desktop: top-left corner free for the close button 
+ALL PASSED
