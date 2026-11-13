@@ -106,10 +106,6 @@ Two Degrees is distributed directly, not through the Mac App Store.
 Two Degrees is free on the [App Store](https://apps.apple.com/app/id6826694344) for iPhone and iPad, with Home Screen and
 Lock Screen widgets. It needs iOS or iPadOS 17 or later.
 
-**Want the newest version first?** Join the public [TestFlight beta](https://testflight.apple.com/join/JENqJ1mE): install
-[TestFlight](https://apps.apple.com/app/testflight/id899247664) from the App Store, open the link on your iPhone or iPad,
-then tap **Accept** and **Install**. Your cities carry over between the App Store and beta versions.
-
 ## Build from source
 
 Requires Xcode 16+ on macOS 14+, and [XcodeGen](https://github.com/yonaskolb/XcodeGen) for the app with its widget (`brew install xcodegen`).

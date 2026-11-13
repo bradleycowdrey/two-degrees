@@ -224,7 +224,7 @@
       <h3>iPhone and iPad</h3>
       <p class="req">iOS and iPadOS 17 or later</p>
       <div class="get"><a class="pill" href="https://apps.apple.com/app/id6826694344">Download on the App Store</a></div>
-      <p>Swipe between your cities, with Home Screen and Lock Screen widgets. <span id="iosBeta">Want the newest version first? <a class="more" href="https://testflight.apple.com/join/JENqJ1mE">Join the TestFlight beta</a></span></p>
+      <p>Swipe between your cities, with Home Screen and Lock Screen widgets.</p>
     </div>
     <div class="ftile">
       <svg class="os" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.6 9.48l1.84-3.18c.16-.31.04-.69-.26-.85a.637.637 0 0 0-.83.22l-1.88 3.24a11.43 11.43 0 0 0-8.94 0L5.65 5.67a.643.643 0 0 0-.87-.2c-.28.18-.37.54-.22.83L6.4 9.48A10.78 10.78 0 0 0 1 18h22a10.78 10.78 0 0 0-5.4-8.52zM7 15.25a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5zm10 0a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5z"/></svg>
@@ -294,14 +294,6 @@
   });
   if (new URLSearchParams(location.search).has('c')) document.getElementById('demo').scrollIntoView();
 
-  // iPhone and iPad: the TestFlight beta's link is kept in docs/testflight.json on GitHub, so it can change
-  // without a new page; the link written above is used until it can be read.
-  fetch('https://raw.githubusercontent.com/bradleycowdrey/two-degrees/main/docs/testflight.json', { cache: 'no-store' })
-    .then((r) => (r.ok ? r.json() : null))
-    .then((j) => {
-      if (j && /^https:\/\/testflight\.apple\.com\/join\/\w+$/.test(j.url)) document.querySelector('#iosBeta a').href = j.url;
-    })
-    .catch(() => {});
 
   // Share: the same menu as the app, Meridian and Cowdrey.MD.
   const PAGE_URL = 'https://bradcowdrey.com/two-degrees';
