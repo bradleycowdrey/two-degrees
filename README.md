@@ -6,7 +6,8 @@ A free, open-source weather app for Mac, iPhone, iPad and Android, with widgets 
 Made by <a href="https://bradcowdrey.com">Bradley Cowdrey · bradcowdrey.com</a></p>
 
 <p align="center">
-  <a href="https://github.com/bradleycowdrey/two-degrees/releases/latest/download/TwoDegrees.dmg"><b>Download for Mac</b></a> ·
+  <a href="https://apps.apple.com/app/id6826694344?platform=mac"><b>Mac App Store</b></a> ·
+  <a href="https://github.com/bradleycowdrey/two-degrees/releases/latest/download/TwoDegrees.dmg">Mac DMG</a> ·
   <a href="https://github.com/bradleycowdrey/two-degrees/releases/latest/download/TwoDegrees.apk"><b>Android APK</b></a> ·
   <a href="https://apps.apple.com/app/id6826694344"><b>iPhone and iPad (App Store)</b></a> ·
   <a href="https://bradcowdrey.com/two-degrees">Try it in your browser</a> ·
@@ -91,15 +92,19 @@ that city in the app. The medium one adds the next five hours; the large one the
 search for **Two Degrees**, and drag in a size. To change a widget's city or unit, right-click it and choose
 **Edit "Two Degrees"**.
 
-## Install (sideload)
+## Install on a Mac
 
-Two Degrees is distributed directly, not through the Mac App Store.
+Get Two Degrees from the [Mac App Store](https://apps.apple.com/app/id6826694344?platform=mac). It installs and updates like any other app.
+
+Or download it directly:
 
 1. Download [TwoDegrees.dmg](https://github.com/bradleycowdrey/two-degrees/releases/latest/download/TwoDegrees.dmg) (all versions are on [Releases](https://github.com/bradleycowdrey/two-degrees/releases)).
 2. Open the DMG and drag **Two Degrees** to **Applications**.
-3. Open it. Two Degrees is signed with a Developer ID and notarized by Apple (since 0.3.7), so it opens with a
-   double-click. The first time, it asks you to agree to the [Terms of Use and Privacy](https://bradcowdrey.com/legal).
+3. Open it. It's signed with a Developer ID and notarized by Apple, so it opens with a double-click, and it updates itself.
+   The first time, it asks you to agree to the [Terms of Use and Privacy](https://bradcowdrey.com/legal).
 4. Add your cities with the **+** button.
+
+The two are the same app; use one or the other. The App Store version keeps its own settings, so add your cities again if you switch.
 
 ## iPhone and iPad
 

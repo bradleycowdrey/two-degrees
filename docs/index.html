@@ -129,10 +129,11 @@
   .platforms h3 { margin-bottom: 6px; }
   .platforms .req { color: var(--muted); font-size: 15px; margin-bottom: 22px; }
   .platforms .get { margin-bottom: 22px; }
-  .platforms .pill { white-space: nowrap; }
+  .platforms .pill { white-space: nowrap; padding: 0 16px; font-size: 15px; }
+  @media (min-width: 1001px) { .platforms .ftile { padding-left: 26px; padding-right: 26px; } }
   .platforms .ftile > p:last-child { font-size: 15px; color: var(--muted); }
   .platforms a.more { color: var(--cream); text-decoration: underline; text-underline-offset: 2px; }
-  @media (max-width: 900px) { .platforms { grid-template-rows: none; } .platforms .ftile { grid-row: auto; grid-template-rows: none; } }
+  @media (max-width: 1000px) { .platforms { grid-template-columns: 1fr; grid-template-rows: none; } .platforms .ftile { grid-row: auto; grid-template-rows: none; } }
 
   .steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; }
   @media (max-width: 1000px) { .steps { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
@@ -216,8 +217,8 @@
       <svg class="os" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.365 1.43c0 1.14-.493 2.27-1.177 3.08-.744.9-1.99 1.57-2.987 1.57-.12 0-.23-.02-.3-.03-.01-.06-.04-.22-.04-.39 0-1.15.572-2.27 1.206-2.98.804-.94 2.142-1.64 3.248-1.68.03.13.05.28.05.43zm4.565 15.71c-.03.07-.463 1.58-1.518 3.12-.945 1.34-1.94 2.71-3.43 2.71-1.517 0-1.9-.88-3.63-.88-1.698 0-2.302.91-3.67.91-1.377 0-2.332-1.26-3.428-2.8-1.287-1.82-2.323-4.63-2.323-7.28 0-4.28 2.797-6.55 5.552-6.55 1.448 0 2.675.95 3.6.95.865 0 2.222-1.01 3.902-1.01.613 0 2.886.06 4.374 2.19-.13.09-2.383 1.37-2.383 4.19 0 3.26 2.854 4.42 2.955 4.45z"/></svg>
       <h3>Mac</h3>
       <p class="req">macOS 14 or later · Apple silicon and Intel</p>
-      <div class="get"><a class="pill" href="https://github.com/bradleycowdrey/two-degrees/releases/latest/download/TwoDegrees.dmg">Download for Mac</a></div>
-      <p>The live reading in your Dock and menu bar, plus desktop widgets. It updates itself. <a class="more" href="#install">How to install</a></p>
+      <div class="get"><a class="pill" href="https://apps.apple.com/app/id6826694344?platform=mac">Download on the Mac App Store</a></div>
+      <p>The live reading in your Dock and menu bar, plus desktop widgets. Prefer a direct download? <a class="more" href="https://github.com/bradleycowdrey/two-degrees/releases/latest/download/TwoDegrees.dmg">Get the DMG</a> · <a class="more" href="#install">How to install</a></p>
     </div>
     <div class="ftile">
       <svg class="os" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.365 1.43c0 1.14-.493 2.27-1.177 3.08-.744.9-1.99 1.57-2.987 1.57-.12 0-.23-.02-.3-.03-.01-.06-.04-.22-.04-.39 0-1.15.572-2.27 1.206-2.98.804-.94 2.142-1.64 3.248-1.68.03.13.05.28.05.43zm4.565 15.71c-.03.07-.463 1.58-1.518 3.12-.945 1.34-1.94 2.71-3.43 2.71-1.517 0-1.9-.88-3.63-.88-1.698 0-2.302.91-3.67.91-1.377 0-2.332-1.26-3.428-2.8-1.287-1.82-2.323-4.63-2.323-7.28 0-4.28 2.797-6.55 5.552-6.55 1.448 0 2.675.95 3.6.95.865 0 2.222-1.01 3.902-1.01.613 0 2.886.06 4.374 2.19-.13.09-2.383 1.37-2.383 4.19 0 3.26 2.854 4.42 2.955 4.45z"/></svg>
@@ -256,10 +257,10 @@
 
   <h2 class="section-h" id="install">Install on a Mac.</h2>
   <div class="steps">
-    <div class="step"><div class="num">1</div><p>Download <a href="https://github.com/bradleycowdrey/two-degrees/releases/latest/download/TwoDegrees.dmg"><b>TwoDegrees.dmg</b></a> and drag Two Degrees into Applications.</p></div>
-    <div class="step"><div class="num">2</div><p>Double-click to open. It’s signed and notarized by Apple, so it opens like any other app. Agree to the terms once, and you’re in.</p></div>
-    <div class="step"><div class="num">3</div><p>Add your cities with the <b>+</b> button. The Dock and menu bar fill in on their own.</p></div>
-    <div class="step"><div class="num">4</div><p>Want a widget? Right-click your desktop, choose <b>Edit Widgets</b>, and search for Two Degrees.</p></div>
+    <div class="step"><div class="num">1</div><p>Get Two Degrees from the <a href="https://apps.apple.com/app/id6826694344?platform=mac"><b>Mac App Store</b></a>. It installs and updates like any other app.</p></div>
+    <div class="step"><div class="num">2</div><p>Open it, agree to the terms once, and add your cities with the <b>+</b> button. The Dock and menu bar fill in on their own.</p></div>
+    <div class="step"><div class="num">3</div><p>Want a widget? Right-click your desktop, choose <b>Edit Widgets</b>, and search for Two Degrees.</p></div>
+    <div class="step"><div class="num">4</div><p>Rather not use the App Store? Download <a href="https://github.com/bradleycowdrey/two-degrees/releases/latest/download/TwoDegrees.dmg"><b>TwoDegrees.dmg</b></a> and drag it into Applications. It’s signed and notarized by Apple, and updates itself.</p></div>
   </div>
 
   <section class="closing">
@@ -297,7 +298,7 @@
 
   // Share: the same menu as the app, Meridian and Cowdrey.MD.
   const PAGE_URL = 'https://bradcowdrey.com/two-degrees';
-  const MAC_URL = 'https://github.com/bradleycowdrey/two-degrees/releases/latest/download/TwoDegrees.dmg';
+  const MAC_URL = 'https://apps.apple.com/app/id6826694344?platform=mac';
   const ANDROID_URL = 'https://github.com/bradleycowdrey/two-degrees/releases/latest/download/TwoDegrees.apk';
   const SHARE_TEXT = 'Two Degrees: the weather in °F and °C at once, for Mac, iPhone, iPad and Android. Free and open source, by Bradley Cowdrey.';
   const svg = (d) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
