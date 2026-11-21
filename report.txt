@@ -1,0 +1,130 @@
+ALL PASSED (128 passed)
+     screen visible frame 1024x681, version 0.0.0-selftest
+PASS forecast loaded for New York
+PASS New York: 24 upcoming hours (got 24)
+PASS New York: the 10 days the forecast card lists (got 11)
+PASS New York: plausible temperature 9.5°C
+PASS New York: every day's low is at or below its high
+PASS forecast loaded for London
+PASS London: 24 upcoming hours (got 24)
+PASS London: the 10 days the forecast card lists (got 11)
+PASS London: plausible temperature 4.8°C
+PASS London: every day's low is at or below its high
+PASS forecast loaded for Tokyo
+PASS Tokyo: 24 upcoming hours (got 24)
+PASS Tokyo: the 10 days the forecast card lists (got 11)
+PASS Tokyo: plausible temperature 13.8°C
+PASS Tokyo: every day's low is at or below its high
+PASS New York: the next two hours in 15-minute steps (8)
+PASS New York: pressure, cloud cover, visibility and today's precipitation arrive
+PASS New York: the next sunrise or sunset has a colour outlook (Fair: A thick cloud layer may mute it.)
+PASS New York: a day's 24 hours, with wind, for the day detail
+PASS New York: the 10-day forecast lists ten days on one scale that takes in right now (10 days, 39–63 ° F)
+PASS New York: air quality 77 Moderate (US AQI)
+PASS New York: normals and records load (normal high 50 ° F, record from 1991)
+PASS National Weather Service alerts answer for Denver (0 active)
+PASS the moon: Waxing Gibbous, 87% lit
+PASS wind in m/s
+PASS wind follows the larger unit when automatic
+PASS extraSmall base: window 404x632, panel 404 wide, content 726 tall (scrolls: the panel shows 578), reading ends at 326
+PASS extraSmall days: window 404x632, panel 404 wide, content 1134 tall (scrolls: the panel shows 578), reading ends at 326
+PASS extraSmall tiles: window 404x632, panel 404 wide, content 1660 tall (scrolls: the panel shows 578), reading ends at 326
+PASS extraSmall adding: window 404x632, panel 404 wide, content 792 tall (scrolls: the panel shows 578), reading ends at 392
+PASS extraSmall editing: window 404x632, panel 404 wide, content 731 tall (scrolls: the panel shows 578), reading ends at 331
+PASS extraSmall celsius: window 404x632, panel 404 wide, content 726 tall (scrolls: the panel shows 578), reading ends at 326
+PASS small base: window 448x627, panel 448 wide, content 801 tall (scrolls: the panel shows 566), reading ends at 355
+PASS small days: window 448x627, panel 448 wide, content 1260 tall (scrolls: the panel shows 566), reading ends at 355
+PASS small tiles: window 448x627, panel 448 wide, content 1868 tall (scrolls: the panel shows 566), reading ends at 355
+PASS small adding: window 448x627, panel 448 wide, content 876 tall (scrolls: the panel shows 566), reading ends at 430
+PASS small editing: window 448x627, panel 448 wide, content 806 tall (scrolls: the panel shows 566), reading ends at 360
+PASS small celsius: window 448x627, panel 448 wide, content 801 tall (scrolls: the panel shows 566), reading ends at 355
+PASS medium base: window 492x620, panel 492 wide, content 879 tall (scrolls: the panel shows 554), reading ends at 393
+PASS the panel sits on New York's sky, right to the top edge (top #19294C, sky #141D3B)
+PASS medium days: window 492x620, panel 492 wide, content 1379 tall (scrolls: the panel shows 554), reading ends at 393
+PASS medium tiles: window 492x620, panel 492 wide, content 2032 tall (scrolls: the panel shows 554), reading ends at 393
+PASS medium adding: window 492x620, panel 492 wide, content 961 tall (scrolls: the panel shows 554), reading ends at 475
+PASS medium editing: window 492x620, panel 492 wide, content 885 tall (scrolls: the panel shows 554), reading ends at 399
+PASS medium celsius: window 492x620, panel 492 wide, content 879 tall (scrolls: the panel shows 554), reading ends at 393
+PASS large base: window 551x612, panel 551 wide, content 986 tall (scrolls: the panel shows 538), reading ends at 440
+PASS large days: window 551x612, panel 551 wide, content 1547 tall (scrolls: the panel shows 538), reading ends at 440
+PASS large tiles: window 551x612, panel 551 wide, content 2262 tall (scrolls: the panel shows 538), reading ends at 440
+PASS large adding: window 551x612, panel 551 wide, content 1078 tall (scrolls: the panel shows 538), reading ends at 532
+PASS large editing: window 551x612, panel 551 wide, content 993 tall (scrolls: the panel shows 538), reading ends at 447
+PASS large celsius: window 551x612, panel 551 wide, content 986 tall (scrolls: the panel shows 538), reading ends at 440
+PASS extraLarge base: window 619x604, panel 619 wide, content 1117 tall (scrolls: the panel shows 520), reading ends at 500
+PASS extraLarge days: window 619x604, panel 619 wide, content 1740 tall (scrolls: the panel shows 520), reading ends at 500
+PASS extraLarge tiles: window 619x604, panel 619 wide, content 2571 tall (scrolls: the panel shows 520), reading ends at 500
+PASS extraLarge adding: window 619x604, panel 619 wide, content 1221 tall (scrolls: the panel shows 520), reading ends at 604
+PASS extraLarge editing: window 619x604, panel 619 wide, content 1125 tall (scrolls: the panel shows 520), reading ends at 508
+PASS extraLarge celsius: window 619x604, panel 619 wide, content 1117 tall (scrolls: the panel shows 520), reading ends at 500
+PASS unit toggles to °C
+PASS unit toggles back to °F
+PASS select New York
+PASS select London
+PASS select Tokyo
+PASS city search finds Denver (Colorado, United States)
+PASS offline city search: 34191 cities bundled, finds Denver (Colorado, United States)
+PASS add Denver and select it
+PASS forecast loads for added city
+PASS adding the same city twice doesn't duplicate it
+PASS remove Denver
+PASS a widget for Tokyo opens Tokyo
+PASS a widget for a city not in the list adds it and opens it
+PASS city limit is 20
+PASS test cities removed
+PASS position left: x 16 expected 16, top 727 expected 727
+PASS position center: x 266 expected 266, top 727 expected 727
+PASS position right: x 516 expected 516, top 727 expected 727
+PASS update check finds the latest release (2.3.5; phase available)
+PASS update download, checksum and unpack: PASS staged 2.3.5 through the real install path: checksum OK, version matches, widget present
+PASS Dock tile renders 49°F / 10°C (dock-tile.png)
+PASS Dock tile renders -10°F / -23°C (dock-tile-negative.png)
+PASS Dock tile renders 105°F / 41°C (dock-tile-105F.png)
+PASS small widget renders
+PASS small widget (offline) renders
+PASS medium widget renders
+PASS medium widget (offline) renders
+PASS large widget renders
+PASS large widget (offline) renders
+PASS widget setting reads back for São Paulo
+PASS widget setting reads back for Pipe | Town
+PASS widget search under two letters shows the suggestions
+PASS widget search finds Denver: Denver, Colorado, United States
+PASS widget loads Denver after picking it (0.7 s)
+PASS widget has Denver's numbers within 12 s
+PASS small widget draws Denver
+PASS medium widget draws Denver
+PASS large widget draws Denver
+PASS widget search finds Sao Paulo: São Paulo, São Paulo, Brazil
+PASS widget loads São Paulo after picking it (0.2 s)
+PASS widget has São Paulo's numbers within 12 s
+PASS small widget draws São Paulo
+PASS medium widget draws São Paulo
+PASS large widget draws São Paulo
+PASS widget search finds Zürich: Zurich, Canton of Zurich, Switzerland
+PASS widget loads Zurich after picking it (0.2 s)
+PASS widget has Zurich's numbers within 12 s
+PASS small widget draws Zurich
+PASS medium widget draws Zurich
+PASS large widget draws Zurich
+PASS widget search finds Reykjavík: Reykjavik, Capital Region, Iceland
+PASS widget loads Reykjavik after picking it (0.2 s)
+PASS widget has Reykjavik's numbers within 12 s
+PASS small widget draws Reykjavik
+PASS medium widget draws Reykjavik
+PASS large widget draws Reykjavik
+PASS widget offline with nothing saved says it couldn't load (not blank) and retries within 5 minutes
+PASS small widget draws the couldn't-load message
+PASS medium widget draws the couldn't-load message
+PASS large widget draws the couldn't-load message
+PASS app registers its own build with LaunchServices
+PASS terms: a first launch hasn't agreed yet, so it asks
+PASS terms: the dialog offers I Agree, Read the Terms and Quit (I Agree, Read the Terms, Quit)
+PASS terms: the dialog names the terms page and where locations go
+PASS terms: I Agree is remembered, so it isn't asked again
+PASS terms: a change within a month of agreeing waits (at most one ask a month)
+PASS terms: after the terms change, and a month on, it asks again
+PASS menu bar panel opens centred under its item: item centre 762, panel 516–1008 (centre 762), expected left 516
+PASS update fallback reads the version from the release page
+PASS version comparison
+PASS 10-day scale stretches to take in right now (got 10.0 to 25.0)
