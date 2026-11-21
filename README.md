@@ -29,6 +29,7 @@ Pick which unit is large; the other always sits right next to it.
 
 ## What's new
 
+- **2.3.5**: Two Degrees for Mac is on the Mac App Store, and the iPhone app links to it.
 - **2.3.4**: Android widgets like the iPhone's, and iPhone and iPad through TestFlight.
 - **2.3.3**: the app's name back in the Mac header, beside the icon.
 - **2.3.2**: Add and Edit cities from the Mac header, beside Share and °F | °C.
