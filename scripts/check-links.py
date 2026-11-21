@@ -54,7 +54,9 @@ REPO_URL = f"https://github.com/{REPO}"
 # Hosts that turn robots away. A 403, 429 or 999 (LinkedIn's answer to robots) from them says
 # nothing about the link.
 BOT_BLOCKING_HOSTS = {"apps.apple.com", "x.com", "twitter.com", "www.linkedin.com", "linkedin.com",
-                      "www.instagram.com", "instagram.com", "sourceforge.net"}
+                      "www.instagram.com", "instagram.com", "sourceforge.net",
+                      # GitHub's API limits unsigned requests from shared CI machines.
+                      "api.github.com"}
 
 # The App Store page answers 404 until the app is live.
 APP_STORE_PAGE = "https://apps.apple.com/app/id6826694344"
