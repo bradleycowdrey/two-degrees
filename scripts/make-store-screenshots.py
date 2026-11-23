@@ -82,7 +82,10 @@ def draw_line(d, cx, y, text, f, fill, track):
     """Draws one centred line with tight tracking, keeping Inter's kerning."""
     x0 = cx - text_width(text, f, track) / 2
     for i, ch in enumerate(text):
-        d.text((x0 + f.getlength(text[:i]) + track * i, y), ch, font=f, fill=fill, anchor="ls")
+        # Where this glyph sits in the kerned run: the run up to and including it, less its own advance.
+        # (Using the run before it would drop the kerning pair with the previous glyph, as in "Te n".)
+        x = f.getlength(text[:i + 1]) - f.getlength(ch)
+        d.text((x0 + x + track * i, y), ch, font=f, fill=fill, anchor="ls")
 
 
 def headline(canvas, title, sub, top, size, sub_size, max_w):
@@ -357,6 +360,39 @@ def tablet_page(shot, title, sub):
     return c
 
 
+def app_mark(px):
+    """The new app mark (the iOS icon, in the toolbar's continuous corners), px across."""
+    icon = Image.open(os.path.join(ROOT, "Resources", "iOS", "Assets.xcassets", "AppIcon.appiconset", "AppIcon.png"))
+    tile = icon.convert("RGBA").resize((px, px), Image.LANCZOS)
+    tile.putalpha(shape_mask((px, px), (0, 0, px, px), px * 0.26))
+    return tile
+
+
+def window_chrome(im, mark_at=(20, 46, 35), lights=True):
+    """For a 2x snapshot: puts back what the real window has and the snapshot lacks, or shows from before
+    the icon change. Puts the current app mark over the snapshot's (mark_at is its x, y and size at 1x;
+    20,46,35 in the main window, 16,22,28 in the menu bar panel) and, for the main window, draws the traffic
+    lights in the hidden title bar (12 pt, 20 pt apart)."""
+    im = im.copy()
+    x, y, n = (v * 2 for v in mark_at)
+    bg = im.getpixel((8, y + n // 2))
+    ImageDraw.Draw(im).rectangle([x - 4, y - 4, x + n + 4, y + n + 4], fill=bg)
+    im.alpha_composite(app_mark(n), (x, y))
+    if not lights:
+        return im
+    k = SS
+    lights = Image.new("RGBA", (80 * 2 * k, 28 * 2 * k), (0, 0, 0, 0))
+    d = ImageDraw.Draw(lights)
+    for i, (face, rim) in enumerate((((255, 95, 87), (226, 70, 63)), ((254, 188, 46), (223, 158, 25)),
+                                     ((40, 200, 64), (27, 168, 47)))):
+        cx, cy, r = (14 + 20 * i) * 2 * k, 14 * 2 * k, 6 * 2 * k
+        d.ellipse([cx - r, cy - r, cx + r, cy + r], fill=rim + (255,))
+        r -= k
+        d.ellipse([cx - r, cy - r, cx + r, cy + r], fill=face + (255,))
+    im.alpha_composite(lights.resize((160, 56), Image.LANCZOS), (0, 4))
+    return im
+
+
 def mac_pages(load):
     W, H = 2880, 1800
 
@@ -366,8 +402,8 @@ def mac_pages(load):
         bottom = over(c, lambda l: headline(l, title, sub, top=130, size=118, sub_size=52, max_w=W - 400))
         return c, bottom
 
-    def window(im):
-        return mac.rounded(mac.up(im, 2), 24)
+    def window(im, **chrome):
+        return mac.rounded(window_chrome(mac.up(im, 2), **chrome), 24)
 
     def put(c, im, x, y):
         shadowed(c, im, x, y, ((70, 40, 0.55), (12, 6, 0.4)))
@@ -427,7 +463,7 @@ def mac_pages(load):
 
     # 5. The menu bar panel and the Dock tile with the live reading.
     c, top = page(4)
-    panel = window(load("menu-bar-panel.png").crop((0, 0, 492, 610)))
+    panel = window(load("menu-bar-panel.png").crop((0, 0, 492, 610)), mark_at=(16, 22, 28), lights=False)
     tile = load("dock-tile.png").resize((512, 512), Image.LANCZOS)
     gap = 300
     x = (W - panel.width - gap - tile.width) / 2

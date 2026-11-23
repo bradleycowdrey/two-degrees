@@ -9,6 +9,7 @@ numpy). Writes:
                                                                  (iPhone, iPad; the OS masks the corners)
   Resources/AppIcon.png, docs/icon.png                           1024, macOS tile: 824 body, 185 radius, shadow
   Resources/Assets.xcassets/AppIcon.appiconset/icon_*.png        the macOS tile at all 10 Mac sizes, 16 to 1024
+                                                                 (32 px and under use the hinted TINY rings)
   android/app/src/main/res/mipmap-*/ic_launcher(_round).png      legacy launcher sizes
   android/app/src/main/res/drawable-nodpi/ic_launcher_foreground.png, ic_launcher_background.png, app_mark.png
 """
@@ -29,6 +30,9 @@ SHADOW = ((0x0B, 0x14, 0x40), 0.22, 0.008, 0.014)    # colour, opacity, y offset
 # Rings as (centre x, centre y, outer radius, stroke), fractions of the canvas before optical centring.
 BIG = (0.405, 0.405, 0.235, 0.094)
 SMALL = (0.700, 0.700, 0.145, 0.067)
+# At 32 px and under the small ring's hole would close up, so those sizes get a hinted drawing: the small
+# ring sits a touch further out with a thinner stroke, so both holes stay open (about 3 and 4 px at 16).
+TINY = ((0.400, 0.400, 0.250, 0.085), (0.715, 0.715, 0.155, 0.055))
 OPTICAL_PULL = 0.35  # move the bounding-box centre this far toward the ink centroid
 
 
@@ -65,9 +69,9 @@ def sky(size):
     return _to_image(rgb).convert("RGBA")
 
 
-def layout():
+def layout(rings=None):
     """The two rings, shifted together so the pair is optically centred on the canvas."""
-    (bx, by, br, bw), (sx, sy, sr, sw) = BIG, SMALL
+    (bx, by, br, bw), (sx, sy, sr, sw) = rings or (BIG, SMALL)
     x0, x1 = min(bx - br, sx - sr), max(bx + br, sx + sr)
     y0, y1 = min(by - br, sy - sr), max(by + br, sy + sr)
     a1, a2 = br ** 2 - (br - bw) ** 2, sr ** 2 - (sr - sw) ** 2
@@ -94,11 +98,11 @@ def vertical(size, c1, c2, top, bottom):
     return _to_image(np.broadcast_to(col, (size, size, 3)).copy()).convert("RGBA")
 
 
-def mark(size, scale=1.0, offset=(0.0, 0.0)):
+def mark(size, scale=1.0, offset=(0.0, 0.0), geometry=None):
     """The two rings on transparency, at `scale` of the tile, centred plus an offset (fractions of size)."""
     layer = Image.new("RGBA", (size, size), (0, 0, 0, 0))
     rings = []
-    for cx, cy, r, w in layout():
+    for cx, cy, r, w in layout(geometry):
         rings.append((size * (0.5 + (cx - 0.5) * scale + offset[0]), size * (0.5 + (cy - 0.5) * scale + offset[1]),
                       size * r * scale, size * w * scale))
     ink = Image.new("L", (size, size), 0)
@@ -115,9 +119,9 @@ def mark(size, scale=1.0, offset=(0.0, 0.0)):
     return layer
 
 
-def art(size):
+def art(size, geometry=None):
     img = sky(size)
-    img.alpha_composite(mark(size))
+    img.alpha_composite(mark(size, geometry=geometry))
     return img
 
 
@@ -131,7 +135,7 @@ def rounded_tile(size, inset=100 / 1024, radius=185 / 824, shadow=True):
     x = int(round(big * inset))
     tile = big - 2 * x
     face = Image.new("RGBA", (big, big), (0, 0, 0, 0))
-    body = art(tile)
+    body = art(tile, TINY if size <= 32 else None)
     r = int(round(tile * radius))
     m = Image.new("L", (tile, tile), 0)
     ImageDraw.Draw(m).rounded_rectangle([0, 0, tile - 1, tile - 1], radius=r, fill=255)
