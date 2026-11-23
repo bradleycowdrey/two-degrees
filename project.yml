@@ -92,6 +92,7 @@ targets:
       - path: Sources/TwoDegrees/Model/Notifier.swift
       - path: Sources/TwoDegrees/Model/Weather.swift
       - path: Sources/TwoDegrees/Model/WeatherStore.swift
+      - path: Sources/TwoDegrees/Model/StoreCities.swift
       - path: Sources/TwoDegrees/Model/WidgetData.swift
       - path: Sources/TwoDegrees/Model/OfflineCities.swift
       - path: Resources/Cities.tsv

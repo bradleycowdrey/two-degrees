@@ -19,6 +19,8 @@ enum PhoneSelfTest {
     nonisolated static let locate = ProcessInfo.processInfo.arguments.contains("--locate")
     /// Shows the "Show the weather where you are?" question, for a screenshot.
     nonisolated static let showLocationPrompt = ProcessInfo.processInfo.arguments.contains("--show-location-prompt")
+    /// App Store screenshots: shows the three cities nearest to 1 pm right now, so every shot is daytime.
+    nonisolated static let storeShots = ProcessInfo.processInfo.arguments.contains("--store")
 
     private static var lines: [String] = []
     private static var failures = 0
@@ -30,6 +32,15 @@ enum PhoneSelfTest {
 
     static func run(store: WeatherStore) async {
         let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+
+        // --store: swap in the daytime cities (StoreCities, shared with the Mac), the first one shown, and load them.
+        let daylight = storeShots ? StoreCities.pick(at: StoreCities.time) : []
+        if !daylight.isEmpty {
+            store.cities = daylight
+            store.select(daylight[0])
+            await store.refresh()
+            lines.append("INFO store cities: \(daylight.map(\.name).joined(separator: ", "))")
+        }
 
         // 1. Every starter city's forecast loads, with the ten days the iPhone shows.
         for _ in 0..<40 where store.cities.contains(where: { store.forecasts[$0.id] == nil }) {
@@ -121,16 +132,21 @@ enum PhoneSelfTest {
             (.accessoryRectangular, CGSize(width: 172, height: 76), "lock-rectangular"),
             (.accessoryInline, CGSize(width: 257, height: 26), "lock-inline"),
         ]
-        for query in ["Denver", "Zürich"] {
+        // --store draws the widgets for the first two daytime cities instead of searching.
+        let widgetCities: [City?] = daylight.isEmpty ? [nil, nil] : daylight.prefix(2).map { Optional($0) }
+        for (i, query) in ["Denver", "Zürich"].enumerated() where i < widgetCities.count {
             let started = Date()
-            guard let first = await WidgetData.search(query, suggestions: []).first,
+            var found = widgetCities[i]
+            if found == nil { found = await WidgetData.search(query, suggestions: []).first }
+            guard let first = found,
                   let picked = WidgetData.city(fromID: WidgetData.id(for: first)) else {
                 check(false, "widget search finds \(query)"); continue
             }
             let entry = await WidgetData.entry(city: picked, unit: .fahrenheit, defaults: defaults)
             check(!entry.failed && !entry.unavailable && entry.forecast.days.count >= 5,
                   "widget loads \(picked.name) (\(String(format: "%.1f", Date().timeIntervalSince(started))) s)")
-            let slug = picked.name.lowercased().filter(\.isLetter)
+            // With --store, a number first so the main city's pictures sort first for appstore-widgets.py.
+            let slug = (daylight.isEmpty ? "" : "\(i)") + picked.name.lowercased().filter(\.isLetter)
             for (family, size, name) in sizes {
                 check(render(widget(entry, family, size), to: dir.appendingPathComponent("widget-\(slug)-\(name).png")),
                       "\(name) widget draws \(picked.name)")

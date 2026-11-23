@@ -2,7 +2,8 @@ name: App Store screenshots
 
 # Photographs the iPhone app in the Simulator at the sizes App Store Connect requires: iPhone 6.9"
 # (1320 × 2868) and iPad 13" (2064 × 2752), with live weather and a 9:41 status bar, plus a picture of
-# the widgets. Results go to the appstore-screenshots branch. Run it from the Actions tab.
+# the widgets. --store shows the three cities nearest 1 pm local time, so every shot is daytime.
+# Results go to the appstore-screenshots branch. Run it from the Actions tab.
 on:
   workflow_dispatch:
 
@@ -24,6 +25,7 @@ jobs:
           OUT="$RUNNER_TEMP/shots"; mkdir -p "$OUT"
           exec > >(tee "$OUT/log.txt") 2>&1
           ID=com.bradcowdrey.twodegrees
+          AT=$(date +%s)   # one moment for the city pick, so every launch on both devices shows the same cities
           pick() {   # newest available simulator whose name matches $1
             xcrun simctl list devices available -j | python3 -c '
           import json,sys,re
@@ -41,7 +43,7 @@ jobs:
             n=1
             for flags in "" "--show-days" "--show-tiles" "--show-list"; do
               mkdir -p "$DOCS"; rm -f "$DOCS/report.txt"
-              xcrun simctl launch "$D" $ID --selftest $flags
+              xcrun simctl launch "$D" $ID --selftest --store --store-at "$AT" $flags
               for i in $(seq 1 120); do [ -f "$DOCS/report.txt" ] && break; sleep 1; done
               sleep 4
               xcrun simctl io "$D" screenshot "$OUT/$P-$n.png"

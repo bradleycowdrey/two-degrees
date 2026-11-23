@@ -82,9 +82,10 @@ jobs:
         run: |
           OUT="$RUNNER_TEMP/shots"; mkdir -p "$OUT"
           cp "$RUNNER_TEMP/unit-tests.txt" "$OUT/" || true
-          dist/TwoDegrees.app/Contents/MacOS/TwoDegrees --selftest "$OUT" > "$OUT/app.log" 2>&1 &
+          # --store adds the App Store pictures (store-*.png): three daytime cities at 2x.
+          dist/TwoDegrees.app/Contents/MacOS/TwoDegrees --selftest "$OUT" --store > "$OUT/app.log" 2>&1 &
           PID=$!
-          for i in $(seq 1 300); do [ -f "$OUT/report.txt" ] && break; sleep 1; done
+          for i in $(seq 1 420); do [ -f "$OUT/report.txt" ] && break; sleep 1; done
           sleep 1; kill $PID 2>/dev/null || true
           cat "$OUT/report.txt" 2>/dev/null || echo "no report"
       - name: Publish to ci-shots branch

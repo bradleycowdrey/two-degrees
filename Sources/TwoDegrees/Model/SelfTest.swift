@@ -22,6 +22,9 @@ enum SelfTest {
 
     nonisolated static var isActive: Bool { outputDir != nil }
 
+    /// `--store` (with `--selftest`): also photographs three cities in daytime at 2x for the App Store (store-*.png).
+    nonisolated static let storeShots = CommandLine.arguments.contains("--store")
+
     private static var started = false
     /// The panel's own measurements, reported by WeatherPanel as it lays out.
     private static var contentHeight: CGFloat = 0
@@ -356,9 +359,96 @@ enum SelfTest {
         let span = DailyCard.scale([mild], now: 25)
         check(span.low == 10 && span.high == 25, "10-day scale stretches to take in right now (got \(span.low) to \(span.high))")
 
+        // 10. App Store pictures, only with --store: written before the report, which CI waits for.
+        if storeShots {
+            await storePass(store: store, adding: adding, editing: editing, shown: shown, host: host, dir: dir)
+        }
+
         lines.insert("\(failures == 0 ? "ALL PASSED" : "\(failures) FAILED") (\(lines.filter { $0.hasPrefix("PASS") }.count) passed)", at: 0)
         try? lines.joined(separator: "\n").write(to: dir.appendingPathComponent("report.txt"), atomically: true, encoding: .utf8)
         NSApp.terminate(nil)
+    }
+
+    /// The App Store pictures: three daytime cities, the window at medium size at 2x (top, 10 days,
+    /// tiles), the first city's widgets and the Dock tile. Puts the user's cities back afterwards.
+    private static func storePass(store: WeatherStore, adding: Binding<Bool>, editing: Binding<Bool>, shown: Binding<String>, host: HostWindow, dir: URL) async {
+        let savedCities = store.cities, savedActive = store.activeID
+        let picks = StoreCities.pick()
+        note("store: \(picks.map(\.name).joined(separator: ", "))")
+        store.cities = picks
+        store.activeID = picks[0].id
+        await store.refresh()
+        for _ in 0..<40 where picks.contains(where: { store.forecasts[$0.id] == nil }) {
+            try? await Task.sleep(for: .milliseconds(500))
+        }
+        for city in picks {
+            let f = store.forecasts[city.id]
+            note("store: \(city.name) \(f == nil ? "no forecast" : (f!.now.isDay ? "day" : "night")), code \(f?.now.code ?? -1)")
+        }
+        store.select(picks[0])
+        store.uiSize = .medium
+        store.unit = .fahrenheit
+        adding.wrappedValue = false
+        editing.wrappedValue = false
+        // Opening and closing the 10 days scrolls the page back to its top.
+        shown.wrappedValue = "days"
+        try? await Task.sleep(for: .seconds(0.8))
+        for (part, name) in [("top", "store-1-top.png"), ("days", "store-2-days.png"), ("tiles", "store-3-tiles.png")] {
+            shown.wrappedValue = part
+            try? await Task.sleep(for: .seconds(1.5))
+            #if !MAC_APP_STORE
+            // No update banner in the App Store pictures.
+            Updater.shared.selfTestShow(phase: .idle, notice: nil, clearLatest: true)
+            try? await Task.sleep(for: .seconds(0.6))
+            #endif
+            let rep = snapshot2x(host: host, dir: dir, name: name)
+            note("store: \(name) \(rep.map { "\($0.pixelsWide)x\($0.pixelsHigh)" } ?? "not captured")")
+        }
+        shown.wrappedValue = "top"
+
+        let city = picks[0]
+        if let forecast = store.forecasts[city.id] {
+            let t = forecast.now.temperature
+            let dock = render(DockTileView(primary: TempUnit.fahrenheit.value(t), primaryUnit: .fahrenheit,
+                                           secondary: TempUnit.celsius.value(t), code: forecast.now.code, isDay: forecast.now.isDay)
+                .frame(width: 128, height: 128), dir: dir, name: "store-dock.png")
+            note("store: store-dock.png \(dock ? "rendered" : "blank")")
+            let entry = WeatherEntry(date: Date(), city: city, unit: store.unit, forecast: forecast)
+            let sizes: [(WidgetFamily, CGSize, String)] = [
+                (.systemSmall, CGSize(width: 170, height: 170), "small"),
+                (.systemMedium, CGSize(width: 364, height: 170), "medium"),
+                (.systemLarge, CGSize(width: 364, height: 382), "large"),
+            ]
+            for (family, size, name) in sizes {
+                let ok = render(WidgetView(entry: entry, family: family)
+                    .padding(16)
+                    .frame(width: size.width, height: size.height)
+                    .background(WidgetBackground(sky: entry.forecast.sky))
+                    .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous)),
+                                dir: dir, name: "store-widget-\(name).png")
+                note("store: store-widget-\(name).png \(ok ? "rendered" : "blank")")
+            }
+        } else {
+            note("store: no forecast for \(city.name); no widgets or Dock tile")
+        }
+
+        store.cities = savedCities
+        store.activeID = savedCities.contains { $0.id == savedActive } ? savedActive : savedCities[0].id
+    }
+
+    /// The window at 2x whatever the screen: a bitmap with twice the pixels of the view's points.
+    @discardableResult
+    private static func snapshot2x(host: HostWindow, dir: URL, name: String) -> NSBitmapImageRep? {
+        guard let content = host.window?.contentView else { return nil }
+        let bounds = content.bounds
+        guard bounds.width > 0, bounds.height > 0,
+              let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: Int(bounds.width * 2), pixelsHigh: Int(bounds.height * 2),
+                                         bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+                                         colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0) else { return nil }
+        rep.size = bounds.size
+        content.cacheDisplay(in: bounds, to: rep)
+        try? rep.representation(using: .png, properties: [:])?.write(to: dir.appendingPathComponent(name))
+        return rep
     }
 
     /// The window must be exactly the panel's width and fully on screen. The city page is longer than
