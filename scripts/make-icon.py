@@ -1,127 +1,115 @@
 """Draws the Two Degrees app icon and writes every size the apps use.
 
-The mark: two degree rings, a cream one (the larger unit) and a smaller coral-to-pink one (the other), on a
-diagonal dusk-blue sky that is light at the top left, in the same build as the Cowdrey One family: one flat,
-bold mark with generous margins, one soft shadow, light from the top. The pair fills about 67% of the canvas
-and is optically centred. Run from the repository root: python3 scripts/make-icon.py  (needs Pillow and
+The mark: "C°", the Cowdrey family's white C (open on the right, round caps) with a coral degree ring in
+its opening, on a diagonal sky-blue gradient (#72AAE9 top left to #204294 bottom right), with one faint
+shadow under the C and the ring. Same build as Cowdrey One, Cowdrey.MD and Cowdrey.PDF. All geometry is in
+fractions of the icon width. Run from the repository root: python3 scripts/make-icon.py  (needs Pillow and
 numpy). Writes:
   Resources/iOS/Assets.xcassets/AppIcon.appiconset/AppIcon.png  1024, full-bleed, opaque RGB, square corners
                                                                  (iPhone, iPad; the OS masks the corners)
   Resources/AppIcon.png, docs/icon.png                           1024, macOS tile: 824 body, 185 radius, shadow
   Resources/Assets.xcassets/AppIcon.appiconset/icon_*.png        the macOS tile at all 10 Mac sizes, 16 to 1024
-                                                                 (32 px and under use the hinted TINY rings)
   android/app/src/main/res/mipmap-*/ic_launcher(_round).png      legacy launcher sizes
-  android/app/src/main/res/drawable-nodpi/ic_launcher_foreground.png, ic_launcher_background.png, app_mark.png
+  android/app/src/main/res/drawable-nodpi/ic_launcher_foreground.png  the mark, optically centred in the
+                                                                 adaptive safe zone, on transparency
+  android/app/src/main/res/drawable-nodpi/ic_launcher_background.png, app_mark.png
+  android/app/src/main/res/drawable/ic_launcher_monochrome.xml   the same mark as a one-colour vector, for
+                                                                 Android 13 themed icons
 """
+import math
 import os
 import numpy as np
-from PIL import Image, ImageChops, ImageDraw, ImageFilter
+from PIL import Image, ImageDraw, ImageFilter
 
 ROOT = os.path.join(os.path.dirname(__file__), "..")
 S = 4  # supersampling
 
-# The sky: three stops along the 135-degree diagonal, top left to bottom right.
-SKY = ((0.00, (0x6A, 0x9E, 0xE6)), (0.55, (0x3A, 0x5F, 0xC0)), (1.00, (0x1F, 0x2E, 0x78)))
-TOP_LIGHT = 0.07                                     # white at y=0, gone by 45% of the height
-CREAM = ((0xFF, 0xF4, 0xEA), (0xFF, 0xEE, 0xDF))     # top to bottom of the big ring (effectively flat)
-CORAL = ((0xFF, 0x8A, 0x78), (0xF2, 0x60, 0x7A))     # top to bottom of the small ring
-SHADOW = ((0x0B, 0x14, 0x40), 0.22, 0.008, 0.014)    # colour, opacity, y offset, blur (fractions of size)
+# The C, as in the Cowdrey family icons.
+C_CX, C_CY = 0.440, 0.500
+C_RO = 0.313       # outer radius
+C_T = 0.096        # stroke
+C_END = 39.0       # the arc ends +/-39 degrees from 3 o'clock, with round caps
+# The degree ring in the C's opening (about 22 px clear of the upper cap at 1024).
+D_CX, D_CY = 0.775, 0.465
+D_RO = 0.115       # outer radius
+D_T = 0.060        # stroke; the hole stays open down to 58 px
 
-# Rings as (centre x, centre y, outer radius, stroke), fractions of the canvas before optical centring.
-BIG = (0.405, 0.405, 0.235, 0.094)
-SMALL = (0.700, 0.700, 0.145, 0.067)
-# At 32 px and under the small ring's hole would close up, so those sizes get a hinted drawing: the small
-# ring sits a touch further out with a thinner stroke, so both holes stay open (about 3 and 4 px at 16).
-TINY = ((0.400, 0.400, 0.250, 0.085), (0.715, 0.715, 0.155, 0.055))
-OPTICAL_PULL = 0.35  # move the bounding-box centre this far toward the ink centroid
-
-
-def _srgb_to_linear(c):
-    c = c / 255.0
-    return np.where(c <= 0.04045, c / 12.92, ((c + 0.055) / 1.055) ** 2.4)
+SKY = ((0x72, 0xAA, 0xE9), (0x20, 0x42, 0x94))       # top left, bottom right
+WHITE = (255, 255, 255)
+CORAL = ((0xF0, 0x7A, 0x6E), (0xE8, 0x5F, 0x84))     # top left, bottom right of the ring
+SHADOW = ((14, 30, 80), 0.28, 0.008, 0.012)          # colour, opacity, y offset, blur (fractions of size)
+OPTICAL_PULL = 0.35  # Android: move the bounding-box centre this far toward the ink centroid
 
 
-def _linear_to_srgb(c):
-    c = np.clip(c, 0, 1)
-    return np.where(c <= 0.0031308, c * 12.92, 1.055 * c ** (1 / 2.4) - 0.055) * 255.0
+def diagonal(w, h, a, b, noise=True):
+    """A top-left to bottom-right gradient, with a little noise so it does not band."""
+    t = np.add.outer(np.arange(h), np.arange(w)) / max(w + h - 2, 1)
+    rgb = np.array(a, float) + (np.array(b, float) - np.array(a, float)) * t[..., None]
+    if noise:
+        rgb += np.random.default_rng(2).uniform(-0.5, 0.5, (h, w))[..., None]
+    return Image.fromarray(np.clip(np.round(rgb), 0, 255).astype(np.uint8), "RGB")
 
 
-def _to_image(rgb):
-    """Float sRGB (0..255) to 8-bit, with a little noise so the gradients do not band."""
-    noise = np.random.default_rng(2).uniform(-0.5, 0.5, rgb.shape[:2])[..., None]
-    return Image.fromarray(np.clip(np.round(rgb + noise), 0, 255).astype(np.uint8), "RGB")
-
-
-def sky(size):
-    """The dusk sky: a diagonal three-stop gradient mixed in linear light, plus a faint top light."""
-    yy, xx = np.mgrid[0:size, 0:size].astype(np.float64) / max(size - 1, 1)
-    t = (xx + yy) / 2
-    stops = [(p, _srgb_to_linear(np.array(c, float))) for p, c in SKY]
-    lin = np.zeros((size, size, 3))
-    for (p0, c0), (p1, c1) in zip(stops, stops[1:]):
-        sel = (t >= p0) & (t <= p1)
-        u = (t[sel] - p0) / (p1 - p0)
-        u = u * u * (3 - 2 * u)  # smoothstep between stops
-        lin[sel] = c0 + (c1 - c0) * u[:, None]
-    rgb = _linear_to_srgb(lin)
-    a = (np.clip(1 - yy / 0.45, 0, 1) * TOP_LIGHT)[..., None]
-    rgb = rgb * (1 - a) + 255.0 * a
-    return _to_image(rgb).convert("RGBA")
-
-
-def layout(rings=None):
-    """The two rings, shifted together so the pair is optically centred on the canvas."""
-    (bx, by, br, bw), (sx, sy, sr, sw) = rings or (BIG, SMALL)
-    x0, x1 = min(bx - br, sx - sr), max(bx + br, sx + sr)
-    y0, y1 = min(by - br, sy - sr), max(by + br, sy + sr)
-    a1, a2 = br ** 2 - (br - bw) ** 2, sr ** 2 - (sr - sw) ** 2
-    cx, cy = (bx * a1 + sx * a2) / (a1 + a2), (by * a1 + sy * a2) / (a1 + a2)
-    ox = (x0 + x1) / 2 + (cx - (x0 + x1) / 2) * OPTICAL_PULL
-    oy = (y0 + y1) / 2 + (cy - (y0 + y1) / 2) * OPTICAL_PULL
-    dx, dy = 0.5 - ox, 0.5 - oy
-    return (bx + dx, by + dy, br, bw), (sx + dx, sy + dy, sr, sw)
-
-
-def ring_mask(size, cx, cy, outer, width):
-    m = Image.new("L", (size, size), 0)
+def c_mask(n, scale=1.0, off=(0.0, 0.0)):
+    """The C. scale and off place the mark (scale about the centre, offset in fractions of n)."""
+    m = Image.new("L", (n, n), 0)
     d = ImageDraw.Draw(m)
-    d.ellipse([cx - outer, cy - outer, cx + outer, cy + outer], fill=255)
-    inner = outer - width
-    d.ellipse([cx - inner, cy - inner, cx + inner, cy + inner], fill=0)
+    cx = n * (0.5 + (C_CX - 0.5) * scale + off[0])
+    cy = n * (0.5 + (C_CY - 0.5) * scale + off[1])
+    ro, t = n * C_RO * scale, n * C_T * scale
+    d.arc([cx - ro, cy - ro, cx + ro, cy + ro], C_END, 360 - C_END, fill=255, width=max(1, int(round(t))))
+    rm = ro - t / 2
+    for ang in (C_END, -C_END):
+        a = math.radians(ang)
+        x, y = cx + rm * math.cos(a), cy + rm * math.sin(a)
+        d.ellipse([x - t / 2, y - t / 2, x + t / 2, y + t / 2], fill=255)
     return m
 
 
-def vertical(size, c1, c2, top, bottom):
-    """A fill that runs from c1 at y=top to c2 at y=bottom (pixels)."""
-    y = np.clip((np.arange(size) - top) / max(bottom - top, 1), 0, 1)[:, None, None]
-    col = np.array(c1, float) + (np.array(c2, float) - np.array(c1, float)) * y
-    return _to_image(np.broadcast_to(col, (size, size, 3)).copy()).convert("RGBA")
+def ring_box(n, scale=1.0, off=(0.0, 0.0)):
+    cx = n * (0.5 + (D_CX - 0.5) * scale + off[0])
+    cy = n * (0.5 + (D_CY - 0.5) * scale + off[1])
+    r = n * D_RO * scale
+    return cx, cy, r
 
 
-def mark(size, scale=1.0, offset=(0.0, 0.0), geometry=None):
-    """The two rings on transparency, at `scale` of the tile, centred plus an offset (fractions of size)."""
-    layer = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-    rings = []
-    for cx, cy, r, w in layout(geometry):
-        rings.append((size * (0.5 + (cx - 0.5) * scale + offset[0]), size * (0.5 + (cy - 0.5) * scale + offset[1]),
-                      size * r * scale, size * w * scale))
-    ink = Image.new("L", (size, size), 0)
-    for ring in rings:
-        ink = ImageChops.lighter(ink, ring_mask(size, *ring))
-    # One soft, cool shadow under both rings.
+def ring_mask(n, scale=1.0, off=(0.0, 0.0)):
+    m = Image.new("L", (n, n), 0)
+    d = ImageDraw.Draw(m)
+    cx, cy, ro = ring_box(n, scale, off)
+    ri = ro - n * D_T * scale
+    d.ellipse([cx - ro, cy - ro, cx + ro, cy + ro], fill=255)
+    d.ellipse([cx - ri, cy - ri, cx + ri, cy + ri], fill=0)
+    return m
+
+
+def mark(n, scale=1.0, off=(0.0, 0.0)):
+    """The white C, the coral ring and their shadow, on transparency."""
+    layer = Image.new("RGBA", (n, n), (0, 0, 0, 0))
+    cm, dm = c_mask(n, scale, off), ring_mask(n, scale, off)
+    ink = Image.fromarray(np.maximum(np.asarray(cm), np.asarray(dm)))
     colour, alpha, dy, blur = SHADOW
-    sa = ImageChops.offset(ink, 0, int(round(size * dy * scale))).filter(ImageFilter.GaussianBlur(size * blur * scale))
-    shadow = Image.new("RGBA", (size, size), colour + (0,))
-    shadow.putalpha(sa.point(lambda v: int(v * alpha)))
-    layer.alpha_composite(shadow)
-    for (cx, cy, r, w), (c1, c2) in zip(rings, (CREAM, CORAL)):
-        layer.paste(vertical(size, c1, c2, cy - r, cy + r), (0, 0), ring_mask(size, cx, cy, r, w))
+    sa = ink.filter(ImageFilter.GaussianBlur(blur * n * scale))
+    sa = Image.fromarray((np.asarray(sa, np.float32) * alpha).astype(np.uint8))
+    sm = Image.new("L", (n, n), 0)
+    sm.paste(sa, (0, int(round(dy * n * scale))))
+    layer = Image.new("RGBA", (n, n), colour + (255,))
+    layer.putalpha(sm)
+    white = Image.new("RGBA", (n, n), WHITE + (255,))
+    layer.paste(white, (0, 0), cm)
+    # The coral runs corner to corner across the ring itself.
+    cx, cy, r = ring_box(n, scale, off)
+    box = int(math.ceil(2 * r)) + 2
+    coral = diagonal(box, box, *CORAL, noise=False).convert("RGBA")
+    full = Image.new("RGBA", (n, n), (0, 0, 0, 0))
+    full.paste(coral, (int(round(cx - r)) - 1, int(round(cy - r)) - 1))
+    layer.paste(full, (0, 0), dm)
     return layer
 
 
-def art(size, geometry=None):
-    img = sky(size)
-    img.alpha_composite(mark(size, geometry=geometry))
+def art(n):
+    img = diagonal(n, n, *SKY).convert("RGBA")
+    img.alpha_composite(mark(n))
     return img
 
 
@@ -129,71 +117,122 @@ def full_bleed(size):
     return art(size * S).resize((size, size), Image.LANCZOS).convert("RGB")
 
 
-def rounded_tile(size, inset=100 / 1024, radius=185 / 824, shadow=True):
-    """A rounded tile with margins, a soft shadow and a faint top edge, per Apple's macOS icon template."""
-    big = size * S
-    x = int(round(big * inset))
-    tile = big - 2 * x
-    face = Image.new("RGBA", (big, big), (0, 0, 0, 0))
-    body = art(tile, TINY if size <= 32 else None)
-    r = int(round(tile * radius))
-    m = Image.new("L", (tile, tile), 0)
-    ImageDraw.Draw(m).rounded_rectangle([0, 0, tile - 1, tile - 1], radius=r, fill=255)
-    if shadow:
-        # Black at 30%, 12 px down and 28 px of blur at 1024.
-        sm = Image.new("L", (big, big), 0)
-        dy = int(round(big * 12 / 1024))
-        ImageDraw.Draw(sm).rounded_rectangle([x, x + dy, x + tile, x + tile + dy], radius=r, fill=int(255 * 0.30))
-        sh = Image.new("RGBA", (big, big), (0, 0, 0, 0))
-        sh.putalpha(sm.filter(ImageFilter.GaussianBlur(big * 14 / 1024)))
-        face.alpha_composite(sh)
-        # 1 px white inner edge at 12%, top half only.
-        edge = Image.new("L", (tile, tile), 0)
-        ImageDraw.Draw(edge).rounded_rectangle([0, 0, tile - 1, tile - 1], radius=r, outline=int(255 * 0.12),
-                                               width=max(1, int(round(big / 1024))))
-        edge.paste(0, (0, tile // 2, tile, tile))
-        body.alpha_composite(Image.merge("RGBA", (Image.new("L", body.size, 255),) * 3 + (edge,)))
-    face.paste(body, (x, x), m)
-    return face.resize((size, size), Image.LANCZOS)
+def squircle_mask(n, size_frac=1.0, radius_frac=0.2237):
+    """Continuous-corner rounded square (superellipse corners), centred."""
+    s = size_frac * n
+    x0 = y0 = (n - s) / 2
+    r = radius_frac * s
+    yy, xx = np.mgrid[0:n, 0:n].astype(np.float32) + 0.5
+    dx = np.maximum(np.maximum(x0 + r - xx, xx - (x0 + s - r)), 0) / r
+    dy = np.maximum(np.maximum(y0 + r - yy, yy - (y0 + s - r)), 0) / r
+    inside = (xx >= x0) & (xx <= x0 + s) & (yy >= y0) & (yy <= y0 + s) & (dx ** 4 + dy ** 4 <= 1.0)
+    return Image.fromarray((inside * 255).astype(np.uint8))
 
 
-def circle_tile(size):
+def mac_tile(size):
+    """The macOS tile: 824 body in 1024, radius 185, soft drop shadow."""
+    n = max(size * S, 512)
+    body = 824 / 1024
+    bm = squircle_mask(n, body, 185 / 824)
+    sh = bm.filter(ImageFilter.GaussianBlur(0.014 * n))
+    sh = Image.fromarray((np.asarray(sh, np.float32) * 0.45).astype(np.uint8))
+    shl = Image.new("L", (n, n), 0)
+    shl.paste(sh, (0, int(0.010 * n)))
+    tile = Image.new("RGBA", (n, n), (0, 0, 0, 0))
+    tile.putalpha(shl)
+    sb = int(round(body * n))
+    o = (n - sb) // 2
+    layer = Image.new("RGBA", (n, n), (0, 0, 0, 0))
+    layer.paste(art(sb), (o, o))
+    layer.putalpha(bm)
+    tile = Image.alpha_composite(tile, layer)
+    return tile.resize((size, size), Image.LANCZOS)
+
+
+def masked(size, shape, radius=0.0):
+    """The full-bleed art cut to a circle or a plain rounded square (Android)."""
     big = size * S
-    body = art(big)
     m = Image.new("L", (big, big), 0)
-    ImageDraw.Draw(m).ellipse([0, 0, big - 1, big - 1], fill=255)
+    d = ImageDraw.Draw(m)
+    if shape == "circle":
+        d.ellipse([0, 0, big - 1, big - 1], fill=255)
+    else:
+        d.rounded_rectangle([0, 0, big - 1, big - 1], radius=int(round(big * radius)), fill=255)
     out = Image.new("RGBA", (big, big), (0, 0, 0, 0))
-    out.paste(body, (0, 0), m)
+    out.paste(art(big), (0, 0), m)
     return out.resize((size, size), Image.LANCZOS)
+
+
+def optical_offset(scale):
+    """Offset that puts the mark's optical centre (bbox centre pulled toward the ink centroid) at 0.5."""
+    n = 1024
+    ink = np.maximum(np.asarray(c_mask(n, scale)), np.asarray(ring_mask(n, scale))).astype(float)
+    ys, xs = np.nonzero(ink)
+    bx, by = (xs.min() + xs.max() + 1) / 2 / n, (ys.min() + ys.max() + 1) / 2 / n
+    w = ink.sum()
+    yy, xx = np.mgrid[0:n, 0:n]
+    gx, gy = (ink * (xx + 0.5)).sum() / w / n, (ink * (yy + 0.5)).sum() / w / n
+    ox, oy = bx + (gx - bx) * OPTICAL_PULL, by + (gy - by) * OPTICAL_PULL
+    return 0.5 - ox, 0.5 - oy
+
+
+def monochrome_xml(scale, off):
+    """The mark as a 108 dp vector, placed exactly like the adaptive foreground (themed icons)."""
+    u = 108
+    f = lambda v: ("%.2f" % v).rstrip("0").rstrip(".")
+    cx, cy = u * (0.5 + (C_CX - 0.5) * scale + off[0]), u * (0.5 + (C_CY - 0.5) * scale + off[1])
+    rm, t = u * (C_RO - C_T / 2) * scale, u * C_T * scale
+    a = math.radians(C_END)
+    x, dy = cx + rm * math.cos(a), rm * math.sin(a)
+    c = "M%s,%s A%s,%s 0 1,0 %s,%s" % (f(x), f(cy - dy), f(rm), f(rm), f(x), f(cy + dy))
+    rx, ry, ro = ring_box(u, scale, off)
+    ri = ro - u * D_T * scale
+    ring = " ".join("M%s,%s a%s,%s 0 1,%d %s,0 a%s,%s 0 1,%d %s,0z" % (f(rx - r), f(ry), f(r), f(r), sw, f(2 * r), f(r), f(r), sw, f(-2 * r))
+                    for r, sw in ((ro, 0), (ri, 1)))
+    return ('<?xml version="1.0" encoding="utf-8"?>\n'
+            '<!-- Written by scripts/make-icon.py: the C and degree ring for Android 13 themed icons. -->\n'
+            '<vector xmlns:android="http://schemas.android.com/apk/res/android"\n'
+            '    android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">\n'
+            '    <path android:strokeColor="#FFFFFFFF" android:strokeWidth="%s" android:strokeLineCap="round"\n'
+            '        android:pathData="%s" />\n'
+            '    <path android:fillColor="#FFFFFFFF" android:fillType="evenOdd"\n'
+            '        android:pathData="%s" />\n'
+            '</vector>\n') % (f(t), c, ring)
 
 
 def save(img, *path):
     p = os.path.join(ROOT, *path)
     os.makedirs(os.path.dirname(p), exist_ok=True)
     img.save(p, optimize=True)
-    print("wrote", os.path.relpath(p, ROOT), img.size)
+    print("wrote", os.path.relpath(p, ROOT), img.size, img.mode)
 
 
 def main():
     save(full_bleed(1024), "Resources", "iOS", "Assets.xcassets", "AppIcon.appiconset", "AppIcon.png")
-    mac = rounded_tile(1024)
+    mac = mac_tile(1024)
     save(mac, "Resources", "AppIcon.png")
     save(mac, "docs", "icon.png")
-    # Mac asset catalog: each size drawn from the vector at its own size, so small ones stay sharp.
+    # Mac asset catalog: each size drawn at its own size, so small ones stay sharp.
     for pt in (16, 32, 128, 256, 512):
-        save(rounded_tile(pt), "Resources", "Assets.xcassets", "AppIcon.appiconset", "icon_%dx%d.png" % (pt, pt))
-        save(mac if pt == 512 else rounded_tile(pt * 2), "Resources", "Assets.xcassets", "AppIcon.appiconset",
+        save(mac_tile(pt), "Resources", "Assets.xcassets", "AppIcon.appiconset", "icon_%dx%d.png" % (pt, pt))
+        save(mac if pt == 512 else mac_tile(pt * 2), "Resources", "Assets.xcassets", "AppIcon.appiconset",
              "icon_%dx%d@2x.png" % (pt, pt))
     res = ("android", "app", "src", "main", "res")
     for folder, px in (("mipmap-mdpi", 48), ("mipmap-hdpi", 72), ("mipmap-xhdpi", 96), ("mipmap-xxhdpi", 144), ("mipmap-xxxhdpi", 192)):
-        save(rounded_tile(px, inset=0.0, radius=0.2, shadow=False), *res, folder, "ic_launcher.png")
-        save(circle_tile(px), *res, folder, "ic_launcher_round.png")
-    # Adaptive icon (Android 8+): the rings inside the 66% safe zone, over the sky.
-    fg = Image.new("RGBA", (432 * S, 432 * S), (0, 0, 0, 0))
-    fg.alpha_composite(mark(432 * S, scale=0.66))
+        save(masked(px, "square", 0.2), *res, folder, "ic_launcher.png")
+        save(masked(px, "circle"), *res, folder, "ic_launcher_round.png")
+    # Adaptive icon (Android 8+): the mark at 66% (the visible 72 of 108 dp), optically centred, so it sits
+    # well inside the 66 dp safe circle.
+    scale = 0.66
+    off = optical_offset(scale)
+    fg = mark(432 * S, scale, off)
     save(fg.resize((432, 432), Image.LANCZOS), *res, "drawable-nodpi", "ic_launcher_foreground.png")
-    save(sky(432 * S).resize((432, 432), Image.LANCZOS).convert("RGB"), *res, "drawable-nodpi", "ic_launcher_background.png")
-    save(rounded_tile(256, inset=0.0, radius=0.26, shadow=False), *res, "drawable-nodpi", "app_mark.png")
+    save(diagonal(432 * S, 432 * S, *SKY).resize((432, 432), Image.LANCZOS), *res, "drawable-nodpi", "ic_launcher_background.png")
+    save(masked(256, "square", 0.26), *res, "drawable-nodpi", "app_mark.png")
+    p = os.path.join(ROOT, *res, "drawable", "ic_launcher_monochrome.xml")
+    with open(p, "w") as fh:
+        fh.write(monochrome_xml(scale, off))
+    print("wrote", os.path.relpath(p, ROOT))
 
 
 if __name__ == "__main__":

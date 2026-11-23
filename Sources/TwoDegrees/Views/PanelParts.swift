@@ -327,29 +327,31 @@ struct CitySearchField: View {
 
 // MARK: - Shared bits
 
-/// Small in-app mark, as the app icon (scripts/make-icon.py): two degree rings, cream and a sunset
-/// coral-to-pink, on the dusk sky.
+/// Small in-app mark, as the app icon (scripts/make-icon.py): the white C, open on the right with round
+/// caps, and the coral degree ring in its opening, on the diagonal sky. Geometry in fractions of `size`.
 struct AppMark: View {
     var size: CGFloat = 28
 
     var body: some View {
         RoundedRectangle(cornerRadius: size * 0.26, style: .continuous)
-            .fill(LinearGradient(stops: [.init(color: Color(hex: 0x627A98), location: 0),
-                                         .init(color: Color(hex: 0x2C364A), location: 0.62),
-                                         .init(color: Color(hex: 0x3A2E32), location: 1)],
-                                 startPoint: .top, endPoint: .bottom))
+            .fill(LinearGradient(colors: [Color(hex: 0x72AAE9), Color(hex: 0x204294)],
+                                 startPoint: .topLeading, endPoint: .bottomTrailing))
             .overlay {
                 ZStack {
+                    // The C: centre (0.44, 0.50), outer radius 0.313, stroke 0.096, ends at +/-39 degrees.
                     Circle()
-                        .strokeBorder(Palette.cream, lineWidth: size * 0.086)
-                        .frame(width: size * 0.41, height: size * 0.41)
-                        .offset(x: -size * 0.13, y: -size * 0.086)
+                        .trim(from: 39.0 / 360.0, to: 321.0 / 360.0)
+                        .stroke(Color.white, style: StrokeStyle(lineWidth: size * 0.096, lineCap: .round))
+                        .frame(width: size * 0.530, height: size * 0.530)
+                        .offset(x: -size * 0.06)
+                    // The degree ring: centre (0.775, 0.465), outer radius 0.115, stroke 0.060.
                     Circle()
-                        .strokeBorder(LinearGradient(colors: [Color(hex: 0xF7A870), Color(hex: 0xE24A7A)],
-                                                     startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: size * 0.079)
-                        .frame(width: size * 0.30, height: size * 0.30)
-                        .offset(x: size * 0.164, y: size * 0.086)
+                        .strokeBorder(LinearGradient(colors: [Color(hex: 0xF07A6E), Color(hex: 0xE85F84)],
+                                                     startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: size * 0.060)
+                        .frame(width: size * 0.23, height: size * 0.23)
+                        .offset(x: size * 0.275, y: -size * 0.035)
                 }
+                .shadow(color: Color(hex: 0x0E1E50).opacity(0.28), radius: size * 0.012, y: size * 0.008)
             }
             .frame(width: size, height: size)
             .accessibilityHidden(true)

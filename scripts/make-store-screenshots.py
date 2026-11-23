@@ -1,5 +1,5 @@
 """Makes the App Store screenshots for iPhone (6.9", 1320x2868), iPad (13", 2064x2752) and Mac (2880x1800)
-in one style: a short white headline on the twilight sky, and the real app in a device frame drawn here.
+in one style: a short white headline on the app icon's sky, and the real app in a device frame drawn here.
 
 Writes appstore/screenshots/iphone-1..5.png, ipad-1..4.png and mac-1..5.png.
 
@@ -47,11 +47,12 @@ def font(weight, size):
 # ---------- background ----------
 
 def sky(w, h):
-    """Deep twilight: lighter blue at the top, where the light comes from, down to night blue, with a faint
-    warm glow low on one side like the last of the sunset. Dithered so the gradient never bands."""
+    """The app icon's sky: sky blue at the top left (#72AAE9 family), down to the icon's deep blue (#204294)
+    and a little past it at the bottom, so white text and the device frames stay crisp. A faint coral glow
+    low on one side, the degree ring's colour. Dithered so the gradient never bands."""
     yy, xx = np.mgrid[0:h, 0:w].astype(np.float32)
-    t = np.clip((yy / h) * 0.92 + (xx / w) * 0.08, 0, 1)
-    stops = [(0.0, (58, 96, 160)), (0.42, (30, 54, 106)), (1.0, (11, 18, 44))]
+    t = np.clip((yy / h) * 0.8 + (xx / w) * 0.2, 0, 1)
+    stops = [(0.0, (98, 150, 222)), (0.45, (50, 92, 178)), (1.0, (22, 42, 104))]
     img = np.zeros((h, w, 3), np.float32)
     for (t0, c0), (t1, c1) in zip(stops, stops[1:]):
         m = (t >= t0) & (t <= t1)
@@ -65,8 +66,8 @@ def sky(w, h):
         return img * (1 - a) + np.array(colour, np.float32) * a
 
     s = max(w, h)
-    img = glow(w * 0.5, -h * 0.05, s * 0.55, (120, 160, 220), 0.22)     # light from the top
-    img = glow(w * 0.05, h * 1.02, s * 0.55, (232, 104, 112), 0.16)     # coral, the small ring's colour
+    img = glow(w * 0.3, -h * 0.05, s * 0.55, (140, 186, 240), 0.14)    # light from the top left
+    img = glow(w * 0.05, h * 1.02, s * 0.55, (236, 104, 118), 0.14)     # coral, the degree ring's colour
     img = glow(w * 0.98, h * 0.95, s * 0.40, (255, 200, 160), 0.07)
     img += np.random.default_rng(2).uniform(-1.2, 1.2, img.shape)
     return Image.fromarray(np.clip(img, 0, 255).astype(np.uint8), "RGB").convert("RGBA")

@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Written by scripts/make-icon.py: the C and degree ring for Android 13 themed icons. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
-    <path android:fillColor="#FFFFFFFF" android:fillType="evenOdd" android:pathData="M23.45,48.16a20.21,20.21 0 1,0 40.43,0a20.21,20.21 0 1,0 -40.43,0z M29.92,48.16a13.75,13.75 0 1,1 27.49,0a13.75,13.75 0 1,1 -27.49,0z M57.23,66.85a14.64,14.64 0 1,0 29.29,0a14.64,14.64 0 1,0 -29.29,0z M61.92,66.85a9.96,9.96 0 1,1 19.92,0a9.96,9.96 0 1,1 -19.92,0z" />
+    <path android:strokeColor="#FFFFFFFF" android:strokeWidth="6.84" android:strokeLineCap="round"
+        android:pathData="M64.95,42.28 A18.89,18.89 0 1,0 64.95,66.06" />
+    <path android:fillColor="#FFFFFFFF" android:fillType="evenOdd"
+        android:pathData="M65.96,51.67 a8.2,8.2 0 1,0 16.39,0 a8.2,8.2 0 1,0 -16.39,0z M70.23,51.67 a3.92,3.92 0 1,1 7.84,0 a3.92,3.92 0 1,1 -7.84,0z" />
 </vector>
