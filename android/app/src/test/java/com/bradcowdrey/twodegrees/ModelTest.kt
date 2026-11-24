@@ -12,7 +12,7 @@ class ModelTest {
         assertEquals(72, TempUnit.FAHRENHEIT.value(22.2))
         assertEquals(23, TempUnit.CELSIUS.value(22.5))
         assertEquals(-3, TempUnit.CELSIUS.value(-2.5))
-        assertEquals("18 ° C", TempUnit.CELSIUS.spaced(18.0))
+        assertEquals("18\u200A\u2060°\u200A\u2060C", TempUnit.CELSIUS.spaced(18.0))
         assertEquals("°F", TempUnit.FAHRENHEIT.label)
         assertEquals(TempUnit.FAHRENHEIT, TempUnit.localeDefault(Locale.US))
         assertEquals(TempUnit.CELSIUS, TempUnit.localeDefault(Locale.UK))

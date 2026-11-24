@@ -64,7 +64,7 @@ object SelfTest {
         val rateLimited = normals == null && normalsError.let { it != null && ("429" in it || "timed out" in it.lowercase()) }
         check(entry?.normalHigh != null || rateLimited,
             "normals and records for New York: " + (entry?.let { e ->
-                "${Normals.normalLine(e, TempUnit.FAHRENHEIT)}; ${Normals.recordsLine(e, TempUnit.FAHRENHEIT)}".replace(' ', ' ')
+                "${Normals.normalLine(e, TempUnit.FAHRENHEIT)}; ${Normals.recordsLine(e, TempUnit.FAHRENHEIT)}".replace(' ', ' ').replace("\u2060", "")
             } ?: if (rateLimited) "skipped: the archive service is limiting or not answering this runner ($normalsError)" else "none (${normalsError ?: "no table"})"))
         val alerts = withContext(Dispatchers.IO) { runCatching { Alerts.fetch(ny) } }
         check(alerts.isSuccess, "NWS alerts for New York: " +
