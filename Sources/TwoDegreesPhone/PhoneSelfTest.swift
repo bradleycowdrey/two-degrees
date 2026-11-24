@@ -19,7 +19,8 @@ enum PhoneSelfTest {
     nonisolated static let locate = ProcessInfo.processInfo.arguments.contains("--locate")
     /// Shows the "Show the weather where you are?" question, for a screenshot.
     nonisolated static let showLocationPrompt = ProcessInfo.processInfo.arguments.contains("--show-location-prompt")
-    /// App Store screenshots: shows the three cities nearest to 1 pm right now, so every shot is daytime.
+    /// App Store screenshots: shows the five cities nearest to 1 pm right now, sunniest first, so every shot
+    /// is daytime. With `--store-snapshot <path>`, every launch shows the same cities and forecasts (StoreCities).
     nonisolated static let storeShots = ProcessInfo.processInfo.arguments.contains("--store")
 
     private static var lines: [String] = []
@@ -33,9 +34,10 @@ enum PhoneSelfTest {
     static func run(store: WeatherStore) async {
         let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
 
-        // --store: the five cities nearest midday (StoreCities, shared with the Mac), loaded, then the three
-        // sunniest kept, sunniest first and shown.
-        var daylight = storeShots ? StoreCities.pick(at: StoreCities.time, count: 5) : []
+        // --store: the five cities nearest midday (StoreCities, shared with the Mac), loaded, then put
+        // sunniest first and shown. An earlier launch's choice, in the --store-snapshot file, is used as is.
+        let frozen = storeShots ? StoreCities.frozenCities : nil
+        var daylight = storeShots ? (frozen ?? StoreCities.pick(at: StoreCities.time, count: 5)) : []
         if !daylight.isEmpty {
             store.cities = daylight
             store.select(daylight[0])
@@ -43,7 +45,10 @@ enum PhoneSelfTest {
             for _ in 0..<40 where daylight.contains(where: { store.forecasts[$0.id] == nil }) {
                 try? await Task.sleep(for: .milliseconds(500))
             }
-            daylight = Array(StoreCities.sunniestFirst(daylight, store.forecasts).prefix(3))
+            if frozen == nil {
+                daylight = StoreCities.sunniestFirst(daylight, store.forecasts)
+                StoreCities.freezeCities(daylight)
+            }
             store.cities = daylight
             store.select(daylight[0])
             lines.append("INFO store cities: \(daylight.map(\.name).joined(separator: ", "))")
@@ -149,7 +154,13 @@ enum PhoneSelfTest {
                   let picked = WidgetData.city(fromID: WidgetData.id(for: first)) else {
                 check(false, "widget search finds \(query)"); continue
             }
-            let entry = await WidgetData.entry(city: picked, unit: .fahrenheit, defaults: defaults)
+            // --store: the store's forecast (the frozen one with --store-snapshot), so the widgets match the screens.
+            let entry: WeatherEntry
+            if !daylight.isEmpty, let forecast = store.forecasts[first.id] {
+                entry = WeatherEntry(date: Date(), city: picked, unit: .fahrenheit, forecast: forecast)
+            } else {
+                entry = await WidgetData.entry(city: picked, unit: .fahrenheit, defaults: defaults)
+            }
             check(!entry.failed && !entry.unavailable && entry.forecast.days.count >= 5,
                   "widget loads \(picked.name) (\(String(format: "%.1f", Date().timeIntervalSince(started))) s)")
             // With --store, a number first so the main city's pictures sort first for appstore-widgets.py.

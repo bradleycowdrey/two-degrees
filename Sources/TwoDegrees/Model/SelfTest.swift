@@ -22,7 +22,7 @@ enum SelfTest {
 
     nonisolated static var isActive: Bool { outputDir != nil }
 
-    /// `--store` (with `--selftest`): also photographs three cities in daytime at 2x for the App Store (store-*.png).
+    /// `--store` (with `--selftest`): also photographs five cities in daytime at 2x for the App Store (store-*.png).
     nonisolated static let storeShots = CommandLine.arguments.contains("--store")
 
     private static var started = false
@@ -369,11 +369,11 @@ enum SelfTest {
         NSApp.terminate(nil)
     }
 
-    /// The App Store pictures: three daytime cities, the window at medium size at 2x (top, 10 days,
+    /// The App Store pictures: five daytime cities, the window at medium size at 2x (top, 10 days,
     /// tiles), the first city's widgets and the Dock tile. Puts the user's cities back afterwards.
     private static func storePass(store: WeatherStore, adding: Binding<Bool>, editing: Binding<Bool>, shown: Binding<String>, host: HostWindow, dir: URL) async {
         let savedCities = store.cities, savedActive = store.activeID
-        // The five cities nearest midday, loaded, then the three sunniest kept, sunniest first.
+        // The five cities nearest midday, loaded, then put sunniest first.
         let candidates = StoreCities.pick(count: 5)
         store.cities = candidates
         store.activeID = candidates[0].id
@@ -381,7 +381,7 @@ enum SelfTest {
         for _ in 0..<40 where candidates.contains(where: { store.forecasts[$0.id] == nil }) {
             try? await Task.sleep(for: .milliseconds(500))
         }
-        let picks = Array(StoreCities.sunniestFirst(candidates, store.forecasts).prefix(3))
+        let picks = StoreCities.sunniestFirst(candidates, store.forecasts)
         store.cities = picks
         note("store: \(picks.map(\.name).joined(separator: ", "))")
         for city in picks {

@@ -1,7 +1,7 @@
 import Foundation
 
 /// App Store pictures (the Mac and iPhone self-tests with `--store`): well-known cities, each with its
-/// time zone, and the three nearest 1 pm local time, so every picture is daytime. One list for both apps.
+/// time zone, and the five nearest 1 pm local time, so every picture is daytime. One list for both apps.
 /// No Denver: both self-tests add and remove it.
 @MainActor
 enum StoreCities {
@@ -25,7 +25,7 @@ enum StoreCities {
         (City(name: "Honolulu", region: "Hawaii, United States", latitude: 21.3069, longitude: -157.8583), "Pacific/Honolulu"),
     ]
 
-    /// The three cities whose local time is nearest 13:00 at `now`, nearest first (a tie goes to the earlier in the list).
+    /// The cities (three unless told) whose local time is nearest 13:00 at `now`, nearest first (a tie goes to the earlier in the list).
     static func pick(at now: Date = Date(), count: Int = 3) -> [City] {
         func distance(_ zone: String) -> Int {
             var calendar = Calendar(identifier: .gregorian)
@@ -62,4 +62,65 @@ enum StoreCities {
         guard let i = args.firstIndex(of: "--store-at"), i + 1 < args.count, let t = TimeInterval(args[i + 1]) else { return Date() }
         return Date(timeIntervalSince1970: t)
     }()
+
+    /// `--selftest --store`: App Store pictures are being taken (the footer leaves out "Updated …").
+    nonisolated static let active: Bool = {
+        let args = ProcessInfo.processInfo.arguments
+        return args.contains("--selftest") && args.contains("--store")
+    }()
+
+    // MARK: Frozen forecasts
+
+    /// `--store-snapshot <path>` (with `--store`): a JSON file of the chosen cities and their forecasts,
+    /// written by the first launch and read by every later one (and by the iPad, which CI gives a copy), so
+    /// every App Store picture shows the same cities and the same numbers.
+    nonisolated static let snapshotURL: URL? = {
+        let args = ProcessInfo.processInfo.arguments
+        guard active, let i = args.firstIndex(of: "--store-snapshot"), i + 1 < args.count else { return nil }
+        return URL(fileURLWithPath: args[i + 1])
+    }()
+
+    struct Snapshot: Codable {
+        /// The cities shown, sunniest first, once chosen.
+        var cities: [City]? = nil
+        /// Forecasts by city ID.
+        var forecasts: [String: Forecast] = [:]
+    }
+
+    private static func readSnapshot() -> Snapshot? {
+        guard let url = snapshotURL, let data = try? Data(contentsOf: url) else { return nil }
+        return try? JSONDecoder().decode(Snapshot.self, from: data)
+    }
+
+    private static func writeSnapshot(_ change: (inout Snapshot) -> Void) {
+        guard let url = snapshotURL else { return }
+        var snapshot = readSnapshot() ?? Snapshot()
+        change(&snapshot)
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        if let data = try? encoder.encode(snapshot) { try? data.write(to: url, options: .atomic) }
+    }
+
+    /// The city's forecast from the snapshot, if it has one (nil without `--store-snapshot`).
+    static func frozenForecast(for city: City) -> Forecast? {
+        readSnapshot()?.forecasts[city.id]
+    }
+
+    /// Keeps a freshly fetched forecast in the snapshot, unless it already has one for that city.
+    static func freeze(_ forecast: Forecast, for city: City) {
+        guard snapshotURL != nil else { return }
+        writeSnapshot { if $0.forecasts[city.id] == nil { $0.forecasts[city.id] = forecast } }
+    }
+
+    /// The cities an earlier launch chose, in order (nil until one has).
+    static var frozenCities: [City]? {
+        guard let cities = readSnapshot()?.cities, !cities.isEmpty else { return nil }
+        return cities
+    }
+
+    /// Records the chosen cities, once: later launches use these instead of choosing again.
+    static func freezeCities(_ cities: [City]) {
+        guard snapshotURL != nil else { return }
+        writeSnapshot { if $0.cities?.isEmpty ?? true { $0.cities = cities } }
+    }
 }

@@ -120,7 +120,8 @@ struct AppFooter: View {
             }
             .lineLimit(1)
             .minimumScaleFactor(0.8)
-            if let fetched {
+            // Not in the App Store pictures, where it would disagree with the 9:41 status bar.
+            if let fetched, !StoreCities.active {
                 Text(offline ? "Offline · from \(fetched.formatted(date: .omitted, time: .shortened))"
                              : "Updated \(fetched.formatted(date: .omitted, time: .shortened))")
             }

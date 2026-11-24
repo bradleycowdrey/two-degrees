@@ -304,7 +304,14 @@ final class WeatherStore: ObservableObject {
     private func load(_ city: City) async {
         async let extras: Void = loadExtras(city)
         do {
-            let forecast = try await OpenMeteo.forecast(for: city)
+            // App Store pictures (--store-snapshot): the same forecast in every launch, fetched only once.
+            let forecast: Forecast
+            if let frozen = StoreCities.frozenForecast(for: city) {
+                forecast = frozen
+            } else {
+                forecast = try await OpenMeteo.forecast(for: city)
+                StoreCities.freeze(forecast, for: city)
+            }
             // The city may have been removed while its forecast loaded: don't keep (or save) it.
             guard cities.contains(where: { $0.id == city.id }) else { return }
             forecasts[city.id] = forecast

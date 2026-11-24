@@ -82,7 +82,7 @@ jobs:
         run: |
           OUT="$RUNNER_TEMP/shots"; mkdir -p "$OUT"
           cp "$RUNNER_TEMP/unit-tests.txt" "$OUT/" || true
-          # --store adds the App Store pictures (store-*.png): three daytime cities at 2x.
+          # --store adds the App Store pictures (store-*.png): five daytime cities at 2x.
           dist/TwoDegrees.app/Contents/MacOS/TwoDegrees --selftest "$OUT" --store > "$OUT/app.log" 2>&1 &
           PID=$!
           for i in $(seq 1 420); do [ -f "$OUT/report.txt" ] && break; sleep 1; done
