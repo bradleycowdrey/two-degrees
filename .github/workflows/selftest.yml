@@ -84,11 +84,11 @@ jobs:
           cp "$RUNNER_TEMP/unit-tests.txt" "$OUT/" || true
           # --store adds the App Store pictures (store-*.png): five daytime cities at 2x. With the iPhone's
           # frozen cities and forecasts (from the appstore-screenshots branch), the Mac shows the same ones.
-          SNAP_ARGS=()
+          # (Passed in the environment: AppKit would take a file path argument as a document to open.)
           if git fetch -q --depth 1 origin appstore-screenshots 2>/dev/null && git show FETCH_HEAD:store-snapshot.json > "$RUNNER_TEMP/store-snapshot.json" 2>/dev/null; then
-            SNAP_ARGS=(--store-snapshot "$RUNNER_TEMP/store-snapshot.json"); echo "Using the iPhone's store snapshot"
+            export TWO_DEGREES_STORE_SNAPSHOT="$RUNNER_TEMP/store-snapshot.json"; echo "Using the iPhone's store snapshot"
           fi
-          dist/TwoDegrees.app/Contents/MacOS/TwoDegrees --selftest "$OUT" --store "${SNAP_ARGS[@]}" > "$OUT/app.log" 2>&1 &
+          dist/TwoDegrees.app/Contents/MacOS/TwoDegrees --selftest "$OUT" --store > "$OUT/app.log" 2>&1 &
           PID=$!
           for i in $(seq 1 420); do [ -f "$OUT/report.txt" ] && break; sleep 1; done
           sleep 1; kill $PID 2>/dev/null || true

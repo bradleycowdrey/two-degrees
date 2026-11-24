@@ -97,10 +97,14 @@ enum StoreCities {
     /// `--store-snapshot <path>` (with `--store`): a JSON file of the chosen cities and their forecasts,
     /// written by the first launch and read by every later one (and by the iPad, which CI gives a copy), so
     /// every App Store picture shows the same cities and the same numbers.
+    /// On the Mac the path comes in TWO_DEGREES_STORE_SNAPSHOT instead: AppKit takes a bare file path on
+    /// the command line as a document to open, and the app never gets as far as its window.
     nonisolated static let snapshotURL: URL? = {
+        guard active else { return nil }
         let args = ProcessInfo.processInfo.arguments
-        guard active, let i = args.firstIndex(of: "--store-snapshot"), i + 1 < args.count else { return nil }
-        return URL(fileURLWithPath: args[i + 1])
+        if let i = args.firstIndex(of: "--store-snapshot"), i + 1 < args.count { return URL(fileURLWithPath: args[i + 1]) }
+        if let path = ProcessInfo.processInfo.environment["TWO_DEGREES_STORE_SNAPSHOT"], !path.isEmpty { return URL(fileURLWithPath: path) }
+        return nil
     }()
 
     struct Snapshot: Codable {
