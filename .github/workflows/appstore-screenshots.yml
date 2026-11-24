@@ -45,6 +45,22 @@ jobs:
             DOCS="$(xcrun simctl get_app_container "$D" $ID data)/Documents"
             mkdir -p "$DOCS"; rm -f "$DOCS/store-snapshot.json"
             [ -f "$SNAP" ] && cp "$SNAP" "$DOCS/store-snapshot.json"   # the iPad: the iPhone's cities and forecasts
+            if [ ! -f "$SNAP" ]; then
+              # Priming launches (no picture): choose the cities and freeze every forecast before the first shot.
+              for try in 1 2 3; do
+                rm -f "$DOCS/report.txt"
+                xcrun simctl launch "$D" $ID --selftest --store --store-at "$AT" --store-snapshot "$DOCS/store-snapshot.json"
+                for i in $(seq 1 150); do [ -f "$DOCS/report.txt" ] && break; sleep 1; done
+                xcrun simctl terminate "$D" $ID || true
+                python3 -c '
+          import json,sys
+          s=json.load(open(sys.argv[1])); c=s.get("cities") or []
+          ok=len(c)==5 and all("%.2f,%.2f" % (x["latitude"], x["longitude"]) in s["forecasts"] for x in c)
+          print("snapshot:", [x["name"] for x in c], "complete" if ok else "incomplete"); sys.exit(0 if ok else 1)' "$DOCS/store-snapshot.json" && break
+                rm -f "$DOCS/store-snapshot.json"; sleep 10
+              done
+              [ -f "$DOCS/store-snapshot.json" ] || { echo "::error::Couldn't load five forecasts for the App Store cities"; exit 1; }
+            fi
             n=1
             for flags in "" "--show-days" "--show-tiles" "--show-list"; do
               mkdir -p "$DOCS"; rm -f "$DOCS/report.txt"

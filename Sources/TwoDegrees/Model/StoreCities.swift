@@ -56,6 +56,29 @@ enum StoreCities {
         }.map(\.element)
     }
 
+    /// Chooses, loads and shows the App Store cities. With a snapshot that already names them (an earlier
+    /// launch, or the iPhone's for the iPad and Mac), those as they are. Otherwise the eight cities nearest
+    /// midday are loaded, retrying fetches that fail, and the sunniest `count` are kept, recorded and shown.
+    static func choose(_ store: WeatherStore, count: Int = 5) async -> [City] {
+        let frozen = frozenCities
+        let candidates = frozen ?? pick(at: time, count: count + 3)
+        store.cities = candidates
+        store.select(candidates[0])
+        func missing() -> Bool { candidates.contains { store.forecasts[$0.id] == nil } }
+        for attempt in 0..<4 where attempt == 0 || missing() {
+            if attempt > 0 { try? await Task.sleep(for: .seconds(3)) }
+            await store.refresh()
+            for _ in 0..<40 where missing() { try? await Task.sleep(for: .milliseconds(500)) }
+        }
+        let loaded = candidates.filter { store.forecasts[$0.id] != nil }
+        let picks = frozen ?? Array(sunniestFirst(loaded, store.forecasts).prefix(count))
+        if frozen == nil, picks.count == count { freezeCities(picks) }
+        let shown = picks.isEmpty ? candidates : picks
+        store.cities = shown
+        store.select(shown[0])
+        return shown
+    }
+
     /// `--store-at <unix seconds>`: picks as at that moment, so every launch in one CI run shows the same cities.
     nonisolated static let time: Date = {
         let args = ProcessInfo.processInfo.arguments

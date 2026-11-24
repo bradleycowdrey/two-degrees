@@ -36,21 +36,8 @@ enum PhoneSelfTest {
 
         // --store: the five cities nearest midday (StoreCities, shared with the Mac), loaded, then put
         // sunniest first and shown. An earlier launch's choice, in the --store-snapshot file, is used as is.
-        let frozen = storeShots ? StoreCities.frozenCities : nil
-        var daylight = storeShots ? (frozen ?? StoreCities.pick(at: StoreCities.time, count: 5)) : []
-        if !daylight.isEmpty {
-            store.cities = daylight
-            store.select(daylight[0])
-            await store.refresh()
-            for _ in 0..<40 where daylight.contains(where: { store.forecasts[$0.id] == nil }) {
-                try? await Task.sleep(for: .milliseconds(500))
-            }
-            if frozen == nil {
-                daylight = StoreCities.sunniestFirst(daylight, store.forecasts)
-                StoreCities.freezeCities(daylight)
-            }
-            store.cities = daylight
-            store.select(daylight[0])
+        if storeShots {
+            let daylight = await StoreCities.choose(store)
             lines.append("INFO store cities: \(daylight.map(\.name).joined(separator: ", "))")
         }
 
