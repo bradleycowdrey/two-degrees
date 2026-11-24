@@ -71,7 +71,11 @@ enum StoreCities {
             for _ in 0..<40 where missing() { try? await Task.sleep(for: .milliseconds(500)) }
         }
         let loaded = candidates.filter { store.forecasts[$0.id] != nil }
-        let picks = frozen ?? Array(sunniestFirst(loaded, store.forecasts).prefix(count))
+        // A city under a weather warning goes last: its banner would lead the pictures.
+        let warned = Set(loaded.filter { !(store.alerts[$0.id] ?? []).isEmpty }.map(\.id))
+        let ranked = sunniestFirst(loaded.filter { !warned.contains($0.id) }, store.forecasts)
+            + sunniestFirst(loaded.filter { warned.contains($0.id) }, store.forecasts)
+        let picks = frozen ?? Array(ranked.prefix(count))
         if frozen == nil, picks.count == count { freezeCities(picks) }
         let shown = picks.isEmpty ? candidates : picks
         store.cities = shown
