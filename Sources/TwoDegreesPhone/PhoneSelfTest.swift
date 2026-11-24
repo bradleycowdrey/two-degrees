@@ -23,6 +23,10 @@ enum PhoneSelfTest {
     /// is daytime. With `--store-snapshot <path>`, every launch shows the same cities and forecasts (StoreCities).
     nonisolated static let storeShots = ProcessInfo.processInfo.arguments.contains("--store")
 
+    /// Set once the checks are done and the sunniest city is showing: the city page scrolls (--show-days,
+    /// --show-tiles) only then, since selecting a city again scrolls its page back to the top.
+    static var finished = false
+
     private static var lines: [String] = []
     private static var failures = 0
 
@@ -166,6 +170,8 @@ enum PhoneSelfTest {
             try? await Task.sleep(for: .milliseconds(800))
             store.select(first)
         }
+        finished = true
+        if showDays || showTiles { try? await Task.sleep(for: .seconds(2)) }   // the page scrolls before report.txt says done
 
         lines.insert("\(failures == 0 ? "ALL PASSED" : "\(failures) FAILED") (\(lines.filter { $0.hasPrefix("PASS") }.count) passed)", at: 0)
         try? lines.joined(separator: "\n").write(to: dir.appendingPathComponent("report.txt"), atomically: true, encoding: .utf8)

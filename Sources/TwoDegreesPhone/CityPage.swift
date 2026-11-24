@@ -72,13 +72,14 @@ struct CityPage: View {
             }
             .onDisappear { reader.scrollTo("top", anchor: .top) }
             .task {
-                if PhoneSelfTest.showDays && city.id == store.activeID {
-                    try? await Task.sleep(for: .seconds(2.5))
-                    withAnimation { reader.scrollTo("days", anchor: .top) }
-                }
-                if PhoneSelfTest.showTiles && city.id == store.activeID {
-                    try? await Task.sleep(for: .seconds(2.5))
-                    withAnimation { reader.scrollTo("tiles", anchor: .bottom) }
+                // Screenshots: once the self-test has finished choosing the city, scroll its page.
+                guard PhoneSelfTest.showDays || PhoneSelfTest.showTiles else { return }
+                for _ in 0..<600 where !PhoneSelfTest.finished { try? await Task.sleep(for: .milliseconds(200)) }
+                guard city.id == store.activeID else { return }
+                try? await Task.sleep(for: .milliseconds(400))
+                withAnimation {
+                    if PhoneSelfTest.showDays { reader.scrollTo("days", anchor: .top) }
+                    else { reader.scrollTo("tiles", anchor: .bottom) }
                 }
             }
         }
