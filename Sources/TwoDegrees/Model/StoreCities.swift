@@ -26,7 +26,7 @@ enum StoreCities {
     ]
 
     /// The three cities whose local time is nearest 13:00 at `now`, nearest first (a tie goes to the earlier in the list).
-    static func pick(at now: Date = Date()) -> [City] {
+    static func pick(at now: Date = Date(), count: Int = 3) -> [City] {
         func distance(_ zone: String) -> Int {
             var calendar = Calendar(identifier: .gregorian)
             calendar.timeZone = TimeZone(identifier: zone) ?? TimeZone(secondsFromGMT: 0)!
@@ -38,7 +38,22 @@ enum StoreCities {
             let da = distance(a.element.1), db = distance(b.element.1)
             return da != db ? da < db : a.offset < b.offset
         }
-        return ranked.prefix(3).map { $0.element.0 }
+        return ranked.prefix(count).map { $0.element.0 }
+    }
+
+    /// How good a city's sky looks right now: clear daytime best, then partly cloudy, then overcast.
+    static func sunniness(_ forecast: Forecast?) -> Int {
+        guard let now = forecast?.now else { return -1 }
+        let sky = now.code == 0 ? 3 : now.code <= 2 ? 2 : now.code == 3 ? 1 : 0
+        return sky + (now.isDay ? 4 : 0)
+    }
+
+    /// The cities in order of sunniness, keeping list order for ties.
+    static func sunniestFirst(_ cities: [City], _ forecasts: [String: Forecast]) -> [City] {
+        cities.enumerated().sorted { a, b in
+            let sa = sunniness(forecasts[a.element.id]), sb = sunniness(forecasts[b.element.id])
+            return sa != sb ? sa > sb : a.offset < b.offset
+        }.map(\.element)
     }
 
     /// `--store-at <unix seconds>`: picks as at that moment, so every launch in one CI run shows the same cities.

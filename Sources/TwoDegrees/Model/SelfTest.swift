@@ -373,14 +373,17 @@ enum SelfTest {
     /// tiles), the first city's widgets and the Dock tile. Puts the user's cities back afterwards.
     private static func storePass(store: WeatherStore, adding: Binding<Bool>, editing: Binding<Bool>, shown: Binding<String>, host: HostWindow, dir: URL) async {
         let savedCities = store.cities, savedActive = store.activeID
-        let picks = StoreCities.pick()
-        note("store: \(picks.map(\.name).joined(separator: ", "))")
-        store.cities = picks
-        store.activeID = picks[0].id
+        // The five cities nearest midday, loaded, then the three sunniest kept, sunniest first.
+        let candidates = StoreCities.pick(count: 5)
+        store.cities = candidates
+        store.activeID = candidates[0].id
         await store.refresh()
-        for _ in 0..<40 where picks.contains(where: { store.forecasts[$0.id] == nil }) {
+        for _ in 0..<40 where candidates.contains(where: { store.forecasts[$0.id] == nil }) {
             try? await Task.sleep(for: .milliseconds(500))
         }
+        let picks = Array(StoreCities.sunniestFirst(candidates, store.forecasts).prefix(3))
+        store.cities = picks
+        note("store: \(picks.map(\.name).joined(separator: ", "))")
         for city in picks {
             let f = store.forecasts[city.id]
             note("store: \(city.name) \(f == nil ? "no forecast" : (f!.now.isDay ? "day" : "night")), code \(f?.now.code ?? -1)")

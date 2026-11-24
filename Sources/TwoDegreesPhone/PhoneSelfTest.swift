@@ -33,12 +33,19 @@ enum PhoneSelfTest {
     static func run(store: WeatherStore) async {
         let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
 
-        // --store: swap in the daytime cities (StoreCities, shared with the Mac), the first one shown, and load them.
-        let daylight = storeShots ? StoreCities.pick(at: StoreCities.time) : []
+        // --store: the five cities nearest midday (StoreCities, shared with the Mac), loaded, then the three
+        // sunniest kept, sunniest first and shown.
+        var daylight = storeShots ? StoreCities.pick(at: StoreCities.time, count: 5) : []
         if !daylight.isEmpty {
             store.cities = daylight
             store.select(daylight[0])
             await store.refresh()
+            for _ in 0..<40 where daylight.contains(where: { store.forecasts[$0.id] == nil }) {
+                try? await Task.sleep(for: .milliseconds(500))
+            }
+            daylight = Array(StoreCities.sunniestFirst(daylight, store.forecasts).prefix(3))
+            store.cities = daylight
+            store.select(daylight[0])
             lines.append("INFO store cities: \(daylight.map(\.name).joined(separator: ", "))")
         }
 
@@ -151,6 +158,14 @@ enum PhoneSelfTest {
                 check(render(widget(entry, family, size), to: dir.appendingPathComponent("widget-\(slug)-\(name).png")),
                       "\(name) widget draws \(picked.name)")
             }
+        }
+
+        // --store: end on the sunniest city, so the App Store pictures show it (the checks above leave
+        // another city open).
+        if !daylight.isEmpty, let first = store.cities.first(where: { $0.id == daylight[0].id }) {
+            store.select(first)
+            try? await Task.sleep(for: .milliseconds(800))
+            store.select(first)
         }
 
         lines.insert("\(failures == 0 ? "ALL PASSED" : "\(failures) FAILED") (\(lines.filter { $0.hasPrefix("PASS") }.count) passed)", at: 0)
