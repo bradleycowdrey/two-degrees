@@ -370,9 +370,12 @@ private fun HoursRow(entry: WidgetEntry, forecast: Forecast, count: Int) {
     Row(GlanceModifier.fillMaxWidth()) {
         forecast.upcomingHours.take(count).forEachIndexed { index, hour ->
             val label = if (index == 0) "Now" else Forecast.hour(hour.time)
+            // "Now" is the current reading, as in the app (the hour's forecast can differ from it).
+            val t = if (index == 0) forecast.now.temperature else hour.temperature
+            val code = if (index == 0) forecast.now.code else hour.code
             Column(
                 GlanceModifier.defaultWeight().semantics {
-                    contentDescription = "$label: ${Condition.name(hour.code)}, ${Speech.temperature(hour.temperature)}"
+                    contentDescription = "$label: ${Condition.name(code)}, ${Speech.temperature(t)}"
                 },
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
@@ -382,11 +385,11 @@ private fun HoursRow(entry: WidgetEntry, forecast: Forecast, count: Int) {
                     maxLines = 1,
                 )
                 Spacer(GlanceModifier.height(3.dp))
-                Box(GlanceModifier.height(18.dp), contentAlignment = Alignment.Center) { Glyph(hour.code, hour.isDay, 14) }
+                Box(GlanceModifier.height(18.dp), contentAlignment = Alignment.Center) { Glyph(code, hour.isDay, 14) }
                 Spacer(GlanceModifier.height(3.dp))
-                Text("${unit.value(hour.temperature)}°", style = style(13.sp, SEMIBOLD, align = TextAlign.Center), maxLines = 1)
+                Text("${unit.value(t)}°", style = style(13.sp, SEMIBOLD, align = TextAlign.Center), maxLines = 1)
                 Spacer(GlanceModifier.height(3.dp))
-                Text("${other.value(hour.temperature)}${other.symbol}", style = style(10.sp, alpha = MUTED, align = TextAlign.Center), maxLines = 1)
+                Text("${other.value(t)}${other.symbol}", style = style(10.sp, alpha = MUTED, align = TextAlign.Center), maxLines = 1)
             }
         }
     }
@@ -455,16 +458,17 @@ private fun DaysList(entry: WidgetEntry, forecast: Forecast, count: Int, width: 
     Column(GlanceModifier.fillMaxWidth()) {
         shown.forEachIndexed { index, day ->
             val dayName = if (index == 0) "Today" else Forecast.weekday(day.date)
+            val code = forecast.rowCode(day, index == 0)
             // The gap rides on each row: a widget column holds at most ten children.
             Row(
                 GlanceModifier.fillMaxWidth().padding(top = if (index == 0) 0.dp else 6.dp).semantics {
-                    contentDescription = "$dayName: ${Condition.name(day.code)}. Low ${Speech.temperature(day.low)}. High ${Speech.temperature(day.high)}."
+                    contentDescription = "$dayName: ${Condition.name(code)}. Low ${Speech.temperature(day.low)}. High ${Speech.temperature(day.high)}."
                 },
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(dayName, style = style(12.sp, SEMIBOLD), maxLines = 1, modifier = GlanceModifier.width(name.dp))
                 Spacer(GlanceModifier.width(spacing.dp))
-                Box(GlanceModifier.width(symbol.dp), contentAlignment = Alignment.Center) { Glyph(day.code, true, 13) }
+                Box(GlanceModifier.width(symbol.dp), contentAlignment = Alignment.Center) { Glyph(code, true, 13) }
                 Spacer(GlanceModifier.width(spacing.dp))
                 val bitmap = dayBar(scale, bar, unit.value(day.low), unit.value(day.high), day.low, day.high, from, to, if (index == 0) now else null)
                 Image(

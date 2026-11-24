@@ -65,7 +65,7 @@ struct DetailTiles: View {
     /// The dew point in both units, as Apple's Weather gives it under humidity.
     private func dewNote(_ now: Forecast.Now) -> String {
         let dew = Meteo.dewPoint(celsius: now.temperature, humidity: now.humidity)
-        return "The dew point is \(store.unit.value(dew))\(store.unit.symbol) · \(store.unit.other.value(dew))\(store.unit.other.symbol) right now."
+        return "The dew point is \(store.unit.value(dew))\(store.unit.symbol)\u{00A0}· \(store.unit.other.value(dew))\(store.unit.other.symbol) right now."   // "·" stays with the first reading
     }
 
     /// Today's peak UV index, its level, and whether to cover up.

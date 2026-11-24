@@ -291,19 +291,19 @@ private fun DailyCard(forecast: Forecast, unit: TempUnit, onDay: (Int) -> Unit) 
         Column {
             days.forEachIndexed { i, day ->
                 HorizontalDivider(color = Color.White.copy(alpha = 0.2f))
-                DailyRow(if (i == 0) day.including(now) else day, i == 0, low, high, if (i == 0) now else null, unit, Modifier.clickable { onDay(i) })
+                DailyRow(if (i == 0) day.including(now) else day, forecast.rowCode(day, i == 0), i == 0, low, high, if (i == 0) now else null, unit, Modifier.clickable { onDay(i) })
             }
         }
     }
 }
 
 @Composable
-private fun DailyRow(day: Forecast.Day, isToday: Boolean, scaleLow: Double, scaleHigh: Double, now: Double?, unit: TempUnit, modifier: Modifier) {
+private fun DailyRow(day: Forecast.Day, code: Int, isToday: Boolean, scaleLow: Double, scaleHigh: Double, now: Double?, unit: TempUnit, modifier: Modifier) {
     val ui = LocalMetrics.current
     val name = if (isToday) "Today" else Forecast.weekday(day.date)
     Row(
         modifier.fillMaxWidth().heightIn(min = ui.dp(48f)).semantics(mergeDescendants = true) {
-            contentDescription = "$name: ${Condition.name(day.code)}. Low ${Speech.temperature(day.low)}. High ${Speech.temperature(day.high)}." +
+            contentDescription = "$name: ${Condition.name(code)}. Low ${Speech.temperature(day.low)}. High ${Speech.temperature(day.high)}." +
                 if (day.rainChance >= 20) " ${day.rainChance} percent chance of rain." else ""
         },
         verticalAlignment = Alignment.CenterVertically,
@@ -311,7 +311,7 @@ private fun DailyRow(day: Forecast.Day, isToday: Boolean, scaleLow: Double, scal
     ) {
         Text(name, style = ui.text(18f, FontWeight.Medium), maxLines = 1, modifier = Modifier.width(ui.dp(56f)))
         Column(Modifier.width(ui.dp(36f)), horizontalAlignment = Alignment.CenterHorizontally) {
-            WeatherGlyph(day.code, true, ui.dp(22f))
+            WeatherGlyph(code, true, ui.dp(22f))
             if (day.rainChance >= 20) Text("${day.rainChance}%", style = ui.text(11f, FontWeight.SemiBold).copy(color = Palette.rain), maxLines = 1)
         }
         Temperature(day.low, unit, Alignment.End, Modifier.alpha(0.65f))

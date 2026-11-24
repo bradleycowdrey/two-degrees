@@ -85,8 +85,9 @@ object WidgetTap {
 enum class TempUnit(val letter: String) {
     FAHRENHEIT("F"), CELSIUS("C");
 
-    /** A reading's unit: hair spaces either side of the degree sign, as on the Mac and iPhone. */
-    val symbol: String get() = " ° $letter"
+    /** A reading's unit: hair spaces either side of the degree sign, as on the Mac and iPhone, each followed by a
+     *  word joiner so a line never breaks between a reading and its unit. */
+    val symbol: String get() = "\u200A\u2060°\u200A\u2060$letter"
 
     /** "°F" with no spacing: for controls, menus and copied text. */
     val label: String get() = "°$letter"
@@ -179,6 +180,11 @@ data class Forecast(
         /** This day with its range widened to include a reading, so today never contradicts "now". */
         fun including(celsius: Double) = copy(low = minOf(low, celsius), high = maxOf(high, celsius))
     }
+
+    /** The icon a day's row shows (the 10-day list and the widget). The daily code is the day's worst hour, so a
+     *  clear afternoon with cloud later would show a cloud beside "Clear". Today's row shows the sky now instead,
+     *  in daylight, unless the day brings fog, rain, snow or storms (codes 45 and up). As on the iPhone and Mac. */
+    fun rowCode(day: Day, isToday: Boolean): Int = if (isToday && now.isDay && day.code < 45) now.code else day.code
 
     /** The next 24 hours, starting with the current one. */
     val upcomingHours: List<Hour>

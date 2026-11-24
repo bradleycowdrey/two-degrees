@@ -241,7 +241,7 @@ struct DailyCard: View {
     @ViewBuilder
     private func row(_ day: Forecast.Day, isToday: Bool, scale: (low: Double, high: Double), now: Double?) -> some View {
         let button = Button { selected = day.date } label: {
-            DailyRow(day: day, isToday: isToday, scaleLow: scale.low, scaleHigh: scale.high, now: now)
+            DailyRow(day: day, code: forecast.rowCode(day, isToday: isToday), isToday: isToday, scaleLow: scale.low, scaleHigh: scale.high, now: now)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -264,6 +264,8 @@ struct DailyRow: View {
     @EnvironmentObject private var store: WeatherStore
     @Environment(\.metrics) private var ui
     let day: Forecast.Day
+    /// The row's icon (Forecast.rowCode): today's is the sky now.
+    let code: Int
     let isToday: Bool
     let scaleLow: Double
     let scaleHigh: Double
@@ -278,7 +280,7 @@ struct DailyRow: View {
                 .minimumScaleFactor(0.8)
                 .frame(width: ui.pt(52), alignment: .leading)
             VStack(spacing: 0) {
-                WeatherSymbol(code: day.code, isDay: true, size: ui.pt(20))
+                WeatherSymbol(code: code, isDay: true, size: ui.pt(20))
                 if day.rainChance >= 20 {
                     Text("\(day.rainChance)%").font(ui.font(11, .semibold)).foregroundStyle(Palette.rain).fixedSize()
                 }
@@ -291,7 +293,7 @@ struct DailyRow: View {
         .monospacedDigit()
         .frame(minHeight: ui.pt(48))
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(name): \(Condition.name(day.code)). Low \(Speech.temperature(day.low)). High \(Speech.temperature(day.high)).\(day.rainChance >= 20 ? " \(day.rainChance) percent chance of rain." : "")")
+        .accessibilityLabel("\(name): \(Condition.name(code)). Low \(Speech.temperature(day.low)). High \(Speech.temperature(day.high)).\(day.rainChance >= 20 ? " \(day.rainChance) percent chance of rain." : "")")
     }
 
     private func temperature(_ celsius: Double, alignment: HorizontalAlignment, primary: Double = 1) -> some View {

@@ -215,8 +215,8 @@ class WeatherTest {
         assertEquals("About normal", Normals.versus(17.4, 17.0, TempUnit.CELSIUS))
         assertEquals("3° below normal", Normals.versus(14.0, 17.0, TempUnit.CELSIUS))
         val e = Normals.Entry(17.8, 7.2, 27.2, 1999, -2.2, 1957)
-        assertEquals("Normal high 64 ° F · 18 ° C, low 45 ° F · 7 ° C", Normals.normalLine(e, TempUnit.FAHRENHEIT)?.replace('\u200A', ' '))
-        assertEquals("Record high 81 ° F · 27 ° C (1999) · Record low 28 ° F · -2 ° C (1957)", Normals.recordsLine(e, TempUnit.FAHRENHEIT)?.replace('\u200A', ' '))
+        assertEquals("Normal high 64 ° F · 18 ° C, low 45 ° F · 7 ° C", Normals.normalLine(e, TempUnit.FAHRENHEIT)?.replace('\u200A', ' ').replace("\u2060", ""))
+        assertEquals("Record high 81 ° F · 27 ° C (1999) · Record low 28 ° F · -2 ° C (1957)", Normals.recordsLine(e, TempUnit.FAHRENHEIT)?.replace('\u200A', ' ').replace("\u2060", ""))
     }
 
     @Test fun decodesAnArchiveResponse() {

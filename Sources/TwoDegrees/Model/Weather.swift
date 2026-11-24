@@ -49,7 +49,9 @@ enum TempUnit: String, Codable, CaseIterable, Identifiable {
     var id: String { rawValue }
     /// A reading's unit: hair spaces either side of the degree sign, the thinnest there are, so the
     /// number, the degree sign and the letter don't crowd.
-    var symbol: String { "\u{200A}°\u{200A}" + rawValue }
+    /// Hair spaces either side of the degree sign, each followed by a word joiner: a hair space is a place a
+    /// line may break, and "20" must never end one line with "°C" starting the next.
+    var symbol: String { "\u{200A}\u{2060}°\u{200A}\u{2060}" + rawValue }
 
     /// "°F" with no spacing: for controls and labels (the °F | °C switch, menus, hints) and copied text.
     var label: String { "°" + rawValue }
@@ -151,6 +153,13 @@ struct Forecast: Codable {
     func hours(on day: Day) -> [Hour] {
         let calendar = Forecast.localCalendar
         return hours.filter { calendar.isDate($0.time, inSameDayAs: day.date) }
+    }
+
+    /// The icon a day's row shows (the 10-day list and the widgets). Open-Meteo's daily code is the day's worst
+    /// hour, so a clear afternoon with cloud later would show a cloud beside "Clear". Today's row shows the sky
+    /// now instead, in daylight, unless the day brings fog, rain, snow or storms (codes 45 and up).
+    func rowCode(_ day: Day, isToday: Bool) -> Int {
+        isToday && now.isDay && day.code < 45 ? now.code : day.code
     }
 
     /// The next 24 hours starting with the current one.

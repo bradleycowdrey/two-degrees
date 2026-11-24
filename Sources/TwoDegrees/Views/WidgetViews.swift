@@ -287,16 +287,19 @@ private struct HoursRow: View {
         let hours = Array(entry.forecast.upcomingHours.prefix(count))
         HStack(spacing: 0) {
             ForEach(Array(hours.enumerated()), id: \.element.id) { index, hour in
+                // "Now" is the current reading, as in the app (the hour's forecast can differ from it).
+                let temperature = index == 0 ? entry.forecast.now.temperature : hour.temperature
+                let code = index == 0 ? entry.forecast.now.code : hour.code
                 VStack(spacing: 3) {
                     Text(index == 0 ? "Now" : Forecast.format(hour.time, "j"))
                         .font(.system(size: 10, weight: index == 0 ? .semibold : .medium))
                         .foregroundStyle(index == 0 ? WidgetTone.now : WidgetTone.muted)
-                    WeatherSymbol(code: hour.code, isDay: hour.isDay, size: 14)
+                    WeatherSymbol(code: code, isDay: hour.isDay, size: 14)
                         .frame(height: 18)
-                    Text("\(unit.value(hour.temperature))°")
+                    Text("\(unit.value(temperature))°")
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(Palette.textPrimary)
-                    Text("\(other.value(hour.temperature))\(other.symbol)")
+                    Text("\(other.value(temperature))\(other.symbol)")
                         .font(.system(size: 10))
                         .foregroundStyle(WidgetTone.muted)
                 }
@@ -304,7 +307,7 @@ private struct HoursRow: View {
                 .lineLimit(1)
                 .frame(maxWidth: .infinity)
                 .accessibilityElement(children: .ignore)
-                .accessibilityLabel("\(index == 0 ? "Now" : Forecast.format(hour.time, "j")): \(Condition.name(hour.code)), \(Speech.temperature(hour.temperature))")
+                .accessibilityLabel("\(index == 0 ? "Now" : Forecast.format(hour.time, "j")): \(Condition.name(code)), \(Speech.temperature(temperature))")
             }
         }
     }
@@ -314,11 +317,11 @@ private struct DaysList: View {
     let entry: WeatherEntry
     var count = 5
 
-    static func speech(_ day: Forecast.Day, isToday: Bool) -> String {
+    static func speech(_ day: Forecast.Day, code: Int, isToday: Bool) -> String {
         let name = isToday ? "Today" : Forecast.format(day.date, "EEEE")
         let low = "\(Speech.temperature(day.low))"
         let high = "\(Speech.temperature(day.high))"
-        return "\(name): \(Condition.name(day.code)). Low \(low). High \(high)."
+        return "\(name): \(Condition.name(code)). Low \(low). High \(high)."
     }
 
     var body: some View {
@@ -329,12 +332,13 @@ private struct DaysList: View {
         VStack(spacing: 6) {
             ForEach(Array(days.enumerated()), id: \.element.id) { index, raw in
                 let day = index == 0 ? raw.including(now) : raw
+                let code = entry.forecast.rowCode(raw, isToday: index == 0)
                 HStack(spacing: 8) {
                     Text(index == 0 ? "Today" : Forecast.format(day.date, "EEE"))
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(Palette.textPrimary)
                         .frame(width: 42, alignment: .leading)
-                    WeatherSymbol(code: day.code, isDay: true, size: 13)
+                    WeatherSymbol(code: code, isDay: true, size: 13)
                         .frame(width: 20)
                     // The low and high ride the ends of the bar, on one scale shared by all the days shown.
                     GeometryReader { proxy in
@@ -379,7 +383,7 @@ private struct DaysList: View {
                 .monospacedDigit()
                 .lineLimit(1)
                 .accessibilityElement(children: .ignore)
-                .accessibilityLabel(DaysList.speech(day, isToday: index == 0))
+                .accessibilityLabel(DaysList.speech(day, code: code, isToday: index == 0))
             }
         }
     }
