@@ -124,9 +124,12 @@ enum StoreCities {
         if let data = try? encoder.encode(snapshot) { try? data.write(to: url, options: .atomic) }
     }
 
-    /// The city's forecast from the snapshot, if it has one (nil without `--store-snapshot`).
+    /// The city's forecast from the snapshot, if it has one (nil without `--store-snapshot`). It counts as
+    /// just fetched: a snapshot older than the refresh interval would otherwise be reloaded over and over.
     static func frozenForecast(for city: City) -> Forecast? {
-        readSnapshot()?.forecasts[city.id]
+        guard var forecast = readSnapshot()?.forecasts[city.id] else { return nil }
+        forecast.fetchedAt = Date()
+        return forecast
     }
 
     /// Keeps a freshly fetched forecast in the snapshot, unless it already has one for that city.
