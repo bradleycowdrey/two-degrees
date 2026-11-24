@@ -46,10 +46,16 @@ enum SelfTest {
 
     private static func check(_ ok: Bool, _ what: String) {
         if !ok { failures += 1 }
-        lines.append("\(ok ? "PASS" : "FAIL") \(what)")
+        add("\(ok ? "PASS" : "FAIL") \(what)")
     }
 
-    private static func note(_ text: String) { lines.append("     \(text)") }
+    private static func note(_ text: String) { add("     \(text)") }
+
+    /// Each line also goes to stderr as it happens, so a run that never finishes still shows where it stopped.
+    private static func add(_ line: String) {
+        lines.append(line)
+        FileHandle.standardError.write(Data("selftest: \(line)\n".utf8))
+    }
 
     static func run(store: WeatherStore, adding: Binding<Bool>, editing: Binding<Bool>, shown: Binding<String>, host: HostWindow) async {
         guard let dir = outputDir, !started else { return }

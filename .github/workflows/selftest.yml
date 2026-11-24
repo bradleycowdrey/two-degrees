@@ -92,7 +92,7 @@ jobs:
           PID=$!
           for i in $(seq 1 420); do [ -f "$OUT/report.txt" ] && break; sleep 1; done
           sleep 1; kill $PID 2>/dev/null || true
-          cat "$OUT/report.txt" 2>/dev/null || echo "no report"
+          cat "$OUT/report.txt" 2>/dev/null || { echo "no report; the app's last lines:"; tail -40 "$OUT/app.log" 2>/dev/null; }
       - name: Publish to ci-shots branch
         if: always()
         run: |
