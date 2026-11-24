@@ -1,20 +1,33 @@
 """Makes the App Store screenshots for iPhone (6.9", 1320x2868), iPad (13", 2064x2752) and Mac (2880x1800)
-in one system: the app icon's sky, a large white headline with a short subhead, and the real app in a
-device frame drawn here, large and running off the bottom edge.
+in one system: each page has its own sky from the same family (clear day, golden hour, dusk, lagoon, night),
+dark at the top so the white headline reads, lighter behind the device so the device stands out. A small coral
+degree ring from the approved icon sits above every headline (the icon itself on the hero). The real app is
+shown in a device frame drawn here, large and running off the bottom edge.
 
-Writes appstore/screenshots/iphone-1..5.png, ipad-1..4.png and (with --mac) mac-1..5.png.
+Writes appstore/screenshots/iphone-1..5.png, ipad-1..5.png and (with --mac) mac-1..5.png.
 
 Usage:
-  python3 scripts/make-store-screenshots.py [RAW]              iPhone and iPad sets from RAW
-  python3 scripts/make-store-screenshots.py [RAW] --mac DIR    also the Mac set from DIR
-  python3 scripts/make-store-screenshots.py --only mac --mac DIR
+  python3 scripts/make-store-screenshots.py [RAW]                     iPhone and iPad sets from RAW
+  python3 scripts/make-store-screenshots.py [RAW] --mac DIR           also the Mac set from DIR
+  python3 scripts/make-store-screenshots.py --only mac --mac git:ci-shots
+                                                                      the Mac set from origin/ci-shots
 
 RAW holds iphone-1..4.png (1320x2868), ipad-1..4.png (2064x2752) and the 2x widget renders
-widget-<n><city>-{small,medium,large,lock-circular,lock-rectangular,lock-inline}.png.
-DIR holds the Mac captures: the store-*.png files from the ci-shots branch (see mac_store_pages), or the
-older panel-*.png snapshots (see mac_pages). "--mac git:ci-shots" reads them from origin/ci-shots.
+widget-<n><city>-{small,medium,large,lock-circular,lock-rectangular,lock-inline}.png, all from ONE capture
+session (the same frozen weather on every page of a set).
+DIR holds the Mac captures: the store-*.png files from the ci-shots branch (make_mac_set / mac_store_page),
+or the older panel-*.png snapshots (mac_pages). "--mac git:ci-shots" reads them from origin/ci-shots.
 
-Every capture is only ever scaled down (LANCZOS); all text is drawn at the final size. Needs Pillow and numpy.
+The captures are tidied before framing, in the app's own pixels (see the "screen preparation" section):
+  - the scroll seam under the condensed header is closed (iphone-2/ipad-2 get the 10-day card's real top
+    from capture 1; iphone-3 gets its first tile row's top edge back; ipad-3 drops the half-scrolled Wind/Rain
+    fragment and the Averages row, which has no data on iPad, and starts on whole tiles);
+  - the iPad hourly strip ends on a whole column instead of a clipped "11 PM"; the iPad status bar keeps
+    "9:41 AM" and drops the capture's date;
+  - the city list sits on the app's own clear-day sky instead of black, without its footer
+    (sources, "Updated ..." and the credit line).
+Every capture and widget render is only ever scaled down (LANCZOS); all text is drawn at the final size.
+Needs Pillow and numpy.
 """
 import argparse
 import glob
@@ -33,34 +46,38 @@ FONTS = os.path.join(ROOT, "Resources", "Fonts")
 ICON = os.path.join(ROOT, "Resources", "iOS", "Assets.xcassets", "AppIcon.appiconset", "AppIcon.png")
 DEFAULT_RAW = "/tmp/claude-0/-home-user/d6b2fce6-87e9-5a4e-8aa5-26a3546d263b/scratchpad/raw3"
 WHITE = (255, 255, 255)
-SUB = (255, 255, 255, 191)   # subhead: white at 75%
+SUB = (255, 255, 255, 224)   # subhead: white at 88%
+CORAL = (255, 111, 97)       # the icon's degree ring, #FF6F61
+INK = (18, 40, 96)           # dark text on the light callout card
+HEAD_WEIGHT = "SemiBold"     # the heaviest Inter in Resources/Fonts (there is no Inter Bold here)
+SUB_WEIGHT = "Medium"
 
 
-# ---------- copy ----------
+# ---------- copy: ONE list shared by iPhone and iPad (US English; one idea per page) ----------
+# Captions avoid "color/colour" since the app's own en strings use UK spelling ("Some colour possible").
 
-IPHONE = [
-    ("Every temperature,\nin °F and °C", "Fahrenheit and Celsius, side by side."),
-    ("Ten days\non one scale", "Every low and high on one bar, in both units."),
-    ("Twelve tiles\nof detail", "Sunrise colour, air quality, cloud and the moon."),
-    ("All your cities\nat a glance", "Up to 20 places, each on its own sky."),
-    ("Widgets for\nevery screen", "Home Screen and Lock Screen, in both units."),
+COPY = [
+    ("Every temperature\nin °F and °C", "Both units, always. No switching."),
+    ("Ten days.\nBoth scales.", "Every high and low on one bar."),
+    ("Every detail\nin both units", "Sunset, air quality, UV and more."),
+    ("Your cities,\nside by side", "Up to 20 places, both units."),
+    ("Both units on\nyour Home Screen", "Every widget size, and Lock Screen."),
 ]
-
-IPAD = [
-    ("Every temperature,\nin °F and °C", "Fahrenheit and Celsius, side by side."),
-    ("Ten days on one scale", "Every low and high on one bar, in both units."),
-    ("Twelve tiles of detail", "Sunrise colour, air quality, cloud and the moon."),
-    ("All your cities at a glance", "Up to 20 places, each on its own sky."),
-]
+IPHONE = COPY
+IPAD = COPY
 
 MAC = [
     ("Every temperature in °F and °C", "Press F or C to choose which unit is large"),
     ("Ten days on one scale", "Every low and high on one bar, beside the large widget"),
-    ("Twelve tiles of detail", "Visibility, precipitation, cloud at each height, the moon and more"),
+    ("Every detail, in both units", "Visibility, precipitation, cloud at each height, the moon and more"),
     ("Widgets on your desktop", "Small, medium and large. Each can show a city of its own."),
     ("In your menu bar and Dock", "The temperature in both units, always a glance away"),
 ]
 
+# Which widget city goes with the app captures: the one whose reading matches the iPhone city list
+# (Sydney 72°F / 22°C, H 77 L 64). The Honolulu widget renders show 78°F, a later reading than the
+# iPhone pages' 79°F, so they are not used.
+WIDGET_CITY = "sydney"
 
 # ---------- sources ----------
 
@@ -128,46 +145,82 @@ def glow(img, xx, yy, cx, cy, rx, ry, colour, strength):
     return img * (1 - a) + np.array(colour, np.float32) * a
 
 
-SKY = [(0.0, (112, 170, 236)), (0.28, (82, 138, 222)), (0.62, (46, 92, 186)), (1.0, (24, 48, 122))]
+
+# One sky per page, all from the same family, in page order. Each is dark at the top, where the white headline
+# sits (white on the top stop is at least 4.5:1), and lighter towards the bottom, behind the device, so the
+# dark bezel and the app's blue screen stand clear of the page. In the App Store's thumbnail row the five
+# pages read as five different moments of one day.
+SKIES = [
+    ("clear day",   [(0.0, (22, 80, 196)), (0.24, (34, 100, 216)), (0.62, (84, 152, 240)), (1.0, (156, 204, 252))],
+     (178, 220, 255)),
+    ("golden hour", [(0.0, (142, 40, 92)), (0.24, (186, 62, 100)), (0.62, (234, 108, 104)), (1.0, (255, 186, 120))],
+     (255, 214, 160)),
+    ("dusk",        [(0.0, (26, 24, 92)), (0.24, (42, 40, 134)), (0.62, (90, 88, 204)), (1.0, (156, 146, 238))],
+     (200, 182, 255)),
+    ("lagoon",      [(0.0, (4, 66, 100)), (0.24, (10, 94, 130)), (0.62, (32, 152, 176)), (1.0, (112, 214, 208))],
+     (176, 242, 230)),
+    ("night",       [(0.0, (6, 10, 34)), (0.30, (14, 22, 66)), (0.70, (30, 46, 112)), (1.0, (52, 72, 152))],
+     (96, 120, 210)),
+]
 
 
-def sky_array(w, h):
-    """The app icon's sky (#72AAE9 -> #204294): bright at the top for the headline, deepening downwards,
-    with a soft light behind the headline. One field for every page and every size, so the set matches."""
+def sky_stops(index):
+    return SKIES[index % len(SKIES)]
+
+
+def sky_array(w, h, index=0, count=1):
+    """The page's sky: a vertical ramp with a touch of the icon's diagonal, a broad glow behind the device and
+    a faint lift at the top left, all in float and dithered once."""
+    _, stops, light = sky_stops(index)
     yy, xx = np.mgrid[0:h, 0:w].astype(np.float32)
-    s = max(w, h)
-    # Mostly vertical, a touch of the icon's diagonal.
-    t = np.clip((yy / h) * 0.9 + (xx / w - 0.5) * 0.12 + 0.03, 0, 1)
-    img = ramp(t, SKY)
-    img = glow(img, xx, yy, w * 0.5, -h * 0.02, s * 0.55, s * 0.30, (176, 214, 250), 0.42)   # light at the top
-    img = glow(img, xx, yy, w * 0.08, h * 1.0, s * 0.45, s * 0.30, (230, 112, 128), 0.10)    # coral, the ring
+    t = np.clip((yy / h) * 0.92 + (xx / w) * 0.08, 0, 1)
+    img = ramp(t, stops)
+    img = glow(img, xx, yy, w * 0.5, h * 0.80, w * 0.75, h * 0.34, light, 0.30)
+    img = glow(img, xx, yy, w * 0.12, -h * 0.04, w * 0.6, h * 0.16, stops[2][1], 0.18)
     return img
 
 
-def sky(w, h):
-    return to_image(sky_array(w, h)).convert("RGBA")
+def sky(w, h, index=0, count=1):
+    return to_image(sky_array(w, h, index, count), 7 + index).convert("RGBA")
 
+
+def shadow_colour(index):
+    """The page's darkest stop, darker still: device shadows are tinted by the page, not grey."""
+    c = sky_stops(index)[1][0][1]
+    return tuple(int(v * 0.55) for v in c)
 
 # ---------- shapes ----------
 
 def squircle_mask(w, h, box, R, n=5.0):
     """Anti-aliased mask of a rectangle with continuous (superellipse) corners, computed analytically.
-    R is how far along each edge the corner curve starts; n sets its shape (5 is close to Apple's)."""
+    R is how far along each edge the corner curve starts; n sets its shape (5 is close to Apple's).
+    The straight edges are a separable coverage product; only the four corner patches are evaluated."""
     x0, y0, x1, y1 = box
     cx, cy, hw, hh = (x0 + x1) / 2, (y0 + y1) / 2, (x1 - x0) / 2, (y1 - y0) / 2
     R = min(R, hw, hh)
-    yy, xx = np.mgrid[0:h, 0:w].astype(np.float64)
-    xx += 0.5
-    yy += 0.5
-    ax, ay = np.abs(xx - cx), np.abs(yy - cy)
-    qx, qy = np.maximum(ax - (hw - R), 0) / R, np.maximum(ay - (hh - R), 0) / R
-    f = qx ** n + qy ** n
-    g = (n / R) * np.sqrt(qx ** (2 * n - 2) + qy ** (2 * n - 2))
-    corner = (qx > 0) | (qy > 0)
-    d = np.where(corner, (f ** (1 / n) - 1) * R, np.maximum(ax - hw, ay - hh))
-    # Near the curve, the first-order distance is better; far away the radial one is fine.
-    d = np.where(corner & (g > 0), np.where(np.abs(f - 1) < 0.5, (f - 1) / np.maximum(g, 1e-9), d), d)
-    a = np.clip(0.5 - d, 0, 1)
+    xs = np.arange(w, dtype=np.float64) + 0.5
+    ys = np.arange(h, dtype=np.float64) + 0.5
+    cov_x = np.clip(hw - np.abs(xs - cx) + 0.5, 0, 1)
+    cov_y = np.clip(hh - np.abs(ys - cy) + 0.5, 0, 1)
+    a = np.minimum.outer(cov_y, cov_x)
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            # the corner patch: from the corner's tangent points out to the box edge
+            px = sorted((cx + sx * (hw - R), cx + sx * (hw + 1)))
+            py = sorted((cy + sy * (hh - R), cy + sy * (hh + 1)))
+            i0, i1 = max(0, int(np.floor(px[0]))), min(w, int(np.ceil(px[1])) + 1)
+            j0, j1 = max(0, int(np.floor(py[0]))), min(h, int(np.ceil(py[1])) + 1)
+            if i0 >= i1 or j0 >= j1:
+                continue
+            X, Y = np.meshgrid(xs[i0:i1], ys[j0:j1])
+            qx = np.maximum(np.abs(X - cx) - (hw - R), 0) / R
+            qy = np.maximum(np.abs(Y - cy) - (hh - R), 0) / R
+            f = qx ** n + qy ** n
+            g = (n / R) * np.sqrt(qx ** (2 * n - 2) + qy ** (2 * n - 2))
+            d = np.where((np.abs(f - 1) < 0.5) & (g > 0), (f - 1) / np.maximum(g, 1e-9), (f ** (1 / n) - 1) * R)
+            inside = (qx > 0) & (qy > 0)
+            patch = a[j0:j1, i0:i1]
+            a[j0:j1, i0:i1] = np.where(inside, np.minimum(patch, np.clip(0.5 - d, 0, 1)), patch)
     return Image.fromarray((a * 255 + 0.5).astype(np.uint8), "L")
 
 
@@ -183,19 +236,6 @@ def ring(w, h, box, R, width, n=5.0):
     x0, y0, x1, y1 = box
     inner = np.asarray(squircle_mask(w, h, (x0 + width, y0 + width, x1 - width, y1 - width), R - width, n), np.int16)
     return Image.fromarray(np.clip(outer - inner, 0, 255).astype(np.uint8), "L")
-
-
-def shadowed(canvas, im, x, y, layers=((70, 50, 0.42), (18, 12, 0.28)), colour=(6, 14, 44)):
-    """Puts a picture down with a soft shadow under it, lit from the top."""
-    pad = max(b for b, _, _ in layers) * 3
-    a = Image.new("L", (im.width + pad * 2, im.height + pad * 2), 0)
-    a.paste(im.getchannel("A"), (pad, pad))
-    for blur, drop, opacity in layers:
-        s = a.filter(ImageFilter.GaussianBlur(blur)).point(lambda v, o=opacity: int(v * o + 0.5))
-        layer = Image.new("RGBA", s.size, colour + (0,))
-        layer.putalpha(s)
-        canvas.alpha_composite(layer, (int(round(x)) - pad, int(round(y)) - pad + drop))
-    canvas.alpha_composite(im, (int(round(x)), int(round(y))))
 
 
 # ---------- text ----------
@@ -224,36 +264,94 @@ def wrap(text, f, track, max_w):
     return lines + [cur]
 
 
+def paste(canvas, im, x, y):
+    """alpha_composite that allows the picture to run off any edge of the canvas."""
+    x, y = int(round(x)), int(round(y))
+    l, t = max(0, -x), max(0, -y)
+    r, b = min(im.width, canvas.width - x), min(im.height, canvas.height - y)
+    if r <= l or b <= t:
+        return
+    canvas.alpha_composite(im.crop((l, t, r, b)), (x + l, y + t))
+
+
+def shadowed(canvas, im, x, y, layers=((70, 50, 0.42), (18, 12, 0.28)), colour=(6, 14, 44)):
+    """Puts a picture down with a soft shadow under it, lit from the top (it may run off the canvas)."""
+    pad = max(b for b, _, _ in layers) * 3
+    a = Image.new("L", (im.width + pad * 2, im.height + pad * 2), 0)
+    a.paste(im.getchannel("A"), (pad, pad))
+    for blur, drop, opacity in layers:
+        s = a.filter(ImageFilter.GaussianBlur(blur)).point(lambda v, o=opacity: int(v * o + 0.5))
+        layer = Image.new("RGBA", s.size, colour + (0,))
+        layer.putalpha(s)
+        paste(canvas, layer, x - pad, y - pad + drop)
+    paste(canvas, im, x, y)
+
+
+# ---------- text ----------
+
+TRACK = -0.02   # headline tracking, -2%
+LEAD = 1.05     # headline line height
+
+
+def fit_size(heads, size, max_w):
+    """The one headline size for a whole set: the largest, up to `size`, at which every line fits."""
+    while size > 40:
+        f = font(HEAD_WEIGHT, size)
+        if all(text_width(l, f, TRACK * size) <= max_w for h in heads for l in h.split("\n")):
+            return size
+        size -= 2
+    return size
+
+
+def fit_sub(subs, size, max_w):
+    """The one subhead size for a set: every subhead must fit on ONE line within max_w."""
+    while size > 24:
+        f = font(SUB_WEIGHT, size)
+        if all(text_width(s, f, -0.005 * size) <= max_w for s in subs if s):
+            return size
+        size -= 2
+    return size
+
+
 def title(canvas, head, sub, top, size, sub_size, max_w, cx=None):
-    """Headline (lines split at '\\n') and subhead, centred, the headline's cap top at `top`.
+    """Headline (lines split at '\\n') and a one-line subhead, centred, the headline's cap top at `top`.
+    The subhead sits 0.35 x the headline size below the headline's descenders.
     Returns the y of the bottom of the subhead's descenders."""
     cx = canvas.width / 2 if cx is None else cx
     layer = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
     d = ImageDraw.Draw(layer)
-    lines = head.split("\n")
-    while True:
-        f = font("SemiBold", size)
-        track = -0.02 * size
-        if max(text_width(l, f, track) for l in lines) <= max_w:
-            break
-        size -= 2
-    cap = size * 0.727   # Inter's cap height
-    lead = round(size * 1.06)
-    y = top + cap
-    for line in lines:
+    size = fit_size([head], size, max_w)
+    f = font(HEAD_WEIGHT, size)
+    track = TRACK * size
+    lead = round(size * LEAD)
+    y = top + size * 0.727              # Inter's cap height
+    for line in head.split("\n"):
         draw_line(d, cx, y, line, f, WHITE, track)
         y += lead
     y -= lead
+    bottom = y + size * 0.24
     if sub:
-        fs = font("Medium", sub_size)
-        st = -0.006 * sub_size
-        y += round(sub_size * 1.55)
+        fs = font(SUB_WEIGHT, sub_size)
+        st = -0.005 * sub_size
+        y = bottom + size * 0.35 + sub_size * 0.727
         for line in wrap(sub, fs, st, max_w):
             draw_line(d, cx, y, line, fs, SUB, st)
             y += round(sub_size * 1.28)
         y -= round(sub_size * 1.28)
+        bottom = y + sub_size * 0.24
     canvas.alpha_composite(layer)
-    return y + round(sub_size * 0.25)
+    return round(bottom)
+
+
+def degree_ring(canvas, cx, top, d):
+    """The icon's coral degree ring, d across, drawn 4x and scaled down for clean edges."""
+    k = 4
+    big = Image.new("RGBA", (d * k, d * k), (0, 0, 0, 0))
+    g = ImageDraw.Draw(big)
+    stroke = d * k * 0.22
+    g.ellipse([0, 0, d * k - 1, d * k - 1], fill=CORAL + (255,))
+    g.ellipse([stroke, stroke, d * k - 1 - stroke, d * k - 1 - stroke], fill=(0, 0, 0, 0))
+    paste(canvas, big.resize((d, d), Image.LANCZOS), cx - d / 2, top)
 
 
 # ---------- the app icon ----------
@@ -261,139 +359,195 @@ def title(canvas, head, sub, top, size, sub_size, max_w, cx=None):
 def app_icon(px, shadow=True):
     """The approved icon at px across, masked to the iOS icon shape."""
     tile = down(Image.open(ICON).convert("RGBA"), px)
-    tile.putalpha(squircle_mask(px, px, (0, 0, px, px), px * 0.36, 4.6))
+    tile.putalpha(squircle_mask(px, px, (0, 0, px, px), px * 0.40, 4.0))
     return tile
 
 
-# ---------- devices ----------
+def continuous(r):
+    """The superellipse (n=4) corner length that looks like a circular corner of radius r (same 45-degree
+    inset): what Apple's continuous corners are."""
+    return r * 1.85
+# ---------- screen preparation (works on the captures' own pixels, never adds content) ----------
 
-def iphone(shot, sw):
-    """An iPhone 16 Pro Max drawn around a 1320-wide capture shown sw wide: a dark titanium band with a
-    polished outer edge and a faint inner highlight, a thin black border, the screen with continuous
-    corners concentric with the body, and low-key side buttons. The capture brings the Dynamic Island."""
-    scr = down(shot, sw)
-    sh = scr.height
-    band = max(6, round(sw * 0.0105))
-    border = round(sw * 0.029)
-    btn = max(3, round(sw * 0.0045))
-    Rs = sw * 0.192
-    side = band + border
-    W, H = sw + 2 * side + 2 * btn, sh + 2 * side
-    out = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-
-    # Side buttons, just proud of the frame (drawn first, the body covers their inner ends).
-    def button(left, a, b):
-        y0, y1 = H * a, H * b
-        x0 = 0 if left else W - btn * 4
-        m = squircle_mask(W, H, (x0, y0, x0 + btn * 4, y1), btn * 1.6, 4)
-        out.alpha_composite(solid((W, H), (58, 58, 64, 255), m))
-    button(True, 0.178, 0.204)    # action button
-    button(True, 0.243, 0.300)    # volume up
-    button(True, 0.318, 0.375)    # volume down
-    button(False, 0.270, 0.360)   # side button
-    button(False, 0.548, 0.600)   # camera control
-
-    body = (btn, 0, W - btn, H)
-    Rb = Rs + side
-    m = squircle_mask(W, H, body, Rb)
-    t = np.linspace(0, 1, H, dtype=np.float32)[:, None]
-    u = np.linspace(0, 1, W, dtype=np.float32)[None, :]
-    lum = 84 - 30 * t + 10 * np.cos((u - 0.5) * np.pi) - 6   # dark titanium, lit from above
-    ti = np.stack([lum, lum, lum * 1.05 + 2, np.asarray(m, np.float32)], -1)
-    out.alpha_composite(to_image(ti, 3))
-    # The polished outer edge catches the light.
-    out.alpha_composite(solid((W, H), (190, 190, 200, 120), ring(W, H, body, Rb, 2.2)))
-    inner = (btn + band, band, W - btn - band, H - band)
-    out.alpha_composite(solid((W, H), (5, 5, 7, 255), squircle_mask(W, H, inner, Rb - band)))
-    # A hairline of light where the titanium meets the glass.
-    out.alpha_composite(solid((W, H), (255, 255, 255, 46), ring(W, H, inner, Rb - band, 1.6)))
-    scr.putalpha(squircle_mask(sw, sh, (0, 0, sw, sh), Rs))
-    out.alpha_composite(scr, (btn + side, side))
-    return out
+def arr(im):
+    return np.asarray(im.convert("RGB"), np.float32)
 
 
-def ipad(shot, sw):
-    """An iPad Pro 13" drawn around a capture shown sw wide: a thin, even black border, a fine dark
-    aluminium edge and rounded corners concentric with the screen's."""
-    scr = down(shot, sw)
-    sh = scr.height
-    edge = max(4, round(sw * 0.0035))
-    border = round(sw * 0.027)
-    Rs = sw * 0.040
-    side = edge + border
-    W, H = sw + 2 * side, sh + 2 * side
-    out = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    Rb = Rs + side
-    m = squircle_mask(W, H, (0, 0, W, H), Rb)
-    t = np.linspace(0, 1, H, dtype=np.float32)[:, None] * np.ones((1, W), np.float32)
-    lum = 98 - 34 * t
-    out.alpha_composite(to_image(np.stack([lum, lum, lum * 1.04 + 2, np.asarray(m, np.float32)], -1), 4))
-    out.alpha_composite(solid((W, H), (200, 200, 210, 110), ring(W, H, (0, 0, W, H), Rb, 2)))
-    inner = (edge, edge, W - edge, H - edge)
-    out.alpha_composite(solid((W, H), (6, 6, 8, 255), squircle_mask(W, H, inner, Rb - edge)))
-    out.alpha_composite(solid((W, H), (255, 255, 255, 34), ring(W, H, inner, Rb - edge, 1.4)))
-    cam = border * 0.16
-    ImageDraw.Draw(out).ellipse([W / 2 - cam, side / 2 - cam, W / 2 + cam, side / 2 + cam], fill=(26, 28, 36, 255))
-    scr.putalpha(squircle_mask(sw, sh, (0, 0, sw, sh), Rs))
-    out.alpha_composite(scr, (side, side))
-    return out
+def from_arr(a):
+    return Image.fromarray(np.clip(a + 0.5, 0, 255).astype(np.uint8), "RGB").convert("RGBA")
 
 
-DEVICE_SHADOW = ((90, 60, 0.40), (26, 16, 0.26))
+def sky_of(a, x, stop):
+    """The app's background colour on each row, read from a margin column; rows from `stop` on (the bottom
+    toolbar) keep the last colour above it. Lightly smoothed so it carries no noise."""
+    col = a[:, x - 2:x + 3].mean(1)
+    col[stop:] = col[stop - 1]
+    k = np.ones(9, np.float32) / 9
+    pad = np.pad(col, ((4, 4), (0, 0)), mode="edge")
+    return np.stack([np.convolve(pad[:, c], k, mode="valid") for c in range(3)], -1)
 
 
-# ---------- iPhone pages ----------
-
-PW, PH = 1320, 2868
-P_HEAD, P_SUB, P_MAXW = 128, 50, PW - 200
-P_TOP = 196          # cap top of the headline on pages 2-5
-P_DEVICE = 760       # top of the device on pages 2-4
-P_SW = 1092          # screen width: the device is 1180 wide, 89% of the page
-
-
-def phone_hero(shot, head, sub):
-    c = sky(PW, PH)
-    icon = app_icon(224)
-    shadowed(c, icon, (PW - icon.width) / 2, 150, ((30, 18, 0.30), (8, 4, 0.18)))
-    bottom = title(c, head, sub, 150 + 224 + 92, P_HEAD, P_SUB, P_MAXW)
-    dev = iphone(shot, P_SW)
-    shadowed(c, dev, (PW - dev.width) / 2, bottom + 96, DEVICE_SHADOW)
-    return c
+def closing(c, size=13):
+    p = size
+    padded = np.pad(np.clip(c, 0, 1), p)          # zeros beyond the edges, so the closing never grows there
+    im = Image.fromarray((padded * 255 + 0.5).astype(np.uint8), "L")
+    im = im.filter(ImageFilter.MaxFilter(size)).filter(ImageFilter.MinFilter(size))
+    return np.asarray(im, np.float32)[p:-p, p:-p] / 255
 
 
-def phone_feature(shot, head, sub):
-    c = sky(PW, PH)
-    title(c, head, sub, P_TOP, P_HEAD, P_SUB, P_MAXW)
-    dev = iphone(shot, P_SW)
-    shadowed(c, dev, (PW - dev.width) / 2, P_DEVICE, DEVICE_SHADOW)
-    return c
+def coverage(piece, bg):
+    """How much of each pixel is card or tile rather than the sky behind it: 0 on the sky, 1 inside cards
+    (text included), fractional on anti-aliased edges."""
+    d = np.abs(piece - bg[:, None, :]).sum(-1)
+    m = d > 12
+    if not m.any():
+        return np.zeros(d.shape, np.float32)
+    K = np.median(piece[m], 0)
+    kd = np.abs(K[None, :] - bg).sum(-1)[:, None]
+    return closing(np.clip(d / np.maximum(kd, 12), 0, 1))
 
 
-def phone_closeup(shot, head, sub, sw=1236):
-    """The device larger and closer, its sides just inside the page: for a screen whose content sits in
-    its upper part (the city list), so the feature reads bigger."""
-    c = sky(PW, PH)
-    title(c, head, sub, P_TOP, P_HEAD, P_SUB, P_MAXW)
-    dev = iphone(shot, sw)
-    shadowed(c, dev, (PW - dev.width) / 2, P_DEVICE, DEVICE_SHADOW)
-    return c
+def move(dst, Bd, src, Bs, sy0, sy1, dy, end, alpha=0.4):
+    """Copies src rows sy0..sy1 to dst at dy (stopping at `end`), re-lit for where they land: the sky behind
+    them changes from Bs to Bd, fully on the sky and by (1 - alpha) under the translucent cards."""
+    h = min(sy1 - sy0, end - dy)
+    if h <= 0:
+        return dy
+    piece = src[sy0:sy0 + h]
+    c = coverage(piece, Bs[sy0:sy0 + h])
+    shift = (Bd[dy:dy + h] - Bs[sy0:sy0 + h])[:, None, :]
+    dst[dy:dy + h] = piece + shift * (1 - alpha * c)[..., None]
+    return dy + h
 
+
+def fill(dst, Bd, y0, y1):
+    dst[y0:y1] = Bd[y0:y1][:, None, :]
+
+
+def unfade(a, B, y0, y1, xref, yclean):
+    """Undoes the condensed header's fade-out on rows y0..y1, measured on a clean column of a card."""
+    a = a.copy()
+    K = a[yclean, xref]
+    for y in range(y0, y1):
+        v = K - B[y]
+        t = float(np.clip(np.dot(a[y, xref] - B[y], v) / max(np.dot(v, v), 1), 0.2, 1))
+        a[y] = (a[y] - (1 - t) * B[y]) / t
+    return a
+
+
+# iPhone (1320x2868): the condensed header ends at 402 (its fade runs to ~432); the toolbar starts at 2625.
+PH_HEADER, PH_TOOLBAR, PH_GAP = 402, 2625, 31
+# iPad (2064x2752): header ends at 265 (fade to ~295); toolbar at 2610.
+TH_HEADER, TH_TOOLBAR, TH_GAP = 265, 2610, 28
+
+
+def phone_ten_days(i1, i2):
+    """iphone-2: the 10-day card from its real top. Capture 1 has the card's title and Today row (rows
+    1712..1979, down to the separator under Today); capture 2 carries on from that separator (row 447)."""
+    a1, a2 = arr(i1), arr(i2)
+    B1, B2 = sky_of(a1, 20, 2600), sky_of(a2, 20, 2600)
+    out = a2.copy()
+    top = PH_HEADER + PH_GAP - 6               # the card's top edge sits 31px under the header
+    fill(out, B2, PH_HEADER, top)
+    y = move(out, B2, a1, B1, 1712, 1979, top, PH_TOOLBAR)
+    move(out, B2, a2, B2, 447, PH_TOOLBAR, y, PH_TOOLBAR)
+    return from_arr(out)
+
+
+def phone_tiles(i3):
+    """iphone-3: the first tile row (Sunset, UV) runs up under the header. Its labels are whole; its top
+    edge is put back (the shape taken from the tile row below, the colour from the tile itself) and the
+    page moved down 75px so the row starts 31px under the header, like every other gap."""
+    a = arr(i3)
+    B = sky_of(a, 20, 2600)
+    a = unfade(a, B, PH_HEADER, 436, 1100, 440)
+    Ts, y0 = 358, 408                 # where the Sunset/UV tiles' top edge is, and the first row kept
+    tA = 986                          # the top edge of the tile row below (Air quality, Averages)
+    n = y0 - Ts
+    top = PH_HEADER + PH_GAP
+    out = a.copy()
+    fill(out, B, PH_HEADER, top + n)
+    for x0, x1 in ((44, 650), (671, 1276)):
+        strip = a[tA:tA + n, x0:x1]
+        bgA = B[tA:tA + n][:, None, :]
+        K = np.median(a[tA + 40, x0 + 80:x1 - 80], 0)
+        c = np.clip(np.abs(strip - bgA).sum(-1) / np.maximum(np.abs(K - bgA).sum(-1), 12), 0, 1)
+        # the tile's own colour just under its label, smoothed across so no column stands out
+        T = np.median(a[452:478, x0 + 30:x1 - 30], 0)
+        k = np.ones(61, np.float32) / 61
+        T = np.stack([np.convolve(np.pad(T[:, ch], 30, mode="edge"), k, mode="valid") for ch in range(3)], -1)
+        T = np.pad(T, ((30, 30), (0, 0)), mode="edge")[None] + 1.5
+        out[top:top + n, x0:x1] = c[..., None] * T + (1 - c[..., None]) * B[top:top + n][:, None, :]
+    move(out, B, a, B, y0, PH_TOOLBAR, top + n, PH_TOOLBAR)
+    return from_arr(out)
+
+
+def tablet_hours(p1):
+    """ipad-1: the hourly strip ends on '10 PM' rather than a clipped '11 PM' column."""
+    a = arr(p1)
+    clean = a[1120:1440, 1795:1816].mean(1)
+    a[1120:1440, 1660:1827] = clean[:, None, :]
+    return from_arr(a)
+
+
+def tablet_ten_days(p1, p2):
+    """ipad-2: as phone_ten_days. ipad-1's card top runs 1486..1737; ipad-2 carries on from row 309."""
+    a1, a2 = arr(p1), arr(p2)
+    B1, B2 = sky_of(a1, 30, 2600), sky_of(a2, 30, 2600)
+    out = a2.copy()
+    top = TH_HEADER + TH_GAP - 6
+    fill(out, B2, TH_HEADER, top)
+    y = move(out, B2, a1, B1, 1486, 1737, top, TH_TOOLBAR)
+    move(out, B2, a2, B2, 309, TH_TOOLBAR, y, TH_TOOLBAR)
+    return from_arr(out)
+
+
+def tablet_tiles(p2, p3):
+    """ipad-3: whole tile rows only, in the app's order: Feels like / Humidity (from ipad-2), Sunset / UV,
+    Visibility / Precipitation, Cloud / Moon. Left out: the half-scrolled Wind / Rain fragment under the
+    header, and the Air quality / Averages row, since Averages had no data in this capture."""
+    a2, a3 = arr(p2), arr(p3)
+    B2, B3 = sky_of(a2, 30, 2600), sky_of(a3, 30, 2600)
+    out = a3.copy()
+    top = TH_HEADER + TH_GAP - 6
+    fill(out, B3, TH_HEADER, TH_TOOLBAR)
+    y = move(out, B3, a2, B2, 1803, 2285, top, TH_TOOLBAR)
+    y = move(out, B3, a3, B3, 520, 1118, y, TH_TOOLBAR)
+    move(out, B3, a3, B3, 1588, TH_TOOLBAR, y, TH_TOOLBAR)
+    return from_arr(out)
+
+
+def list_on_sky(shot, sky_rows, footer_y):
+    """The city list as it would sit on the app's clear-day sky instead of black: every pixel the black
+    showed through (the background, anti-aliased edges, the white title) is re-composited over sky_rows;
+    the search field becomes a light frosted field; everything from footer_y down (sources, 'Updated',
+    credits) is left as plain sky."""
+    a = arr(shot)
+    B = sky_rows[:a.shape[0]]
+    lum = a.mean(-1)
+    near = np.asarray(Image.fromarray(((lum < 4) * 255).astype(np.uint8), "L").filter(ImageFilter.MaxFilter(9))) > 0
+    K = np.stack([np.asarray(Image.fromarray(a[..., c].astype(np.uint8), "L").filter(ImageFilter.MaxFilter(7)),
+                             np.float32) for c in range(3)], -1)
+    alpha = np.where(near, np.clip(lum / np.maximum(K.mean(-1), 1), 0, 1), 1.0)
+    out = a + (1 - alpha)[..., None] * B[:, None, :]
+    # the search field: opaque #1C1C1F on black in the capture; here white at 20% over the sky
+    F = np.array([28, 28, 31], np.float32)
+    fm = np.abs(a - F).sum(-1) < 5
+    rows = np.where(fm.sum(1) > a.shape[1] * 0.3)[0]
+    if len(rows):
+        r0, r1 = rows[0] - 4, rows[-1] + 5
+        cols = np.where(fm[r0:r1].any(0))[0]
+        c0, c1 = cols[0] - 4, cols[-1] + 5
+        Fn = B[r0:r1] * 0.8 + 255 * 0.2
+        out[r0:r1, c0:c1] += alpha[r0:r1, c0:c1, None] * (Fn[:, None, :] - F)
+    out[footer_y:] = B[footer_y:][:, None, :]
+    return from_arr(out)
 
 def find_widget(raw, city, kind):
     hits = sorted(glob.glob(os.path.join(raw, f"widget-*{city}-{kind}.png")))
     if not hits:
         raise FileNotFoundError(f"no widget-*{city}-{kind}.png in {raw}")
     return Image.open(hits[0]).convert("RGBA")
-
-
-def wallpaper(w, h, stops, glows, seed):
-    yy, xx = np.mgrid[0:h, 0:w].astype(np.float32)
-    s = max(w, h)
-    t = np.clip(yy / h * 0.85 + xx / w * 0.15, 0, 1)
-    img = ramp(t, stops)
-    for gx, gy, gr, colour, strength in glows:
-        img = glow(img, xx, yy, w * gx, h * gy, s * gr, s * gr, colour, strength)
-    return img
 
 
 def lock_glass(widget, plate):
@@ -409,91 +563,334 @@ def lock_glass(widget, plate):
     return Image.fromarray(np.clip(out + 0.5, 0, 255).astype(np.uint8), "RGBA")
 
 
-def panel(c, x0, y0, x1, y1, field, R=120):
-    w, h = x1 - x0, y1 - y0
-    im = to_image(np.concatenate([field, np.full(field.shape[:2] + (1,), 255, np.float32)], -1), 11)
-    im.putalpha(squircle_mask(w, h, (0, 0, w, h + (R * 2 if y1 >= c.height else 0)), R))
-    shadowed(c, im, x0, y0, ((60, 36, 0.32), (16, 8, 0.18)))
+# ---------- devices ----------
+
+def iphone(shot, sw):
+    """An iPhone 16 Pro Max drawn around a 1320-wide capture shown sw wide: a thin dark-titanium band with a
+    polished outer edge, a 20px #0E0E10 bezel with a 2px #3A3A3C highlight just inside the band, continuous
+    (n=4) corners concentric with a 58pt display corner, and side buttons in #2C2C2E sitting nearly flush.
+    The capture brings the Dynamic Island."""
+    scr = down(shot, sw)
+    sh = scr.height
+    s = sw / 1320
+    band = max(5, round(7 * s))
+    border = max(14, round(23 * s))
+    btn = max(2, round(4 * s))
+    r = 58 * 3 * s                       # the display's corner radius, in px
+    side = band + border
+    W, H = sw + 2 * side + 2 * btn, sh + 2 * side
+    out = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+
+    def button(left, a, b):
+        y0, y1 = H * a, H * b
+        x0 = 0 if left else W - btn * 3
+        m = squircle_mask(W, H, (x0, y0, x0 + btn * 3, y1), btn * 1.4, 4)
+        out.alpha_composite(solid((W, H), (44, 44, 46, 255), m))
+    button(True, 0.178, 0.204)    # action button
+    button(True, 0.243, 0.300)    # volume up
+    button(True, 0.318, 0.375)    # volume down
+    button(False, 0.270, 0.360)   # side button
+
+    body = (btn, 0, W - btn, H)
+    Rb = continuous(r + side)
+    m = squircle_mask(W, H, body, Rb, 4)
+    t = np.linspace(0, 1, H, dtype=np.float32)[:, None]
+    u = np.linspace(0, 1, W, dtype=np.float32)[None, :]
+    lum = 64 - 22 * t + 10 * np.cos((u - 0.5) * np.pi) - 6   # dark titanium, lit from above
+    ti = np.stack([lum, lum, lum * 1.04 + 2, np.asarray(m, np.float32)], -1)
+    out.alpha_composite(to_image(ti, 3))
+    out.alpha_composite(solid((W, H), (210, 214, 222, 90), ring(W, H, body, Rb, 1.6, 4)))
+    inner = (btn + band, band, W - btn - band, H - band)
+    Ri = continuous(r + border)
+    out.alpha_composite(solid((W, H), (14, 14, 16, 255), squircle_mask(W, H, inner, Ri, 4)))
+    out.alpha_composite(solid((W, H), (58, 58, 60, 255), ring(W, H, inner, Ri, 2.0, 4)))
+    scr.putalpha(squircle_mask(sw, sh, (0, 0, sw, sh), continuous(r), 4))
+    out.alpha_composite(scr, (btn + side, side))
+    return out
 
 
-def phone_widgets(raw, head, sub):
-    """Home Screen widgets (large and medium Honolulu, small Sydney, Auckland, Honolulu) on a bright
-    wallpaper made from the app's clear-day sky, then the Lock Screen widgets on its dusk sky below.
-    Widgets are drawn at their 2x render size: never scaled up."""
-    c = sky(PW, PH)
-    title(c, head, sub, P_TOP, P_HEAD, P_SUB, P_MAXW)
+def ipad(shot, sw):
+    """An iPad Pro 13" drawn around a capture shown sw wide: an even black border, a fine aluminium edge and
+    continuous corners concentric with a 31pt display corner."""
+    scr = down(shot, sw)
+    sh = scr.height
+    s = sw / 2064
+    edge = max(4, round(5 * s))
+    border = round(46 * s)
+    r = 31 * 2 * s
+    side = edge + border
+    W, H = sw + 2 * side, sh + 2 * side
+    out = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    Rb = continuous(r + side)
+    m = squircle_mask(W, H, (0, 0, W, H), Rb, 4)
+    t = np.linspace(0, 1, H, dtype=np.float32)[:, None] * np.ones((1, W), np.float32)
+    lum = 96 - 36 * t
+    out.alpha_composite(to_image(np.stack([lum, lum, lum * 1.04 + 2, np.asarray(m, np.float32)], -1), 4))
+    out.alpha_composite(solid((W, H), (214, 218, 226, 96), ring(W, H, (0, 0, W, H), Rb, 1.6, 4)))
+    inner = (edge, edge, W - edge, H - edge)
+    Ri = continuous(r + border)
+    out.alpha_composite(solid((W, H), (12, 12, 14, 255), squircle_mask(W, H, inner, Ri, 4)))
+    out.alpha_composite(solid((W, H), (58, 58, 60, 255), ring(W, H, inner, Ri, 2.0, 4)))
+    scr.putalpha(squircle_mask(sw, sh, (0, 0, sw, sh), continuous(r), 4))
+    out.alpha_composite(scr, (side, side))
+    return out
 
-    # Home Screen: a two-column grid, 728 | 340, both columns 1156 tall.
-    large = find_widget(raw, "honolulu", "large")
-    medium = find_widget(raw, "honolulu", "medium")
-    smalls = [find_widget(raw, city, "small") for city in ("sydney", "auckland", "honolulu")]
-    gap = 52
-    gw = large.width + gap + smalls[0].width
-    gh = large.height + gap + medium.height
-    sgap = (gh - 3 * smalls[0].height) / 2
-    pad = 40
-    px0, py0 = (PW - gw) / 2 - pad, 720
-    px0, py0 = round(px0), py0
-    pw_, ph_ = gw + 2 * pad, gh + 2 * pad
-    home = wallpaper(pw_, ph_, [(0, (196, 226, 252)), (0.5, (142, 194, 244)), (1, (96, 150, 226))],
-                     [(0.92, 0.02, 0.42, (255, 226, 180), 0.75), (0.1, 0.95, 0.5, (250, 170, 160), 0.30)], 5)
-    panel(c, px0, py0, px0 + pw_, py0 + ph_, home, R=112)
-    x, y = px0 + pad, py0 + pad
-    ws = ((30, 22, 0.30), (8, 5, 0.18))
-    shadowed(c, large, x, y, ws)
-    shadowed(c, medium, x, y + large.height + gap, ws)
-    for i, s in enumerate(smalls):
-        shadowed(c, s, x + large.width + gap, y + i * (s.height + sgap), ws)
 
-    # Lock Screen: dusk wallpaper running off the bottom, the inline widget, the time, the widget row.
-    ly0 = py0 + ph_ + 60
-    lock = wallpaper(pw_, PH - ly0, [(0, (52, 86, 168)), (0.6, (30, 52, 120)), (1, (18, 30, 80))],
-                     [(0.85, 0.1, 0.5, (238, 132, 132), 0.30), (0.1, 0.0, 0.4, (120, 170, 236), 0.35)], 6)
-    panel(c, px0, ly0, px0 + pw_, PH, lock, R=112)
-    d = ImageDraw.Draw(c)
-    inline = lock_glass(find_widget(raw, "honolulu", "lock-inline"), False)
-    cy = ly0 + 70
-    c.alpha_composite(inline, ((PW - inline.width) // 2, cy))
-    clock = font("SemiBold", 250)
-    draw_line(d, PW / 2, cy + inline.height + 34 + 250 * 0.727, "9:41", clock, (255, 255, 255, 235), -5)
-    row = [lock_glass(find_widget(raw, "honolulu", "lock-circular"), True),
-           lock_glass(find_widget(raw, "sydney", "lock-circular"), True),
-           lock_glass(find_widget(raw, "honolulu", "lock-rectangular"), False)]
-    rgap = 36
-    rw = sum(r.width for r in row) + rgap * (len(row) - 1)
-    rx, ry = (PW - rw) / 2, cy + inline.height + 34 + 250 * 0.727 + 70
+def device_shadow(index, scale=1.0):
+    """A broad ambient shadow tinted by the page, and a tight contact shadow."""
+    return ((round(80 * scale), round(40 * scale), 0.38), (round(14 * scale), round(8 * scale), 0.20)), \
+        shadow_colour(index)
+
+
+# ---------- the hero's callout: both units at the same size ----------
+
+def unit_callout(canvas, cx, top, values, size, labels=("FAHRENHEIT", "CELSIUS")):
+    """A frosted white card over the device with the reading in both units side by side, equal in size, so
+    the app's one idea reads even at thumbnail size. The values are the capture's own reading."""
+    fv = font(HEAD_WEIGHT, size)
+    fl = font(SUB_WEIGHT, round(size * 0.17))
+    track = -0.03 * size
+    col = max(text_width(v, fv, track) for v in values) + size * 0.55
+    w = round(col * 2 + size * 0.2)
+    h = round(size * 1.42)
+    x0, y0 = round(cx - w / 2), round(top)
+    R = continuous(size * 0.34)
+    # frosted glass: the page under the card, blurred and whitened
+    under = canvas.crop((x0, y0, x0 + w, y0 + h)).filter(ImageFilter.GaussianBlur(size * 0.25))
+    glass = Image.blend(under, Image.new("RGBA", (w, h), (255, 255, 255, 255)), 0.86)
+    glass.putalpha(squircle_mask(w, h, (0, 0, w, h), R, 4))
+    shadowed(canvas, glass, x0, y0, ((round(size * 0.3), round(size * 0.16), 0.30), (10, 4, 0.12)), (6, 20, 60))
+    d = ImageDraw.Draw(canvas)
+    lt = round(size * 0.17 * 0.08)
+    for k, (v, lab) in enumerate(zip(values, labels)):
+        ccx = x0 + w / 2 + (k - 0.5) * col
+        draw_line(d, ccx, y0 + h * 0.27, lab, fl, INK + (150,), lt)
+        draw_line(d, ccx, y0 + h * 0.27 + size * 0.2 + size * 0.727, v, fv, INK + (255,), track)
+    d.line([(x0 + w / 2, y0 + h * 0.2), (x0 + w / 2, y0 + h * 0.8)], fill=INK + (38,), width=max(2, round(size / 80)))
+    return y0 + h
+
+
+# ---------- widgets ----------
+
+def wallpaper(w, h, seed=31, deep=False):
+    """A soft daylight wallpaper for the Home and Lock Screen panels: the app's clear sky warming to a pale
+    horizon, with broad blurred light; distinct from the widgets' own deeper blue."""
+    yy, xx = np.mgrid[0:h, 0:w].astype(np.float32)
+    t = np.clip(yy / h * 0.85 + xx / w * 0.15, 0, 1)
+    if deep:     # the Lock Screen: the same sky, deeper, so white vibrancy widgets read on it
+        img = ramp(t, [(0.0, (24, 58, 150)), (0.5, (52, 98, 196)), (0.85, (128, 120, 196)), (1.0, (206, 140, 150))])
+    else:
+        img = ramp(t, [(0.0, (70, 132, 226)), (0.45, (128, 182, 244)), (0.8, (214, 206, 236)), (1.0, (250, 206, 176))])
+    img = glow(img, xx, yy, w * 0.85, h * 0.18, w * 0.6, h * 0.35, (176, 220, 255), 0.45)
+    img = glow(img, xx, yy, w * 0.1, h * 0.9, w * 0.6, h * 0.3, (255, 196, 160), 0.35)
+    return to_image(img, seed).convert("RGBA")
+
+
+def widget_shadow(panel, im, x, y):
+    shadowed(panel, im, x, y, ((22, 10, 0.22), (4, 2, 0.12)), (10, 26, 70))
+
+
+def icon_cell(panel, x, y, label="Two Degrees"):
+    """The app's own icon on the Home Screen grid, at the widgets' 2x scale (64pt icon, 12pt label)."""
+    ic = app_icon(128)
+    widget_shadow(panel, ic, x, y)
+    f = font("Medium", 24)
+    lay = Image.new("RGBA", panel.size, (0, 0, 0, 0))
+    draw_line(ImageDraw.Draw(lay), x + 64, y + 128 + 34, label, f, (255, 255, 255, 255), 0)
+    sh = lay.getchannel("A").filter(ImageFilter.GaussianBlur(3)).point(lambda v: int(v * 0.35))
+    shl = Image.new("RGBA", panel.size, (10, 30, 70, 0))
+    shl.putalpha(sh)
+    panel.alpha_composite(shl)
+    panel.alpha_composite(lay)
+
+
+def panel_frame(panel, r=56):
+    panel.putalpha(squircle_mask(panel.width, panel.height, (0, 0, panel.width, panel.height), continuous(r), 4))
+    return panel
+
+
+def home_panel(raw, wide=False):
+    """A piece of a Home Screen at the widgets' native 2x scale (never enlarged): the large, medium and small
+    widgets at their real grid sizes and spacing, with the app's icon in the remaining slot."""
+    L, M, S = (find_widget(raw, WIDGET_CITY, k) for k in ("large", "medium", "small"))
+    pad, gap = 52, 46
+    if not wide:     # iPhone: medium + small, then large + the app icon
+        W, H = pad * 2 + M.width + gap + S.width, pad * 2 + M.height + gap + L.height
+        p = wallpaper(W, H, 31)
+        widget_shadow(p, M, pad, pad)
+        widget_shadow(p, S, pad + M.width + gap, pad)
+        widget_shadow(p, L, pad, pad + M.height + gap)
+        icon_cell(p, pad + M.width + gap + (S.width / 2 - 128) / 2 + 2, pad + M.height + gap + 10)
+    else:            # iPad: large, then medium over small + the app icon
+        W, H = pad * 2 + L.width + gap + M.width, pad * 2 + L.height
+        p = wallpaper(W, H, 32)
+        widget_shadow(p, L, pad, pad)
+        x = pad + L.width + gap
+        widget_shadow(p, M, x, pad)
+        widget_shadow(p, S, x, pad + M.height + gap)
+        icon_cell(p, x + S.width + gap + (S.width / 2 - 128) / 2 + 2, pad + M.height + gap + 10)
+    return panel_frame(p)
+
+
+def lock_panel(raw, W):
+    """The top of a Lock Screen at the same 2x scale: the inline widget over the clock, the circular and
+    rectangular widgets under it, all in the Lock Screen's white vibrancy."""
+    inline = lock_glass(find_widget(raw, WIDGET_CITY, "lock-inline"), False)
+    row = [lock_glass(find_widget(raw, WIDGET_CITY, "lock-circular"), True),
+           lock_glass(find_widget(raw, WIDGET_CITY, "lock-rectangular"), False)]
+    cs = 236
+    top = 44
+    clock_base = top + inline.height + 26 + cs * 0.727
+    row_y = clock_base + 52
+    H = round(row_y + row[0].height + 52)
+    p = wallpaper(W, H, 33, deep=True)
+    lay = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    lay.alpha_composite(inline, ((W - inline.width) // 2, top))
+    draw_line(ImageDraw.Draw(lay), W / 2, clock_base, "9:41", font("SemiBold", cs), (255, 255, 255, 235), -cs * 0.03)
+    gap = 28
+    rx = (W - sum(r.width for r in row) - gap * (len(row) - 1)) / 2
     for r in row:
-        c.alpha_composite(r, (round(rx), round(ry + (row[0].height - r.height) / 2)))
-        rx += r.width + rgap
+        lay.alpha_composite(r, (round(rx), round(row_y)))
+        rx += r.width + gap
+    sh = lay.getchannel("A").filter(ImageFilter.GaussianBlur(6)).point(lambda v: int(v * 0.25))
+    shl = Image.new("RGBA", (W, H), (10, 30, 80, 0))
+    shl.putalpha(sh)
+    p.alpha_composite(shl)
+    p.alpha_composite(lay)
+    return panel_frame(p)
+
+
+def widgets_page(c, index, raw, top, wide):
+    """Home Screen panel above a Lock Screen panel, centred together in the room under the text."""
+    home = home_panel(raw, wide)
+    lock = lock_panel(raw, home.width)
+    gap = 64
+    total = home.height + gap + lock.height
+    y = top + (c.height - top - total) / 2
+    x = (c.width - home.width) / 2
+    layers = ((60, 30, 0.40), (12, 6, 0.22))
+    shadowed(c, home, x, y, layers, shadow_colour(index))
+    shadowed(c, lock, x, y + home.height + gap, layers, shadow_colour(index))
     return c
 
 
-# ---------- iPad pages ----------
+# ---------- page layout: one system for iPhone and iPad ----------
 
-TW, TH = 2064, 2752
-T_HEAD, T_SUB, T_MAXW = 136, 54, TW - 360
-T_TOP = 190
-T_DEVICE = 640
-T_SW = 1760          # the device is 1855 wide, 90% of the page
-
-
-def tablet_hero(shot, head, sub):
-    c = sky(TW, TH)
-    icon = app_icon(220)
-    shadowed(c, icon, (TW - icon.width) / 2, 140, ((30, 18, 0.30), (8, 4, 0.18)))
-    bottom = title(c, head, sub, 140 + 220 + 88, T_HEAD, T_SUB, T_MAXW)
-    dev = ipad(shot, T_SW)
-    shadowed(c, dev, (TW - dev.width) / 2, bottom + 100, DEVICE_SHADOW)
-    return c
+class Spec:
+    """Sizes for one device's set. Every page of a set uses the same headline and subhead size."""
+    def __init__(self, w, h, head, sub, max_w, sub_w, ring, ring_top, icon, gap, sw, zoom_sw, n):
+        self.w, self.h, self.head, self.sub, self.max_w, self.sub_w = w, h, head, sub, max_w, sub_w
+        self.ring, self.ring_top, self.icon, self.gap, self.sw, self.zoom_sw, self.n = \
+            ring, ring_top, icon, gap, sw, zoom_sw, n
 
 
-def tablet_feature(shot, head, sub):
-    c = sky(TW, TH)
-    bottom = title(c, head, sub, T_TOP, T_HEAD, T_SUB, T_MAXW)
-    dev = ipad(shot, T_SW)
-    shadowed(c, dev, (TW - dev.width) / 2, max(T_DEVICE, bottom + 110), DEVICE_SHADOW)
-    return c
+# iPhone 6.9": headline 120px, subhead up to 54px on one line, the screen 1140 wide (device ~1200, 91%).
+PHONE = Spec(1320, 2868, head=120, sub=54, max_w=1160, sub_w=1056, ring=52, ring_top=64, icon=176,
+             gap=112, sw=1140, zoom_sw=1320, n=5)
+# iPad 13": headline 150px, subhead up to 64px, the screen 1800 wide (device ~1890, 92%).
+TABLET = Spec(2064, 2752, head=150, sub=64, max_w=1700, sub_w=1500, ring=64, ring_top=64, icon=220,
+              gap=120, sw=1800, zoom_sw=2064, n=5)
 
+
+def text_block(c, spec, i, head, sub, size, sub_size, hero):
+    """The page's mark (the icon on the hero, the coral degree ring elsewhere), headline and subhead.
+    Returns the y of the bottom of the text."""
+    if hero:
+        ic = app_icon(spec.icon)
+        shadowed(c, ic, (c.width - spec.icon) / 2, spec.ring_top,
+                 ((28, 14, 0.30), (6, 3, 0.16)), shadow_colour(i))
+        top = spec.ring_top + spec.icon + round(spec.head * 0.42)
+    else:
+        degree_ring(c, c.width / 2, spec.ring_top, spec.ring)
+        top = spec.ring_top + spec.ring + round(spec.head * 0.42)
+    return title(c, head, sub, top, size, sub_size, spec.max_w)
+
+
+def device_page(spec, frame, i, shot, head, sub, size, sub_size, hero=False, zoom=False):
+    """The page's sky, text, and the device under it running off the bottom edge. zoom shows the capture at
+    its full width (1:1, never enlarged): the device is then wider than the page and runs off the sides too,
+    a close crop used where the screen's content ends early (the city list)."""
+    c = sky(spec.w, spec.h, i, spec.n)
+    bottom = text_block(c, spec, i, head, sub, size, sub_size, hero)
+    dev = frame(shot, spec.zoom_sw if zoom else spec.sw)
+    layers, colour = device_shadow(i, spec.w / 1320)
+    y = bottom + spec.gap
+    shadowed(c, dev, (spec.w - dev.width) / 2, y, layers, colour)
+    return c, y, dev
+
+
+def screen_y(spec, y, dev, cw, ch, row):
+    """Where row `row` of a cw x ch capture lands on the page, for a device put down at y."""
+    sh = round(spec.sw * ch / cw)
+    return y + (dev.height - sh) / 2 + row * spec.sw / cw
+
+
+def set_sizes(spec, copy):
+    return (fit_size([h for h, _ in copy], spec.head, spec.max_w),
+            fit_sub([s for _, s in copy], spec.sub, spec.sub_w))
+
+
+# ---------- iPhone ----------
+
+# The reading on every iPhone page: Honolulu, from capture 1.
+READING = ("79°F", "26°C")
+
+
+def iphone_set(raw):
+    shot = lambda n: Image.open(os.path.join(raw, n)).convert("RGBA")
+    spec = PHONE
+    size, sub_size = set_sizes(spec, IPHONE)
+    i1, i2, i3, i4 = (shot(f"iphone-{k}.png") for k in range(1, 5))
+    sky1 = sky_of(arr(i1), 20, 2600)
+    pages = []
+
+    c, y, dev = device_page(spec, iphone, 0, i1, *IPHONE[0], size, sub_size, hero=True)
+    # the callout sits over the hourly and 10-day part of the hero screen (page 2 shows those)
+    # over the 10-day card, just under the hourly card (which ends at row 1690 of the capture)
+    unit_callout(c, spec.w / 2, screen_y(spec, y, dev, 1320, 2868, 1690) + 24, READING, 176)
+    pages.append(c)
+    pages.append(device_page(spec, iphone, 1, phone_ten_days(i1, i2), *IPHONE[1], size, sub_size)[0])
+    pages.append(device_page(spec, iphone, 2, phone_tiles(i3), *IPHONE[2], size, sub_size)[0])
+    pages.append(device_page(spec, iphone, 3, list_on_sky(i4, sky1, 1876 + 40), *IPHONE[3], size, sub_size,
+                             zoom=True)[0])
+    c = sky(spec.w, spec.h, 4, spec.n)
+    bottom = text_block(c, spec, 4, *IPHONE[4], size, sub_size, False)
+    pages.append(widgets_page(c, 4, raw, bottom + 40, wide=False))
+    return pages
+
+
+# ---------- iPad ----------
+
+def tablet_status(im):
+    """Keeps '9:41 AM' in the iPad status bar and takes out the capture's date beside it."""
+    a = arr(im)
+    B = sky_of(a, 6, 2600)
+    a[8:62, 165:340] = B[8:62][:, None, :]
+    return from_arr(a)
+
+
+TABLET_READING = ("78°F", "26°C")   # the iPad captures' own reading (see the report: re-capture to match)
+
+
+def ipad_set(raw):
+    shot = lambda n: tablet_status(Image.open(os.path.join(raw, n)).convert("RGBA"))
+    spec = TABLET
+    size, sub_size = set_sizes(spec, IPAD)
+    p1, p2, p3, p4 = (shot(f"ipad-{k}.png") for k in range(1, 5))
+    sky1 = sky_of(arr(p1), 30, 2600)
+    pages = []
+    c, y, dev = device_page(spec, ipad, 0, tablet_hours(p1), *IPAD[0], size, sub_size, hero=True)
+    # over the 10-day card, just under the hourly card (which ends at row 1462 of the capture)
+    unit_callout(c, spec.w / 2, screen_y(spec, y, dev, 2064, 2752, 1462) + 30, TABLET_READING, 252)
+    pages.append(c)
+    pages.append(device_page(spec, ipad, 1, tablet_ten_days(p1, p2), *IPAD[1], size, sub_size)[0])
+    pages.append(device_page(spec, ipad, 2, tablet_tiles(p2, p3), *IPAD[2], size, sub_size)[0])
+    pages.append(device_page(spec, ipad, 3, list_on_sky(p4, sky1, 1552 + 40), *IPAD[3], size, sub_size,
+                             zoom=True)[0])
+    c = sky(spec.w, spec.h, 4, spec.n)
+    bottom = text_block(c, spec, 4, *IPAD[4], size, sub_size, False)
+    pages.append(widgets_page(c, 4, raw, bottom + 40, wide=True))
+    return pages
 
 # ---------- Mac pages ----------
 
@@ -501,27 +898,37 @@ MW, MH = 2880, 1800
 
 
 def mac_page(i):
-    c = sky(MW, MH)
+    c = sky(MW, MH, i, len(MAC))
     head, sub = MAC[i]
-    bottom = title(c, head, sub, 150, 118, 52, MW - 400)
+    bottom = title(c, head, sub, 150, fit_size([h for h, _ in MAC], 118, MW - 400), 52, MW - 400)
     return c, bottom
 
 
+def mac_store_page(i, store_png):
+    """ONE Mac page (2880x1800) from one ci-shots store-*.png capture (a path or an open image, a finished
+    window or scene at 2x): the page's sky, MAC[i]'s headline and subhead, and the capture centred in the
+    space below, scaled down only if it must be (never up)."""
+    im = (Image.open(store_png) if isinstance(store_png, str) else store_png).convert("RGBA")
+    c, top = mac_page(i)
+    room_w, room_h = MW - 320, MH - top - 120
+    k = min(1.0, room_w / im.width, room_h / im.height)
+    if k < 1:
+        im = down(im, round(im.width * k))
+    shadowed(c, im, (MW - im.width) / 2, top + 80 + (room_h - im.height) / 2,
+             ((70, 40, 0.45), (12, 6, 0.32)), shadow_colour(i))
+    return c
+
+
 def mac_store_pages(load, names):
-    """The Mac set from the ci-shots store-*.png captures (each a finished window or scene at 2x, in the
-    order of MAC): each under its headline, centred in the space below, scaled down only if it must be."""
-    shots = []
-    for i, name in enumerate(names[:len(MAC)]):
-        c, top = mac_page(i)
-        im = load(name)
-        room_w, room_h = MW - 320, MH - top - 120
-        k = min(1.0, room_w / im.width, room_h / im.height)
-        if k < 1:
-            im = down(im, round(im.width * k))
-        shadowed(c, im, (MW - im.width) / 2, top + 80 + (room_h - im.height) / 2,
-                 ((70, 40, 0.45), (12, 6, 0.32)))
-        shots.append(c)
-    return shots
+    """The Mac set from the ci-shots store-*.png captures, in the order of MAC (load: name -> image)."""
+    return [mac_store_page(i, load(name)) for i, name in enumerate(names[:len(MAC)])]
+
+
+def make_mac_set(store_pngs):
+    """The Mac set (2880x1800) from the ci-shots branch's store-*.png captures, given as file paths (or
+    already-open images), in page order: mac_store_page for each. Same skies, type scale and copy system as
+    the iOS sets. Run it from the command line with:  --only mac --mac git:ci-shots   (or --mac <folder>)."""
+    return [mac_store_page(i, p) for i, p in enumerate(list(store_pngs)[:len(MAC)])]
 
 
 def mac_helpers():
@@ -629,12 +1036,15 @@ def mac_pages(load):
 
 
 def mac_set(source):
-    """The Mac set from a folder (or git:<branch>): store-*.png captures when present, else the older
-    panel-*.png snapshots."""
+    """The Mac set from a folder (or git:<branch>): store-*.png captures when present (make_mac_set), else
+    the older panel-*.png snapshots."""
     load = loader(source)
     store = names_in(source, r"store-\d+.*\.png")
     store.sort(key=lambda n: int(re.search(r"\d+", n).group()))
+    if store and not source.startswith("git:"):
+        return make_mac_set(os.path.join(source, n) for n in store)
     return mac_store_pages(load, store) if store else mac_pages(load)
+
 
 
 # ---------- main ----------
@@ -653,20 +1063,15 @@ def main():
     a = ap.parse_args()
     only = a.only.split(",")
     os.makedirs(OUT, exist_ok=True)
-    shot = lambda n: Image.open(os.path.join(a.raw, n)).convert("RGBA")
     if "iphone" in only:
-        save(phone_hero(shot("iphone-1.png"), *IPHONE[0]), "iphone-1.png")
-        save(phone_feature(shot("iphone-2.png"), *IPHONE[1]), "iphone-2.png")
-        save(phone_feature(shot("iphone-3.png"), *IPHONE[2]), "iphone-3.png")
-        save(phone_closeup(shot("iphone-4.png"), *IPHONE[3]), "iphone-4.png")
-        save(phone_widgets(a.raw, *IPHONE[4]), "iphone-5.png")
+        for k, im in enumerate(iphone_set(a.raw), 1):
+            save(im, f"iphone-{k}.png")
     if "ipad" in only:
-        save(tablet_hero(shot("ipad-1.png"), *IPAD[0]), "ipad-1.png")
-        for i in range(2, 5):
-            save(tablet_feature(shot(f"ipad-{i}.png"), *IPAD[i - 1]), f"ipad-{i}.png")
+        for k, im in enumerate(ipad_set(a.raw), 1):
+            save(im, f"ipad-{k}.png")
     if "mac" in only and a.mac:
-        for i, im in enumerate(mac_set(a.mac), 1):
-            save(im, f"mac-{i}.png")
+        for k, im in enumerate(mac_set(a.mac), 1):
+            save(im, f"mac-{k}.png")
 
 
 if __name__ == "__main__":
