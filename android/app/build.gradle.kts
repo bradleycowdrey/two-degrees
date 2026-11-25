@@ -16,12 +16,12 @@ val keystoreFile = System.getenv("ANDROID_KEYSTORE_FILE")?.let(::file)?.takeIf {
 
 android {
     namespace = "com.bradcowdrey.twodegrees"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.bradcowdrey.twodegrees"
         minSdk = 26
-        targetSdk = 35
+        targetSdk = 36
         versionCode = buildNumber
         versionName = appVersion
     }

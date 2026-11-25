@@ -93,10 +93,10 @@ Checked against the Android code and the Terms (Sections 15 and 25).
 - Users can ask for deletion: **Yes**. Removing a city or turning off Use My Location deletes it on the phone,
   uninstalling deletes everything, and Terms Section 16 offers deletion by email. Bradley holds none of it.
 
-| Data type | Collected | Shared | Processed ephemerally | Required? | Why |
+| Data type | Collected | Shared | Processed ephemerally | Required? | Why (collected and shared) |
 |---|---|---|---|---|---|
-| Location: **Approximate location** | Yes | No | No | Optional | App functionality |
-| App activity: **In-app search history** | Yes | No | No | Optional | App functionality |
+| Location: **Approximate location** | Yes | Yes | No | Optional | App functionality |
+| App activity: **In-app search history** | Yes | Yes | No | Optional | App functionality |
 
 Everything else (personal info, precise location, contacts, files, photos, messages, health, financial info,
 web browsing, crash logs and diagnostics, device IDs): not collected.
@@ -110,9 +110,9 @@ What the app sends, and to whom:
 - **City search**: what you type goes to Open-Meteo's place search (offline, the built-in list answers).
 
 Where Google's definitions leave room for judgement:
-- **Shared**: these services do what the user asked for (fetch the weather, draw the map), which fits Google's
-  service-provider and user-initiated exceptions, so "not shared". Ticking Shared as well is the most cautious
-  reading; nothing else changes.
+- **Shared: Yes**, the cautious reading (as for Bearings and Meridian): the app sends these straight to
+  Open-Meteo, the National Weather Service and the rain map's services, which are third parties with no contract
+  with Bradley, so Google's service-provider exception doesn't clearly apply.
 - **Ephemeral**: Bradley can't vouch for the services' own server logs, so No.
 - **Saved cities' coordinates** are places you chose, not where your phone is, so they aren't "Location".
 - **Search**: a typed city name is barely personal, but it leaves the phone, so declaring it is the safer choice.
