@@ -58,6 +58,25 @@ jobs:
             android/app/build/outputs/apk/release/*.apk
             android/app/build/outputs/apk/debug/*.apk
             android/app/build/outputs/bundle/release/*.aab
+      - name: Same signing key as the published APK
+        # Android installs an update only over an app signed with the same key. Compares the new release
+        # APK's certificate with the one on releases/latest; on main a different key stops the APK from
+        # being attached, so existing installs never get an APK they can't update to.
+        run: |
+          AS="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)/apksigner"
+          digest() { "$AS" verify --print-certs "$1" | grep -m1 "certificate SHA-256 digest" | sed 's/.*digest: //'; }
+          NEW="$(digest android/app/build/outputs/apk/release/app-release.apk)"
+          echo "::notice::This build's signing certificate SHA-256: $NEW"
+          if curl -fsSL -o "$RUNNER_TEMP/published.apk" "https://github.com/$GITHUB_REPOSITORY/releases/latest/download/TwoDegrees.apk"; then
+            OLD="$(digest "$RUNNER_TEMP/published.apk")"
+            echo "::notice::Published APK's signing certificate SHA-256: $OLD"
+            if [ "$NEW" != "$OLD" ]; then
+              MSG="The signing key differs from the published APK's: phones with Two Degrees installed couldn't update to this APK."
+              if [ "$GITHUB_REF" = "refs/heads/main" ]; then echo "::error::$MSG Not attaching it."; exit 1; else echo "::warning::$MSG"; fi
+            fi
+          else
+            echo "::warning::No published APK to compare with"
+          fi
       - name: Attach the APK to the release
         # The Android download (releases/latest/download/TwoDegrees.apk) follows main: each build on main
         # replaces the APK on the current version's release.
