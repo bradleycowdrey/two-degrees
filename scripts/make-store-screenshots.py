@@ -57,8 +57,8 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), 
 OUT = os.path.join(ROOT, "appstore", "screenshots")
 FONTS = os.path.join(ROOT, "Resources", "Fonts")
 ICON = os.path.join(ROOT, "Resources", "iOS", "Assets.xcassets", "AppIcon.appiconset", "AppIcon.png")
-DEFAULT_RAW = "/tmp/claude-0/-home-user/d6b2fce6-87e9-5a4e-8aa5-26a3546d263b/scratchpad/raw6"
-DEFAULT_MAC = "/tmp/claude-0/-home-user/d6b2fce6-87e9-5a4e-8aa5-26a3546d263b/scratchpad/rawmac6"
+DEFAULT_RAW = "/tmp/claude-0/-home-user/d6b2fce6-87e9-5a4e-8aa5-26a3546d263b/scratchpad/raw8"
+DEFAULT_MAC = "/tmp/claude-0/-home-user/d6b2fce6-87e9-5a4e-8aa5-26a3546d263b/scratchpad/rawmac8"
 WHITE = (255, 255, 255)
 SUB = (255, 255, 255, 255)   # subhead: solid white (on the sky's dark top stops it is at least 5:1)
 CORAL = (255, 111, 97)       # the icon's degree ring, #FF6F61
@@ -95,7 +95,7 @@ MAC = [
 # Which widget city goes with the app captures: the hero city (Bangkok 93°F / 34°C, H 95 L 79, as on every
 # app page). The small Home Screen widget shows the second city (Mumbai 86°F / 30°C, as in the city list), so
 # the panel shows that each widget can follow a city of its own.
-WIDGET_CITY = "bangkok"
+WIDGET_CITY = "tokyo"
 WIDGET_CITY2 = "mumbai"
 
 # ---------- sources ----------
@@ -1663,6 +1663,36 @@ def status_glyphs(px, kind):
 MENU_H = 48
 
 
+# The Mac menu bar's reading and date come from the captures' store-snapshot.json (the hero city, as the app's
+# menu-bar extra shows it), so they match every screen. Set by main(); the defaults are only placeholders.
+MENU_READING = "93° · 34°"
+MENU_CLOCK = "Tue Nov 24  9:41 AM"
+
+
+def app_round(v):
+    """Rounds half away from zero, as the apps do (TempUnit.value)."""
+    import math
+    return int(math.floor(abs(v) + 0.5)) * (1 if v >= 0 else -1)
+
+
+def read_menu_bar(raw):
+    """Sets MENU_READING and MENU_CLOCK from raw/store-snapshot.json: the first city's reading in °F and °C, and
+    the day the forecast was fetched (Swift dates count seconds from 2001-01-01 UTC)."""
+    global MENU_READING, MENU_CLOCK
+    import datetime
+    import json
+    path = os.path.join(raw, "store-snapshot.json")
+    if not os.path.exists(path):
+        return
+    snap = json.load(open(path))
+    c = snap["cities"][0]
+    f = snap["forecasts"]["%.2f,%.2f" % (c["latitude"], c["longitude"])]
+    t = f["now"]["temperature"]
+    MENU_READING = f"{app_round(t * 9 / 5 + 32)}° · {app_round(t)}°"
+    day = datetime.datetime(2001, 1, 1) + datetime.timedelta(seconds=f["fetchedAt"])
+    MENU_CLOCK = f"{day:%a %b} {day.day}  9:41 AM"
+
+
 def menu_bar(p, extra_open=False, s=1.0):
     """A macOS menu bar across the top of a desktop picture p (2x: 24 pt tall, everything scaled by s for a
     magnified view): the Apple menu, the app's menus, then the status items (the app's '93° · 34°' extra,
@@ -1679,14 +1709,14 @@ def menu_bar(p, extra_open=False, s=1.0):
         ff = fb if i == 0 else f
         d.text((x, bar_h / 2), item, font=ff, fill=(255, 255, 255, 255), anchor="lm")
         x += ff.getlength(item) + 44 * s
-    clock = "Tue Nov 24  9:41 AM"
+    clock = MENU_CLOCK
     x = W - 36 * s - f.getlength(clock)
     d.text((x, bar_h / 2), clock, font=f, fill=(255, 255, 255, 255), anchor="lm")
     for kind in ("control", "battery", "wifi"):
         g = status_glyphs(round(26 * s), kind)
         x -= 40 * s + g.width
         p.alpha_composite(g, (round(x), round((bar_h - g.height) / 2)))
-    reading = "93° · 34°"
+    reading = MENU_READING
     rw = f.getlength(reading)
     item_w = (30 + 10) * s + rw
     x -= 44 * s + item_w
@@ -2080,6 +2110,7 @@ def main():
     a = ap.parse_args()
     only = a.only.split(",")
     os.makedirs(OUT, exist_ok=True)
+    read_menu_bar(a.raw)
     if "iphone" in only:
         for k, im in enumerate(iphone_set(a.raw), 1):
             save(im, f"iphone-{k}.png")
