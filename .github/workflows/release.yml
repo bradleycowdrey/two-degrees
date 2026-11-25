@@ -36,7 +36,7 @@ jobs:
         run: |
           if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then TAG="$GITHUB_REF_NAME"; else TAG="v$(tr -d '[:space:]' < VERSION)"; fi
           echo "TAG=$TAG" >> "$GITHUB_ENV"
-          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+          if gh api "repos/$GITHUB_REPOSITORY/releases/tags/$TAG" >/dev/null 2>&1; then   # by tag: drafts don't count
             echo "Release $TAG already exists; nothing to do. Bump VERSION to release new code."
             echo "skip=true" >> "$GITHUB_OUTPUT"
           elif [[ -n "$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=pending-release-$TAG" -q '.artifacts[]|select(.expired|not)|.id')" ]]; then
