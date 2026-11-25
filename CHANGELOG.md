@@ -8,6 +8,15 @@ A **patch** (2.0.1) fixes things, a **minor** version (2.1.0) adds features, and
 (3.0.0) is a big redesign or a change that stops something working the way it did. The build number
 counts every change ever made, so each build is higher than the last.
 
+## [2.3.6] - 2026-11-25
+
+- **A new icon**: the family's C, with a coral degree ring, on every platform and on the website.
+- **Widgets' "Now" is the current reading**, the same as the app, instead of the hour's forecast.
+- **Today's icon in the 10-day forecast shows the sky now** in daylight, unless the day brings rain, snow,
+  fog or storms (the daily forecast's icon is its worst hour, so a clear afternoon showed a cloud).
+- **A reading never splits from its unit** at the end of a line (no more "20" then "°C" on the next).
+- **New App Store screenshots** for iPhone, iPad and Mac.
+
 ## [2.3.5] - 2026-11-21
 
 - **Two Degrees for Mac is on the Mac App Store.** The iPhone app's "Get Two Degrees for Mac" link now opens it.
