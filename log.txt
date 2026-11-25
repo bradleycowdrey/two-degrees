@@ -1,0 +1,118 @@
+iPhone: 41629560-9FB4-465B-A3C3-1D3B8239225E  iPad: 47EB2DA6-E2B2-41BC-9D4F-B876D58C9E78
+Monitoring boot status for iPhone 16 Pro Max (41629560-9FB4-465B-A3C3-1D3B8239225E).
+[2026-11-25 04:42:48 +0000] Status=2, isTerminal=NO, Elapsed=00:36.
+	Waiting on Data Migration
+		Reason:Running plugin com.apple.-0LaunchServicesMigrator (00LaunchServicesMigrator.migrator, user-agnostic)
+		Migration Elapsed:00:31 seconds
+
+[2026-11-25 04:42:49 +0000] Status=2, isTerminal=NO, Elapsed=00:37.
+	Waiting on Data Migration
+		Reason:Running plugin com.apple.-0LaunchServicesMigrator (00LaunchServicesMigrator.migrator, user-agnostic)
+		Migration Elapsed:00:32 seconds
+
+[2026-11-25 04:42:50 +0000] Status=2, isTerminal=NO, Elapsed=00:38.
+	Waiting on Data Migration
+		Reason:Running plugin com.apple.-0LaunchServicesMigrator (00LaunchServicesMigrator.migrator, user-agnostic)
+		Migration Elapsed:00:33 seconds
+
+[2026-11-25 04:42:51 +0000] Status=2, isTerminal=NO, Elapsed=00:39.
+	Waiting on Data Migration
+		Reason:Running plugin com.apple.-0LaunchServicesMigrator (00LaunchServicesMigrator.migrator, user-agnostic)
+		Migration Elapsed:00:34 seconds
+
+[2026-11-25 04:42:52 +0000] Status=2, isTerminal=NO, Elapsed=00:40.
+	Waiting on Data Migration
+		Reason:Running plugin com.apple.-0LaunchServicesMigrator (00LaunchServicesMigrator.migrator, user-agnostic)
+		Migration Elapsed:00:35 seconds
+
+[2026-11-25 04:42:53 +0000] Status=2, isTerminal=NO, Elapsed=00:41.
+	Waiting on Data Migration
+		Reason:Running plugin com.apple.-0LaunchServicesMigrator (00LaunchServicesMigrator.migrator, user-agnostic)
+		Migration Elapsed:00:36 seconds
+
+[2026-11-25 04:42:54 +0000] Status=2, isTerminal=NO, Elapsed=00:42.
+	Waiting on Data Migration
+		Reason:Running plugin com.apple.-0LaunchServicesMigrator (00LaunchServicesMigrator.migrator, user-agnostic)
+		Migration Elapsed:00:37 seconds
+
+[2026-11-25 04:42:58 +0000] Status=2, isTerminal=NO, Elapsed=00:46.
+	Waiting on Data Migration
+		Reason:Running plugin com.apple.securityd.KeychainMigrator (KeychainMigrator.migrator, user-agnostic)
+		Migration Elapsed:00:38 seconds
+
+[2026-11-25 04:42:59 +0000] Status=2, isTerminal=NO, Elapsed=00:47.
+	Waiting on Data Migration
+		Reason:Running plugin com.apple.addressbook.migrator (AddressBookLegacy.migrator)
+		Migration Elapsed:00:40 seconds
+
+[2026-11-25 04:43:01 +0000] Status=2, isTerminal=NO, Elapsed=00:49.
+	Waiting on Data Migration
+		Reason:Running plugin com.apple.PreferencesMigrator (PreferencesMigrator.migrator)
+		Migration Elapsed:00:42 seconds
+
+[2026-11-25 04:43:03 +0000] Status=4, isTerminal=NO, Elapsed=00:51.
+	Waiting on System App
+
+[2026-11-25 04:43:04 +0000] Status=4, isTerminal=NO, Elapsed=00:51.
+	Waiting on System App
+
+[2026-11-25 04:43:05 +0000] Status=4, isTerminal=NO, Elapsed=00:52.
+	Waiting on System App
+
+[2026-11-25 04:43:05 +0000] Status=4, isTerminal=NO, Elapsed=00:53.
+	Waiting on System App
+
+[2026-11-25 04:43:06 +0000] Status=4, isTerminal=NO, Elapsed=00:53.
+	Waiting on System App
+
+[2026-11-25 04:43:07 +0000] Status=4, isTerminal=NO, Elapsed=00:55.
+	Waiting on System App
+
+[2026-11-25 04:43:07 +0000] Status=4, isTerminal=NO, Elapsed=00:55.
+	Waiting on System App
+
+[2026-11-25 04:43:16 +0000] Status=4294967295, isTerminal=YES, Elapsed=01:03.
+	Finished
+
+com.bradcowdrey.twodegrees: 4946
+snapshot: ['Tokyo', 'Mumbai', 'Dubai', 'Bangkok', 'Singapore'] complete
+com.bradcowdrey.twodegrees: 8836
+Detected file type 'PNG' from extension
+Wrote screenshot to: /Users/runner/work/_temp/shots/iphone-1.png
+com.bradcowdrey.twodegrees: 11635
+Detected file type 'PNG' from extension
+Wrote screenshot to: /Users/runner/work/_temp/shots/iphone-2.png
+com.bradcowdrey.twodegrees: 16404
+Detected file type 'PNG' from extension
+Wrote screenshot to: /Users/runner/work/_temp/shots/iphone-3.png
+com.bradcowdrey.twodegrees: 18832
+Detected file type 'PNG' from extension
+Wrote screenshot to: /Users/runner/work/_temp/shots/iphone-4.png
+Monitoring boot status for iPad Pro 13-inch (M4) (47EB2DA6-E2B2-41BC-9D4F-B876D58C9E78).
+Device already booted, nothing to do.
+
+com.bradcowdrey.twodegrees: 26648
+Detected file type 'PNG' from extension
+Wrote screenshot to: /Users/runner/work/_temp/shots/ipad-1.png
+com.bradcowdrey.twodegrees: 30518
+Detected file type 'PNG' from extension
+Wrote screenshot to: /Users/runner/work/_temp/shots/ipad-2.png
+com.bradcowdrey.twodegrees: 36083
+Detected file type 'PNG' from extension
+Wrote screenshot to: /Users/runner/work/_temp/shots/ipad-3.png
+com.bradcowdrey.twodegrees: 42170
+Detected file type 'PNG' from extension
+Wrote screenshot to: /Users/runner/work/_temp/shots/ipad-4.png
+
+[notice] A new release of pip is available: 26.2.2 -> 26.3
+[notice] To update, run: /Users/runner/work/_temp/venv/bin/python3.15 -m pip install --upgrade pip
+wrote /Users/runner/work/_temp/shots/iphone-5.png
+iphone-1.png: 1320 2868 
+iphone-2.png: 1320 2868 
+iphone-3.png: 1320 2868 
+iphone-4.png: 1320 2868 
+iphone-5.png: 1320 2868 
+ipad-1.png: 2064 2752 
+ipad-2.png: 2064 2752 
+ipad-3.png: 2064 2752 
+ipad-4.png: 2064 2752 
