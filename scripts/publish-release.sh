@@ -4,7 +4,8 @@
 # published version's files: bump VERSION to release new code.
 set -euo pipefail
 TAG="$1"; SHA="$2"; SIGNED="${3:-}"
-if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+# By tag: a draft left by a failed publish has no tag yet, so it doesn't count as published.
+if gh api "repos/$GITHUB_REPOSITORY/releases/tags/$TAG" >/dev/null 2>&1; then
   echo "Release $TAG already exists; not overwriting it."
   exit 0
 fi

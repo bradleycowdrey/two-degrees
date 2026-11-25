@@ -76,7 +76,8 @@ jobs:
           ditto -x -k pending/TwoDegrees.app.zip dist
           TEAM="${NOTARY_TEAM_ID:-$(codesign -dv dist/TwoDegrees.app 2>&1 | sed -n 's/^TeamIdentifier=//p')}"
           echo "NOTARY_TEAM_ID=$TEAM" >> "$GITHUB_ENV"
-          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+          # By tag: a draft left by a failed publish has no tag yet, so it doesn't count as published.
+          if gh api "repos/$GITHUB_REPOSITORY/releases/tags/$TAG" >/dev/null 2>&1; then
             echo "$TAG is already published; removing the pending build."
             gh api -X DELETE "repos/$GITHUB_REPOSITORY/actions/artifacts/$ARTIFACT_ID"
             echo "status=done" >> "$GITHUB_OUTPUT"; exit 0
