@@ -82,7 +82,15 @@ fahrenheit,celsius,temperature,forecast,widget,lock screen,hourly,10 day,rain,uv
 
 ## Screenshots
 
-Made in the Simulator by `.github/workflows/appstore-screenshots.yml` at Apple's required sizes, on the
-`appstore-screenshots` branch:
-- iPhone 6.9" (1320 × 2868): `iphone-1-city.png` … `iphone-5-list.png`
-- iPad 13" (2064 × 2752): `ipad-1-city.png` … (needed because the app also runs on iPad)
+On the Cowdrey family standard (fonts, sizes and rules in `design/app-store/README.md` in
+[bradleycowdrey/cowdrey-one](https://github.com/bradleycowdrey/cowdrey-one/blob/main/design/app-store/README.md)):
+the real app, framed by `design/app-store/store-frame.mjs` (a word-for-word copy of the master) in Two Degrees'
+sky blue. `.github/workflows/appstore-screenshots.yml` photographs the app in the Simulator and frames it
+(`scripts/app-store-screens.mjs`), on the `appstore-screenshots` branch (`framed/`); copy those into
+`appstore/screenshots/`, which "App Store listing" uploads:
+- iPhone 6.9" (1320 × 2868): `iphone-1.png` … `iphone-5.png`
+- iPad 13" (2064 × 2752): `ipad-1.png` … `ipad-5.png` (needed because the app also runs on iPad)
+- Mac (2880 × 1800): `mac-1.png` … `mac-5.png`, not yet on the standard: the Mac app is a 492 pt wide menu bar
+  panel, which doesn't fit the template's 1180 × 700 pt window. They're MacBooks from
+  `scripts/make-store-screenshots.py --screens DIR`, framed by `scripts/store-frames.mjs` with
+  `scripts/store-frame.mjs`, an earlier copy of the template with a MacBook option (`story.bare`).

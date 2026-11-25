@@ -1,11 +1,14 @@
 name: App Store screenshots
 
 # Photographs the iPhone app in the Simulator at the sizes App Store Connect requires: iPhone 6.9"
-# (1320 × 2868) and iPad 13" (2064 × 2752), with live weather and a 9:41 status bar, plus a picture of
-# the widgets. --store shows the five cities nearest 1 pm local time, sunniest first, so every shot is
+# (1320 × 2868) and iPad 13" (2064 × 2752), with live weather and a 9:41 status bar, plus a Home Screen
+# with the widgets. --store shows the five cities nearest 1 pm local time, sunniest first, so every shot is
 # daytime. The first iPhone launch writes the cities and their forecasts to store-snapshot.json, which every
 # later launch (and the iPad, given a copy) reads instead of fetching, so all the pictures agree.
-# Results go to the appstore-screenshots branch. Run it from the Actions tab.
+# Then frames them on the Cowdrey family standard (design/app-store/store-frame.mjs; the standard is
+# design/app-store/README.md in bradleycowdrey/cowdrey-one) into framed/iphone-1..5.png and ipad-1..5.png.
+# Results go to the appstore-screenshots branch; nothing is uploaded. To use them, copy framed/*.png into
+# appstore/screenshots on main, then run "App Store listing". Run it from the Actions tab.
 on:
   workflow_dispatch:
 
@@ -79,10 +82,20 @@ jobs:
           echo "iPhone: $PHONE  iPad: $PAD"
           shoot "$PHONE" iphone
           [ -n "$PAD" ] && shoot "$PAD" ipad || echo "::warning::No 13-inch iPad Pro simulator; skipped the iPad set"
-          # The widgets, on a sky, at the iPhone size (the Simulator can't place widgets on its Home Screen).
-          python3 -m venv "$RUNNER_TEMP/venv" && "$RUNNER_TEMP/venv/bin/pip" install --quiet pillow
-          "$RUNNER_TEMP/venv/bin/python" scripts/appstore-widgets.py "$OUT" "$OUT/iphone-5.png"
+          # The widgets on a Home Screen at the iPhone and iPad sizes (the Simulator can't place widgets on its
+          # Home Screen): iphone-5.png and ipad-5.png.
+          python3 -m venv "$RUNNER_TEMP/venv" && "$RUNNER_TEMP/venv/bin/pip" install --quiet pillow numpy
+          "$RUNNER_TEMP/venv/bin/python" scripts/appstore-widgets.py "$OUT"
           for f in "$OUT"/iphone-*.png "$OUT"/ipad-*.png; do [ -f "$f" ] && echo "$(basename "$f"): $(sips -g pixelWidth -g pixelHeight "$f" | awk '/pixel/ {printf "%s ", $2}')"; done
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Frame on the family template
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install chromium
+          ONLY=iphone; [ -f "$RUNNER_TEMP/shots/ipad-5.png" ] && ONLY=iphone,ipad
+          node scripts/app-store-screens.mjs --raw="$RUNNER_TEMP/shots" --out="$RUNNER_TEMP/shots/framed" --only=$ONLY
       - name: Publish to appstore-screenshots branch
         if: always()
         run: |

@@ -1,4 +1,9 @@
-"""Makes the App Store screenshots for iPhone (6.9", 1320x2868), iPad (13", 2064x2752) and Mac (2880x1800)
+"""The iPhone and iPad App Store screenshots are now made on the Cowdrey family standard by
+scripts/app-store-screens.mjs (see appstore/listing.md); this older generator still makes the Mac set
+(--only mac, the default), whose menu bar panel doesn't fit the family template's 1180 x 700 pt Mac window:
+--screens DIR writes its MacBooks, which scripts/store-frames.mjs frames.
+
+Makes the App Store screenshots for iPhone (6.9", 1320x2868), iPad (13", 2064x2752) and Mac (2880x1800)
 in one system: each page has its own sky from the same family (clear day, golden hour, dusk, lagoon, night),
 dark at the top so the white headline reads, opening into a light pool behind the device. Every headline sits
 at the same place in a set (no icon above it), so the headlines share one baseline.
@@ -10,7 +15,7 @@ MacBook Pro (notch, lid edge, hinge and base) at one place, with the same deskto
 Writes appstore/screenshots/iphone-1..5.png, ipad-1..5.png and mac-1..5.png.
 
 Usage:
-  python3 scripts/make-store-screenshots.py [RAW]                     all three sets (Mac from DEFAULT_MAC)
+  python3 scripts/make-store-screenshots.py [RAW]                     the Mac set (from DEFAULT_MAC)
   python3 scripts/make-store-screenshots.py [RAW] --mac DIR           the Mac set from DIR
   python3 scripts/make-store-screenshots.py --only mac --mac git:ci-shots
                                                                       the Mac set from origin/ci-shots
@@ -2119,7 +2124,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("raw", nargs="?", default=DEFAULT_RAW, help="folder of iPhone/iPad captures and widget renders")
     ap.add_argument("--mac", default=DEFAULT_MAC, help="folder (or git:<branch>) of Mac captures")
-    ap.add_argument("--only", default="iphone,ipad,mac", help="comma list of iphone, ipad, mac")
+    ap.add_argument("--only", default="mac", help="comma list of iphone, ipad, mac (iPhone and iPad: the old style)")
     ap.add_argument("--screens", help="write only the finished screens (iphone-N, ipad-N) and MacBooks (mac-N, "
                     "transparent) to this folder, for scripts/store-frames.mjs (the family template)")
     a = ap.parse_args()
