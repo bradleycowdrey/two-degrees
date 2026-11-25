@@ -1423,17 +1423,20 @@ def set_sizes(spec, copy):
 
 # ---------- iPhone ----------
 
-def iphone_set(raw):
+def iphone_set(raw, screens_only=False):
     shot = lambda n: Image.open(os.path.join(raw, n)).convert("RGBA")
     spec = PHONE
     size, sub_size = set_sizes(spec, IPHONE)
     i1, i2, i3, i4 = (shot(f"iphone-{k}.png") for k in range(1, 5))
-    V = visible_rows(spec, iphone, 1320, 2868)
+    # The family template (scripts/store-frame.mjs) shows the whole phone, so its screens are full height.
+    V = 2868 if screens_only else visible_rows(spec, iphone, 1320, 2868)
     a1 = arr(i1)
     sky1 = sky_of(a1, 20, 2600)
     status = phone_status(a1.copy())
     screens = [phone_hero(i1), phone_ten_days(i1, i2), phone_tiles(i2, i3, V), phone_list(i4, i1, sky1),
                phone_home(raw, status, V)]
+    if screens_only:
+        return screens
     return [device_page(spec, iphone, k, s, *IPHONE[k], size, sub_size) for k, s in enumerate(screens)]
 
 
@@ -1447,17 +1450,19 @@ def tablet_status(im):
     return from_arr(a)
 
 
-def ipad_set(raw):
+def ipad_set(raw, screens_only=False):
     shot = lambda n: tablet_status(Image.open(os.path.join(raw, n)).convert("RGBA"))
     spec = TABLET
     size, sub_size = set_sizes(spec, IPAD)
     p1, p2, p3, p4 = (shot(f"ipad-{k}.png") for k in range(1, 5))
-    V = visible_rows(spec, ipad, 2064, 2752)
+    V = 2752 if screens_only else visible_rows(spec, ipad, 2064, 2752)
     a1 = arr(p1)
     sky1 = sky_of(a1, 30, 2600)
     status = tablet_status_bar(a1.copy())
     screens = [tablet_hours(p1), tablet_ten_days(p1, p2), tablet_tiles(p2, p3, V), tablet_list(p4, sky1),
                tablet_home(raw, status, V)]
+    if screens_only:
+        return screens
     return [device_page(spec, ipad, k, s, *IPAD[k], size, sub_size) for k, s in enumerate(screens)]
 
 
@@ -1972,6 +1977,14 @@ def mac_desktop_menubar(load):
     return p
 
 
+def mac_devices(load, raw):
+    """For the family template: the five MacBooks of make_mac_set on a clear ground (the template sets them on
+    its own sky, under its own headline)."""
+    screens = [mac_desktop_window(load, 0), mac_desktop_window(load, 1), mac_desktop_window(load, 2),
+               mac_desktop_widgets(load, raw), mac_desktop_menubar(load)]
+    return [macbook(sc)[0] for sc in screens]
+
+
 def make_mac_set(load, raw):
     """The Mac set (2880x1800) from the store-*.png captures (load: name -> image) and the iOS widget renders in
     raw (for the Mumbai widgets): five views of one MacBook Pro at one scale and place, the same desktop under
@@ -2107,10 +2120,23 @@ def main():
     ap.add_argument("raw", nargs="?", default=DEFAULT_RAW, help="folder of iPhone/iPad captures and widget renders")
     ap.add_argument("--mac", default=DEFAULT_MAC, help="folder (or git:<branch>) of Mac captures")
     ap.add_argument("--only", default="iphone,ipad,mac", help="comma list of iphone, ipad, mac")
+    ap.add_argument("--screens", help="write only the finished screens (iphone-N, ipad-N) and MacBooks (mac-N, "
+                    "transparent) to this folder, for scripts/store-frames.mjs (the family template)")
     a = ap.parse_args()
     only = a.only.split(",")
     os.makedirs(OUT, exist_ok=True)
     read_menu_bar(a.raw)
+    if a.screens:
+        os.makedirs(a.screens, exist_ok=True)
+        sets = [("iphone", lambda: iphone_set(a.raw, True)), ("ipad", lambda: ipad_set(a.raw, True)),
+                ("mac", lambda: mac_devices(loader(a.mac), a.raw))]
+        for name, make in sets:
+            if name in only:
+                for k, im in enumerate(make(), 1):
+                    path = os.path.join(a.screens, f"{name}-{k}.png")
+                    (im if name == "mac" else im.convert("RGB")).save(path)
+                    print(path, im.size)
+        return
     if "iphone" in only:
         for k, im in enumerate(iphone_set(a.raw), 1):
             save(im, f"iphone-{k}.png")
