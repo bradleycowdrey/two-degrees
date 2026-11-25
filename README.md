@@ -9,6 +9,7 @@ Made by <a href="https://bradcowdrey.com">Bradley Cowdrey · bradcowdrey.com</a>
   <a href="https://apps.apple.com/app/id6826694344?platform=mac"><b>Mac App Store</b></a> ·
   <a href="https://github.com/bradleycowdrey/two-degrees/releases/latest/download/TwoDegrees.dmg">Mac DMG</a> ·
   <a href="https://github.com/bradleycowdrey/two-degrees/releases/latest/download/TwoDegrees.apk"><b>Android APK</b></a> ·
+  Google Play (closed test, coming soon) ·
   <a href="https://apps.apple.com/app/id6826694344"><b>iPhone and iPad (App Store)</b></a> ·
   <a href="https://bradcowdrey.com/two-degrees">Try it in your browser</a> ·
   <a href="#widgets">Widgets</a> ·
@@ -137,6 +138,8 @@ It shares the offline city list (`Resources/Cities.tsv`) with the Mac and iPhone
 `TwoDegrees.apk` to the current release. With the `ANDROID_KEYSTORE_B64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`
 and `ANDROID_KEY_PASSWORD` secrets set, release builds are signed with that key (the same key is needed for updates to
 install over each other, and for Google Play); without them, they're signed with a throwaway debug key.
+Release builds (a push to `main` that changes `VERSION`) and builds run by hand on `main` also go to Google Play's
+closed test; the store listing is in [`docs/play`](docs/play/README.md).
 
 ## Testing
 
