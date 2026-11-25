@@ -4,6 +4,8 @@ name: Android
 # with live data (the self-test: forecasts, units, city search online and offline, the widgets' data
 # path) and photographs the terms, a city page at rest and scrolled, and the city list. Results go to
 # the ci-shots-android branch; the job fails if any check fails. The APKs are kept as an artifact.
+# Release builds (a push to main that changes VERSION) and builds run by hand on main then go to
+# Google Play's closed test, if they passed and are signed with the upload key (docs/play/README.md).
 on:
   push:
     branches: [main]
@@ -18,9 +20,13 @@ jobs:
   android:
     runs-on: ubuntu-24.04
     timeout-minutes: 45
+    env:
+      HAS_PLAY: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON != '' }}
+      HAS_UPLOAD_KEY: ${{ secrets.ANDROID_KEYSTORE_B64 != '' }}
     steps:
       - uses: actions/checkout@v4
         with:
+          # The whole history: the version code is the number of commits (android/app/build.gradle.kts).
           fetch-depth: 0
       - uses: actions/setup-java@v5
         with:
@@ -120,3 +126,61 @@ jobs:
           git add -A && git commit -qm "Android CI screenshots for $(cat commit.txt)"
           git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" ci-shots-android
           head -1 report.txt | grep -q "^ALL PASSED"
+      - name: Is this build for Google Play?
+        # Testers get release builds (a push to main that changes VERSION) and builds run by hand on main
+        # (Actions, Android, Run workflow); not pull requests, other branches or other pushes. Only main, so
+        # version codes (commits on main) only go up. Play takes only bundles signed with the upload key.
+        # Last, so testers only get builds that passed the self-test in the emulator.
+        id: play
+        if: env.HAS_PLAY == 'true' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        env:
+          BEFORE: ${{ github.event.before }}
+        run: |
+          TESTERS=false
+          if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
+            TESTERS=true
+          elif [ "$GITHUB_EVENT_NAME" = push ]; then
+            # Everything this push brought, or just this commit if the earlier one isn't known.
+            if git cat-file -e "${BEFORE}^{commit}" 2>/dev/null; then FROM="$BEFORE"; else FROM="HEAD^"; fi
+            git diff --quiet "$FROM" HEAD -- VERSION || TESTERS=true
+          fi
+          UPLOAD=$TESTERS
+          if [ "$TESTERS" != true ]; then
+            echo "Not a build for testers (only a push that changes VERSION, or Run workflow, on main); not sent to Google Play."
+          elif [ "$HAS_UPLOAD_KEY" != true ]; then
+            echo "::warning::Not sent to Google Play: without the ANDROID_KEYSTORE secrets the bundle is signed with a debug key, which Play refuses."
+            UPLOAD=false
+          fi
+          echo "upload=$UPLOAD" >> "$GITHUB_OUTPUT"
+          [ "$UPLOAD" = true ] || exit 0
+          echo "name=$(tr -d '[:space:]' < VERSION) ($(git rev-list --count HEAD))" >> "$GITHUB_OUTPUT"
+          # What's new: this version's CHANGELOG entries for Android (not the Mac- or iPhone-only ones), up to Play's 500 characters.
+          python3 - > "$RUNNER_TEMP/play-notes.txt" <<'EOF' || true
+          import re
+          version = open('VERSION').read().strip()
+          text = open('CHANGELOG.md', encoding='utf-8').read()
+          m = re.search(r'^## \[' + re.escape(version) + r'\][^\n]*\n(.*?)(?=^## \[|\Z)', text, re.S | re.M)
+          notes = []
+          for item in re.split(r'\n(?=- )', m.group(1).strip()) if m else []:
+              item = ' '.join(item.split()).lstrip('- ')
+              if re.search(r'App Store|TestFlight|iPhone|iPad|\bMac\b|menu bar|Dock', item) and 'Android' not in item:
+                  continue
+              item = '• ' + re.sub(r'\[([^]]+)\]\([^)]+\)', r'\1', item.replace('**', ''))
+              if len('\n'.join(notes + [item])) > 500:
+                  break
+              notes.append(item)
+          print('\n'.join(notes))
+          EOF
+          cat "$RUNNER_TEMP/play-notes.txt"
+          { echo "notes<<PLAY_NOTES_END"; cat "$RUNNER_TEMP/play-notes.txt"; echo "PLAY_NOTES_END"; } >> "$GITHUB_OUTPUT"
+      - name: Google Play closed test
+        if: env.HAS_PLAY == 'true' && steps.play.outputs.upload == 'true'
+        env:
+          PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          PLAY_PACKAGE: com.bradcowdrey.twodegrees
+          PLAY_AAB: android/app/build/outputs/bundle/release/app-release.aab
+          PLAY_RELEASE_NAME: ${{ steps.play.outputs.name }}
+          PLAY_RELEASE_NOTES: ${{ steps.play.outputs.notes }}
+        run: |
+          pip install --quiet pyjwt cryptography
+          python3 .github/scripts/play_publish.py
