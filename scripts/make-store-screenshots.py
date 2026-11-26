@@ -1,7 +1,8 @@
 """The iPhone and iPad App Store screenshots are now made on the Cowdrey family standard by
 scripts/app-store-screens.mjs (see appstore/listing.md); this older generator still makes the Mac set
 (--only mac, the default), whose menu bar panel doesn't fit the family template's 1180 x 700 pt Mac window:
---screens DIR writes its MacBooks, which scripts/store-frames.mjs frames.
+--screens DIR writes the Mac set's pieces (the app's windows and widgets), which scripts/store-frames.mjs lays out
+on the family template's MacBook (design/app-store/store-frame.mjs: desktop() and device 'macbook').
 
 Makes the App Store screenshots for iPhone (6.9", 1320x2868), iPad (13", 2064x2752) and Mac (2880x1800)
 in one system: each page has its own sky from the same family (clear day, golden hour, dusk, lagoon, night),
@@ -1509,17 +1510,25 @@ def traffic_lights(im, x0=28, cy=30, r=12, pitch=40):
 MAC_K = 1.2     # the app's windows on the Mac pages: the 2x captures at 1.2x (a Mac at a "larger text" scaling)
 
 
-def mac_window(im, lights=True, radius=26):
-    """A 2x window capture (opaque, no frame) as macOS shows it: the overlay scroller at the right edge taken
-    out (the window's own background, read a little to its left, carried across), the traffic lights in the
-    hidden title bar, continuous corners, a fine light rim inside and a thin dark outline."""
+def scroller_out(im):
+    """A 2x window capture without macOS's overlay scroller at its right edge (it shows only while scrolling): the
+    window's own background, read a little to its left, carried across. Nothing the app draws is touched."""
     a = arr(im)
-    W, H = im.size
+    W = im.size[0]
     k = W / 984                                 # the scroller runs from row 128 down, right of x 948 (at 2x)
     y0, x0 = round(128 * k), W - round(36 * k)
     col = np.median(a[y0:, x0 - round(8 * k):x0], 1)
     a[y0:, x0:] = col[:, None, :]
-    win = from_arr(a)
+    return from_arr(a)
+
+
+def mac_window(im, lights=True, radius=26):
+    """A 2x window capture (opaque, no frame) as macOS shows it: the overlay scroller at the right edge taken
+    out (the window's own background, read a little to its left, carried across), the traffic lights in the
+    hidden title bar, continuous corners, a fine light rim inside and a thin dark outline."""
+    W, H = im.size
+    k = W / 984
+    win = scroller_out(im)
     if lights:
         traffic_lights(win, *(round(v * k) for v in (28, 30, 12, 40)))
     radius = radius * k
@@ -1596,13 +1605,14 @@ def mac_days(load):
 
 def mac_tiles(load):
     """mac-3's window: the toolbar, then Visibility / Precipitation (edges 518..837) and Cloud cover / Moon
-    (858..1230), 21 rows apart as in the app, and the window's own margin under them. Air quality and Averages
+    (858..1230, its rounded foot ending at 1232), 21 rows apart as in the app, and the window's own background
+    under them for 32 rows (16 pt, the app's side margin), so the last cards don't sit on the window's edge. Air quality and Averages
     (its '7° above normal' carries no unit) are left out; the secondary units are raised to near-white."""
     a = arr(load("store-3-tiles.png"))
     whiten(a, (54, 678, 162, 716), 0.94, 0.3)          # 29 km
     whiten(a, (508, 678, 724, 721), 0.94, 0.3)         # 0.0 mm today
     B = sky_of(a, 12, a.shape[0])
-    H = 144 + (837 - 518 + 1) + 21 + (1230 - 858 + 1) + 10
+    H = 144 + (837 - 518 + 1) + 21 + (1232 - 858 + 1) + 32
     out = a[:H].copy()
     Bd = B[:H]
     fill(out, Bd, 136, H)
@@ -1990,6 +2000,19 @@ def mac_devices(load, raw):
     return [macbook(sc)[0] for sc in screens]
 
 
+def mac_pieces(load, raw):
+    """For the family template (scripts/store-frames.mjs lays them out on the master's desktop() and MacBook): the
+    app's real windows and widgets at 2x, as they are, with no frame, shadow or desktop of ours. mac-1..3-window are
+    the hero, the 10-day card and the tiles (the overlay scroller out); mac-4-* the widgets (Tokyo large, medium,
+    small; Mumbai small and large); mac-5-panel is the menu bar panel (the hero again) and mac-5-dock the app's live
+    Dock tile. mac.json carries the menu bar's reading and clock (from the captures' store-snapshot.json)."""
+    w = mac_widgets(load, raw)
+    out = {f"mac-{i + 1}-window": scroller_out(f(load)) for i, f in enumerate((mac_hero, mac_days, mac_tiles))}
+    out.update({"mac-4-large": w["L"], "mac-4-medium": w["M"], "mac-4-small": w["S"], "mac-4-small2": w["mS"],
+                "mac-4-large2": w["mL"], "mac-5-panel": out["mac-1-window"], "mac-5-dock": load("store-dock.png")})
+    return out
+
+
 def make_mac_set(load, raw):
     """The Mac set (2880x1800) from the store-*.png captures (load: name -> image) and the iOS widget renders in
     raw (for the Mumbai widgets): five views of one MacBook Pro at one scale and place, the same desktop under
@@ -2125,21 +2148,28 @@ def main():
     ap.add_argument("raw", nargs="?", default=DEFAULT_RAW, help="folder of iPhone/iPad captures and widget renders")
     ap.add_argument("--mac", default=DEFAULT_MAC, help="folder (or git:<branch>) of Mac captures")
     ap.add_argument("--only", default="mac", help="comma list of iphone, ipad, mac (with --screens: the finished screens for the family template)")
-    ap.add_argument("--screens", help="write only the finished screens (iphone-N, ipad-N) and MacBooks (mac-N, "
-                    "transparent) to this folder, for scripts/store-frames.mjs (the family template)")
+    ap.add_argument("--screens", help="write only the finished screens (iphone-N, ipad-N) and the Mac pieces "
+                    "(mac-N-*, mac.json) to this folder, for the family template (scripts/store-frames.mjs)")
     a = ap.parse_args()
     only = a.only.split(",")
     os.makedirs(OUT, exist_ok=True)
     read_menu_bar(a.raw)
     if a.screens:
         os.makedirs(a.screens, exist_ok=True)
-        sets = [("iphone", lambda: iphone_set(a.raw, True)), ("ipad", lambda: ipad_set(a.raw, True)),
-                ("mac", lambda: mac_devices(loader(a.mac), a.raw))]
+        if "mac" in only:
+            import json
+            for name, im in mac_pieces(loader(a.mac), a.raw).items():
+                path = os.path.join(a.screens, f"{name}.png")
+                im.save(path)
+                print(path, im.size)
+            with open(os.path.join(a.screens, "mac.json"), "w") as f:
+                json.dump({"reading": MENU_READING, "clock": MENU_CLOCK}, f)
+        sets = [("iphone", lambda: iphone_set(a.raw, True)), ("ipad", lambda: ipad_set(a.raw, True))]
         for name, make in sets:
             if name in only:
                 for k, im in enumerate(make(), 1):
                     path = os.path.join(a.screens, f"{name}-{k}.png")
-                    (im if name == "mac" else im.convert("RGB")).save(path)
+                    im.convert("RGB").save(path)
                     print(path, im.size)
         return
     if "iphone" in only:
