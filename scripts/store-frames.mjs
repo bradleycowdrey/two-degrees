@@ -9,8 +9,9 @@
 //   node scripts/store-frames.mjs --screens <dir> [--out appstore/screenshots]   mac-1..5.png (2880 x 1800 RGB)
 //
 // Everything on the desktop is in points (1512 x 982, drawn at 2x); the captures are 2x, so each is shown at half
-// its pixel size: the app's real size on a 14" MacBook Pro (the menu bar panel, 492 pt wide, is enlarged 1.5x so
-// it reads). The clock is the template's one family clock (MAC_CLOCK); the menu bar's reading comes from mac.json.
+// its pixel size: the app's real size on a 14" MacBook Pro. The app's window and its menu bar panel are 492 pt wide,
+// too small to read at App Store size, so both are enlarged 1.5x (the 10-day window, taller, 1.4x so it fits).
+// The clock is the template's one family clock (MAC_CLOCK); the menu bar's reading comes from mac.json.
 import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
@@ -51,8 +52,16 @@ const [DW, DH] = MACBOOK.desktop, BAR = MACBOOK.menuBar;
 const base = { theme: THEME, app: 'Two Degrees', menuExtra: { text: meta.reading, icon: 'sun' }, fonts: FONTS };
 const WIDGET_R = 28; // the widget renders' own continuous corners, in points
 
-// One app window, as the app draws it (its own title bar, so macOS's traffic lights over it), centred.
-const windowScreen = (name) => { const png = piece(name), [w, h] = size(png); return { windows: [{ png, w, h, chrome: 'none', lights: true }] }; };
+// One app window, as the app draws it (its own title bar, so macOS's traffic lights over it), centred. The window is
+// 492 pt wide, too small for its °C figures to read at App Store size, so it is enlarged as the menu bar panel is:
+// 1.5x (the template's limit), or as near as fits below the menu bar with WIN_MARGIN points above and below it
+// (mac-2's 10-day window, 635 pt tall, is shown at 1.4x).
+const WIN_K = 1.5, WIN_MARGIN = 24;
+const windowScreen = (name) => {
+  const png = piece(name), [w, h] = size(png);
+  const scale = Math.min(WIN_K, Math.floor((DH - BAR - 2 * WIN_MARGIN) / h * 20) / 20);
+  return { windows: [{ png, w, h, chrome: 'none', lights: true, scale }] };
+};
 
 // mac-4: the widgets in two balanced columns: Tokyo's large over the two small ones (Tokyo, Mumbai); Tokyo's medium
 // over Mumbai's large.
@@ -125,17 +134,20 @@ async function menuBarScreen(browser) {
   const panel = piece('mac-5-panel'), [w0, h0] = size(panel), K = 1.5, [pw, ph] = [w0 * K, h0 * K], dock = { icon: piece('mac-5-dock') };
   const plain = { ...base, dock };
   const at = await measure(browser, plain);
-  const ex = at.extra.x + at.extra.w / 2;
-  // The panel hangs under the menu bar just left of the extra, so the extra's leader runs clear of it.
-  const px = Math.round(ex - 24 - pw), py = BAR + 8;
+  const ex = at.extra.x + at.extra.w / 2, er = at.extra.x + at.extra.w;
+  // The panel hangs directly under its menu-bar item, as a menu-bar panel does: its right edge under the item's.
+  const px = Math.round(er - pw), py = BAR + 6;
   const d = 220, k = 2.2;
-  const c1 = [DW - 140, 300], c2 = [270, 660]; // c2 clear of the enlarged panel's left edge
+  // The menu bar's magnifier sits right of the panel, below the bar; its leader meets the item at the item's right
+  // end (a = the item's foot, 7 pt in from its right edge), so it runs clear of the panel's top right corner.
+  const a1 = [er - 7, BAR - 2];
+  const c1 = [DW - d / 2 - 16, BAR + 16 + d / 2 + 40], c2 = [270, 660]; // c2 clear of the enlarged panel's left edge
   const tile = [at.dock.x + at.dock.w / 2, at.dock.y + at.dock.h / 2];
   const t1 = 80; // the menu bar's magnifier shows the bezel's black above the bar, as the screen's edge is
   const v1 = await magnify(browser, plain, ex, d / k / 2 - t1 / k, d, k, t1);
   const v2 = await magnify(browser, plain, tile[0], tile[1] - 8, d, k);
   const L1 = await loupe(browser, v1, d, t1), L2 = await loupe(browser, v2, d);
-  const lines = await leaders(browser, [[toward(c1, [ex, BAR], d / 2), [ex, BAR - 2]], [toward(c2, [tile[0], at.dock.y], d / 2), [tile[0] - 6, at.dock.y + 4]]]);
+  const lines = await leaders(browser, [[toward(c1, a1, d / 2), a1], [toward(c2, [tile[0], at.dock.y], d / 2), [tile[0] - 6, at.dock.y + 4]]]);
   return {
     dock,
     windows: [{ png: panel, x: px, y: py, w: w0, h: h0, chrome: 'none', scale: K }],
