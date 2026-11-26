@@ -84,13 +84,20 @@ fahrenheit,celsius,temperature,forecast,widget,lock screen,hourly,10 day,rain,uv
 
 On the Cowdrey family standard (fonts, sizes and rules in `design/app-store/README.md` in
 [bradleycowdrey/cowdrey-one](https://github.com/bradleycowdrey/cowdrey-one/blob/main/design/app-store/README.md)):
-the real app, framed by `design/app-store/store-frame.mjs` (a word-for-word copy of the master) in Two Degrees'
-sky blue. `.github/workflows/appstore-screenshots.yml` photographs the app in the Simulator and frames it
-(`scripts/app-store-screens.mjs`), on the `appstore-screenshots` branch (`framed/`); copy those into
-`appstore/screenshots/`, which "App Store listing" uploads:
+the real app, framed in Two Degrees' sky blue (`THEMES.twodegrees`).
+`.github/workflows/appstore-screenshots.yml` photographs the app in the Simulator (one frozen forecast for every
+launch) and publishes the captures to the `appstore-screenshots` branch, with a quick framing of them in `framed/`.
+The shipped set is made from those captures in two steps:
+1. `python3 scripts/make-store-screenshots.py --screens DIR --only iphone,ipad,mac` finishes the screens: the 10-day list from its title,
+   the tiles without the empty Averages tile, the city list on the app's sky, a full battery. Only layout is
+   changed; the app's own numbers and labels are never edited.
+2. `node scripts/app-store-screens.mjs --raw=DIR` frames the iPhone and iPad screens with
+   `design/app-store/store-frame.mjs` (a word-for-word copy of the master), and `node scripts/store-frames.mjs
+   --screens DIR` frames the Mac set.
+
+`appstore/screenshots/` is what "App Store listing" uploads:
 - iPhone 6.9" (1320 × 2868): `iphone-1.png` … `iphone-5.png`
 - iPad 13" (2064 × 2752): `ipad-1.png` … `ipad-5.png` (needed because the app also runs on iPad)
-- Mac (2880 × 1800): `mac-1.png` … `mac-5.png`, not yet on the standard: the Mac app is a 492 pt wide menu bar
-  panel, which doesn't fit the template's 1180 × 700 pt window. They're MacBooks from
-  `scripts/make-store-screenshots.py --screens DIR`, framed by `scripts/store-frames.mjs` with
-  `scripts/store-frame.mjs`, an earlier copy of the template with a MacBook option (`story.bare`).
+- Mac (2880 × 1800): `mac-1.png` … `mac-5.png`: the family's type, sizes and colours, with a MacBook instead of
+  the template's window (the Mac app is a 492 pt wide menu bar panel, which doesn't fit its 1180 × 700 pt window).
+  `scripts/store-frame.mjs` is the master template plus that MacBook option (`story.bare`) and the same colours.

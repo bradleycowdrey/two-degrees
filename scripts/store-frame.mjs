@@ -22,9 +22,9 @@ export const THEMES = {
     ground: ['#101C45', '#0A1230', '#050917'], glow: 'rgba(74, 116, 242, .24)', floor: 'rgba(28, 61, 174, .28)',
     ink: '#F6F7FB', sub: '#C4CEEA', base: '#070C1D',
   },
-  td: { // Two Degrees blue (the icon's sky, #72AAE9 to #204294)
-    ground: ['#12285A', '#0B1A3E', '#050C1F'], glow: 'rgba(114, 170, 233, .26)', floor: 'rgba(32, 66, 148, .30)',
-    ink: '#F5F8FF', sub: '#C2D3F2', base: '#050C1F',
+  td: { // Two Degrees sky blue: the master's THEMES.twodegrees, so the Mac set matches the iPhone and iPad sets
+    ground: ['#0C2A4E', '#081C37', '#040E1E'], glow: 'rgba(114, 170, 233, .26)', floor: 'rgba(32, 66, 148, .34)',
+    ink: '#F5F9FF', sub: '#C6DBF5', base: '#040E1E',
   },
   pdf: { // Cowdrey.PDF raspberry
     ground: ['#3E0C20', '#220812', '#12060B'], glow: 'rgba(198, 31, 82, .26)', floor: 'rgba(150, 18, 60, .30)',

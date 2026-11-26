@@ -2124,7 +2124,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("raw", nargs="?", default=DEFAULT_RAW, help="folder of iPhone/iPad captures and widget renders")
     ap.add_argument("--mac", default=DEFAULT_MAC, help="folder (or git:<branch>) of Mac captures")
-    ap.add_argument("--only", default="mac", help="comma list of iphone, ipad, mac (iPhone and iPad: the old style)")
+    ap.add_argument("--only", default="mac", help="comma list of iphone, ipad, mac (with --screens: the finished screens for the family template)")
     ap.add_argument("--screens", help="write only the finished screens (iphone-N, ipad-N) and MacBooks (mac-N, "
                     "transparent) to this folder, for scripts/store-frames.mjs (the family template)")
     a = ap.parse_args()

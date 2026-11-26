@@ -1,11 +1,12 @@
-// Two Degrees' App Store pictures in the Cowdrey family's template (scripts/store-frame.mjs, the one Cowdrey.MD
-// and Cowdrey.PDF share): Cowdrey One's Fraunces headline, an Instrument Sans sub-line, the same sizes and
-// places on every app's pictures, and Two Degrees' blue ground.
+// Two Degrees' Mac App Store pictures, in the family's type and sizes: the MacBooks that
+// make-store-screenshots.py draws (the Mac app is a 492 pt menu bar panel, which doesn't fit the master template's
+// 1180 x 700 pt window), framed by scripts/store-frame.mjs: the master template plus story.bare, which sets an
+// app-drawn device where the window would be. The iPhone and iPad sets are framed by scripts/app-store-screens.mjs
+// with the master copy (design/app-store/store-frame.mjs).
 //
-//   python3 scripts/make-store-screenshots.py --screens <dir>     the finished screens and MacBooks
-//   node scripts/store-frames.mjs --screens <dir> [--out appstore/screenshots]
-//
-// Writes iphone-1..5.png (1320 x 2868), ipad-1..5.png (2064 x 2752) and mac-1..5.png (2880 x 1800), opaque RGB.
+//   python3 scripts/make-store-screenshots.py --screens <dir> --only iphone,ipad,mac   finished screens and MacBooks
+//   node scripts/app-store-screens.mjs --raw=<dir>                iphone-1..5.png, ipad-1..5.png
+//   node scripts/store-frames.mjs --screens <dir> [--out appstore/screenshots]   mac-1..5.png (2880 x 1800)
 import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
@@ -26,14 +27,7 @@ const SCREENS = opt('--screens');
 const OUT = path.resolve(opt('--out', path.join(ROOT, 'appstore', 'screenshots')));
 if (!SCREENS) { console.error('Usage: node scripts/store-frames.mjs --screens <dir> [--out <dir>]'); process.exit(2); }
 
-// One idea a picture, in the same order on every device. iPhone and iPad share the words.
-const IOS = [
-  { head: 'Every temperature\nin °F and °C', sub: 'Both units, always. No switching.' },
-  { head: 'Ten days,\nboth units', sub: 'Every high and low, in °F and °C.' },
-  { head: 'Every detail\nin both units', sub: 'Feels like, dew point, visibility and more.' },
-  { head: 'All your cities,\nboth units', sub: 'Up to 20 places in one list.' },
-  { head: 'Both units on\nyour Home Screen', sub: 'Small, medium and large widgets.' },
-];
+// One idea a picture, in the same order as the iPhone and iPad sets.
 const MAC = [
   { head: 'Every temperature in °F and °C', sub: 'Both units, side by side.' },
   { head: 'Ten days, both units', sub: 'Every high and low, in °F and °C.' },
@@ -48,7 +42,7 @@ const pngSize = (buf) => [buf.readUInt32BE(16), buf.readUInt32BE(20)];
 
 const browser = await playwright.chromium.launch();
 fs.mkdirSync(OUT, { recursive: true });
-for (const [kind, copy] of [['iphone', IOS], ['ipad', IOS], ['mac', MAC]]) {
+for (const [kind, copy] of [['mac', MAC]]) {
   for (let k = 1; k <= copy.length; k++) {
     const src = path.join(SCREENS, `${kind}-${k}.png`);
     if (!fs.existsSync(src)) { console.log(`skip ${kind}-${k}: no ${src}`); continue; }
