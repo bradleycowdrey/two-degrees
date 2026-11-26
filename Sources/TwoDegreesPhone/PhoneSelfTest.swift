@@ -155,7 +155,7 @@ enum PhoneSelfTest {
             }
             check(!entry.failed && !entry.unavailable && entry.forecast.days.count >= 5,
                   "widget loads \(picked.name) (\(String(format: "%.1f", Date().timeIntervalSince(started))) s)")
-            // With --store, a number first so the main city's pictures sort first for appstore-widgets.py.
+            // With --store, a number first so the main city's pictures sort first (widget-0<city>-*.png) for scripts/store-frames/prepare-captures.py.
             let slug = (daylight.isEmpty ? "" : "\(i)") + picked.name.lowercased().filter(\.isLetter)
             for (family, size, name) in sizes {
                 check(render(widget(entry, family, size), to: dir.appendingPathComponent("widget-\(slug)-\(name).png")),

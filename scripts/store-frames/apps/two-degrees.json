@@ -1,0 +1,211 @@
+{
+ "app": "Two Degrees",
+ "slug": "two-degrees",
+ "sky": [
+  "#72AAE9",
+  "#204294"
+ ],
+ "captures": "../../../build/store-captures",
+ "out": "../../../appstore/screenshots",
+ "iphone": [
+  {
+   "id": "now",
+   "eyebrow": "Right now",
+   "headline": [
+    "Two scales.",
+    "One forecast."
+   ],
+   "subhead": "Every temperature in °F and °C at once.",
+   "capture": "iphone-1.png"
+  },
+  {
+   "id": "ten-day",
+   "eyebrow": "10-day forecast",
+   "headline": [
+    "Ten days,",
+    "both scales."
+   ],
+   "subhead": "Each day’s range on one shared scale.",
+   "capture": "iphone-2.png"
+  },
+  {
+   "id": "details",
+   "eyebrow": "Details",
+   "headline": [
+    "Twelve tiles",
+    "of detail."
+   ],
+   "subhead": "Air quality, UV, rain, wind and the moon.",
+   "capture": "iphone-3.png"
+  },
+  {
+   "id": "cities",
+   "eyebrow": "Your cities",
+   "headline": [
+    "Every city,",
+    "its own sky."
+   ],
+   "subhead": "Up to 20 cities, or where you are.",
+   "capture": "iphone-4.png"
+  },
+  {
+   "id": "widgets",
+   "eyebrow": "Widgets",
+   "headline": [
+    "°F and °C",
+    "at a glance."
+   ],
+   "subhead": "On the Home Screen and the Lock Screen.",
+   "widgets": [
+    {
+     "file": "widget-medium.png",
+     "scale": 1.42
+    },
+    {
+     "file": "widget-large.png",
+     "scale": 1.42
+    },
+    [
+     {
+      "file": "widget-lock-rectangular.png",
+      "scale": 1.5
+     },
+     {
+      "file": "widget-lock-circular.png",
+      "scale": 1.5
+     }
+    ],
+    {
+     "file": "widget-lock-inline.png",
+     "scale": 1.5
+    }
+   ]
+  }
+ ],
+ "ipad": [
+  {
+   "id": "now",
+   "eyebrow": "Right now",
+   "headline": [
+    "Two scales.",
+    "One forecast."
+   ],
+   "subhead": "Every temperature in °F and °C at once.",
+   "capture": "ipad-1.png"
+  },
+  {
+   "id": "ten-day",
+   "eyebrow": "10-day forecast",
+   "headline": [
+    "Ten days,",
+    "both scales."
+   ],
+   "subhead": "Each day’s range on one shared scale.",
+   "capture": "ipad-2.png"
+  },
+  {
+   "id": "details",
+   "eyebrow": "Details",
+   "headline": [
+    "Twelve tiles",
+    "of detail."
+   ],
+   "subhead": "Air quality, UV, rain, wind and the moon.",
+   "capture": "ipad-3.png"
+  },
+  {
+   "id": "cities",
+   "eyebrow": "Your cities",
+   "headline": [
+    "Every city,",
+    "its own sky."
+   ],
+   "subhead": "Up to 20 cities, or where you are.",
+   "capture": "ipad-4.png"
+  },
+  {
+   "id": "widgets",
+   "eyebrow": "Widgets",
+   "headline": [
+    "°F and °C",
+    "at a glance."
+   ],
+   "subhead": "On the Home Screen and the Lock Screen.",
+   "widgets": [
+    [
+     {
+      "file": "widget-small.png",
+      "scale": 1.5
+     },
+     {
+      "file": "widget-medium.png",
+      "scale": 1.5
+     }
+    ],
+    {
+     "file": "widget-large.png",
+     "scale": 1.5
+    },
+    [
+     {
+      "file": "widget-lock-rectangular.png",
+      "scale": 1.6
+     },
+     {
+      "file": "widget-lock-circular.png",
+      "scale": 1.6
+     }
+    ]
+   ]
+  }
+ ],
+ "mac": [
+  {
+   "id": "now",
+   "eyebrow": "Right now",
+   "headline": [
+    "Two scales.",
+    "One forecast."
+   ],
+   "subhead": "Every temperature in °F and °C at once.",
+   "capture": "mac-1.png",
+   "title": "Two Degrees"
+  },
+  {
+   "id": "forecast",
+   "eyebrow": "Forecast",
+   "headline": [
+    "Ten days and",
+    "twelve tiles."
+   ],
+   "subhead": "The 10-day range and every detail, in both scales.",
+   "capture": "mac-2.png",
+   "title": "Two Degrees"
+  },
+  {
+   "id": "widgets",
+   "eyebrow": "Widgets",
+   "headline": [
+    "°F and °C",
+    "at a glance."
+   ],
+   "subhead": "Small, medium and large, on your desktop.",
+   "widgets": [
+    [
+     {
+      "file": "mac-widget-large.png",
+      "scale": 1.45
+     },
+     {
+      "file": "mac-widget-medium.png",
+      "scale": 1.45
+     },
+     {
+      "file": "mac-widget-small.png",
+      "scale": 1.45
+     }
+    ]
+   ]
+  }
+ ]
+}
