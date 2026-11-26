@@ -113,8 +113,8 @@ The two are the same app; use one or the other. The App Store version keeps its 
 Two Degrees is free on the [App Store](https://apps.apple.com/app/id6826694344) for iPhone and iPad, with Home Screen and
 Lock Screen widgets. It needs iOS or iPadOS 17 or later.
 
-Its App Store screenshots follow the Cowdrey family standard ([`design/app-store/README.md` in
-cowdrey-one](https://github.com/bradleycowdrey/cowdrey-one/blob/main/design/app-store/README.md)); how they're made is in
+Its App Store screenshots, for iPhone, iPad and Mac, follow the Cowdrey family standard
+([`scripts/store-frames/STANDARD.md`](scripts/store-frames/STANDARD.md)); how they're made is in
 [`appstore/listing.md`](appstore/listing.md#screenshots).
 
 ## Build from source

@@ -82,23 +82,31 @@ fahrenheit,celsius,temperature,forecast,widget,lock screen,hourly,10 day,rain,uv
 
 ## Screenshots
 
-On the Cowdrey family standard (fonts, sizes and rules in `design/app-store/README.md` in
-[bradleycowdrey/cowdrey-one](https://github.com/bradleycowdrey/cowdrey-one/blob/main/design/app-store/README.md)):
-the real app, framed in Two Degrees' sky blue (`THEMES.twodegrees`).
-`.github/workflows/appstore-screenshots.yml` photographs the app in the Simulator (one frozen forecast for every
-launch) and publishes the captures to the `appstore-screenshots` branch, with a quick framing of them in `framed/`.
-The shipped set is made from those captures in two steps:
-1. `python3 scripts/make-store-screenshots.py --screens DIR --only iphone,ipad,mac` finishes the screens: the 10-day list from its title,
-   the tiles without the empty Averages tile, the city list on the app's sky, a full battery. Only layout is
-   changed; the app's own numbers and labels are never edited.
-2. `node scripts/app-store-screens.mjs --raw=DIR` frames the iPhone and iPad screens with
-   `design/app-store/store-frame.mjs` (a word-for-word copy of the master), and `node scripts/store-frames.mjs
-   --screens DIR` lays the Mac pieces (`mac-N-*.png`, `mac.json`) on the template's desktop and MacBook.
+On the Cowdrey family App Store standard ([`scripts/store-frames/STANDARD.md`](../scripts/store-frames/STANDARD.md)):
+the real app on Two Degrees' catalog sky (`#72AAE9` to `#204294`), under an eyebrow, a Fraunces headline and a
+one-line subhead in Cowdrey One's type scale. The family compositor is vendored in `scripts/store-frames/`
+(`store-frames.js`, with Fraunces and Inter and their OFL licences in `fonts/`); Two Degrees' words and pictures
+are in `scripts/store-frames/apps/two-degrees.json`.
 
-`appstore/screenshots/` is what "App Store listing" uploads:
-- iPhone 6.9" (1320 × 2868): `iphone-1.png` … `iphone-5.png`
-- iPad 13" (2064 × 2752): `ipad-1.png` … `ipad-5.png` (needed because the app also runs on iPad)
-- Mac (2880 × 1800): `mac-1.png` … `mac-5.png`, made as every family app's Mac set: the template's MacBook
-  (`device: 'macbook'`) showing its shared desktop (`desktop()`: wallpaper, menu bar with the app's reading and the
-  clock, Dock on page 5) with the app's real windows and widgets on it at their real size (the 2x captures at half
-  their pixels). `scripts/store-frames.mjs` lays the pages out with the word-for-word master copy.
+`.github/workflows/appstore-screenshots.yml` (run it from the Actions tab) makes the whole set in one go:
+1. photographs the iPhone and iPad apps in the Simulator (one frozen forecast for every launch) and renders their
+   widgets, Home Screen and Lock Screen;
+2. builds the Mac app and runs its self-test's App Store pass (`--selftest DIR --store`) with the iPhone's cities
+   and forecasts, for the Mac windows and widgets;
+3. `python3 scripts/store-frames/prepare-captures.py --ios DIR --mac DIR --out build/store-captures` gathers the
+   captures under the config's names; the Mac screens are 2880 × 1800, two of the app's real windows side by side
+   on the app's own sky;
+4. `node scripts/store-frames/store-frames.js --config scripts/store-frames/apps/two-degrees.json` frames them, and
+   `node scripts/store-frames/check.js` checks every size and position against the standard.
+
+The raw captures and the framed set (`framed/`, with `measure.json`) go to the `appstore-screenshots` branch for
+review; nothing is uploaded. To ship them, copy `framed/*.png` and `framed/measure.json` into
+`appstore/screenshots` on main and run "App Store listing", which checks them again before it uploads.
+
+`appstore/screenshots/` is what "App Store listing" uploads (the lists are in `appstore/metadata.json`):
+- iPhone 6.9" (1320 × 2868): `iphone-1-now.png`, `iphone-2-ten-day.png`, `iphone-3-details.png`,
+  `iphone-4-cities.png`, `iphone-5-widgets.png` (the Home Screen and Lock Screen widgets)
+- iPad 13" (2064 × 2752): `ipad-1-now.png` … `ipad-5-widgets.png`, the same story
+- Mac (2880 × 1800): `mac-1-now.png`, `mac-2-forecast.png`, `mac-3-widgets.png`
+
+The copy never shrinks to fit: copy that is too long is an error, and is rewritten.
