@@ -4,7 +4,9 @@ name: App Store listing
 # promotional text, URLs, copyright, App Review notes, the screenshots in appstore/screenshots, and the
 # build, and App Review's contact (from the APP_REVIEW_PHONE and APP_REVIEW_EMAIL secrets unless given).
 # The Mac is a second platform on the iPhone app's record, with its own version page.
-# Uses the same App Store Connect API key as the TestFlight upload. Run it from the Actions tab.
+# Uses the same App Store Connect API key as the TestFlight upload. Run it from the Actions tab, on main: it uploads
+# only from main. Before anything is uploaded, the screenshots are checked against the Cowdrey family standard
+# (scripts/store-frames/check.js: sizes, opaque RGB, and the type and positions in appstore/screenshots/measure.json).
 on:
   workflow_dispatch:
     inputs:
@@ -49,9 +51,16 @@ permissions:
 
 jobs:
   listing:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check the screenshots against the family standard
+        if: ${{ !inputs.skip_screenshots }}
+        run: node scripts/store-frames/check.js appstore/screenshots appstore/metadata.json
       - name: Fill in the version page
         env:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}

@@ -5,10 +5,13 @@ name: App Store screenshots
 # with the widgets. --store shows the five cities nearest 1 pm local time, sunniest first, so every shot is
 # daytime. The first iPhone launch writes the cities and their forecasts to store-snapshot.json, which every
 # later launch (and the iPad, given a copy) reads instead of fetching, so all the pictures agree.
-# Then frames them on the Cowdrey family standard (design/app-store/store-frame.mjs; the standard is
-# design/app-store/README.md in bradleycowdrey/cowdrey-one) into framed/iphone-1..5.png and ipad-1..5.png.
-# Results go to the appstore-screenshots branch; nothing is uploaded. To use them, copy framed/*.png into
-# appstore/screenshots on main, then run "App Store listing". Run it from the Actions tab.
+# Then builds the Mac app and runs its self-test's App Store pass with the same cities and forecasts (the Mac
+# windows and widgets), and frames everything on the Cowdrey family standard (scripts/store-frames/STANDARD.md,
+# compositor scripts/store-frames/store-frames.js, words in scripts/store-frames/apps/two-degrees.json) into
+# framed/iphone-1..5-*.png, ipad-1..5-*.png and mac-1..3-*.png with measure.json, checked against the standard.
+# Results go to the appstore-screenshots branch for review; nothing is uploaded. To use them, copy framed/*.png
+# and framed/measure.json into appstore/screenshots on main, then run "App Store listing". Run it from the
+# Actions tab.
 on:
   workflow_dispatch:
 
@@ -18,7 +21,7 @@ permissions:
 jobs:
   shots:
     runs-on: macos-15
-    timeout-minutes: 50
+    timeout-minutes: 80
     steps:
       - uses: actions/checkout@v4
         with:
@@ -82,20 +85,37 @@ jobs:
           echo "iPhone: $PHONE  iPad: $PAD"
           shoot "$PHONE" iphone
           [ -n "$PAD" ] && shoot "$PAD" ipad || echo "::warning::No 13-inch iPad Pro simulator; skipped the iPad set"
-          # The widgets on a Home Screen at the iPhone and iPad sizes (the Simulator can't place widgets on its
-          # Home Screen): iphone-5.png and ipad-5.png.
-          python3 -m venv "$RUNNER_TEMP/venv" && "$RUNNER_TEMP/venv/bin/pip" install --quiet pillow numpy
-          "$RUNNER_TEMP/venv/bin/python" scripts/appstore-widgets.py "$OUT"
           for f in "$OUT"/iphone-*.png "$OUT"/ipad-*.png; do [ -f "$f" ] && echo "$(basename "$f"): $(sips -g pixelWidth -g pixelHeight "$f" | awk '/pixel/ {printf "%s ", $2}')"; done
+      - name: Build the Mac app
+        run: scripts/build-app.sh 0.0.0-store
+      - name: Photograph the Mac app
+        run: |
+          # The self-test's App Store pass: the window at 2x (store-1-top, store-2-days, store-3-tiles,
+          # store-5-panel) and the widgets (store-widget-*), with the iPhone's cities and forecasts. (The snapshot
+          # goes in the environment: AppKit would take a file path argument as a document to open.)
+          MAC="$RUNNER_TEMP/shots/mac"; mkdir -p "$MAC"
+          export TWO_DEGREES_STORE_SNAPSHOT="$RUNNER_TEMP/shots/store-snapshot.json"
+          dist/TwoDegrees.app/Contents/MacOS/TwoDegrees --selftest "$MAC" --store > "$MAC/app.log" 2>&1 &
+          PID=$!
+          for i in $(seq 1 420); do [ -f "$MAC/report.txt" ] && break; sleep 1; done
+          sleep 1; kill $PID 2>/dev/null || true
+          grep '^ *store:' "$MAC/report.txt" || { echo "::error::The Mac self-test wrote no App Store pictures"; tail -40 "$MAC/app.log"; exit 1; }
+      - name: Gather the captures
+        run: |
+          python3 -m venv "$RUNNER_TEMP/venv" && "$RUNNER_TEMP/venv/bin/pip" install --quiet pillow
+          "$RUNNER_TEMP/venv/bin/python" scripts/store-frames/prepare-captures.py --ios "$RUNNER_TEMP/shots" \
+            --mac "$RUNNER_TEMP/shots/mac" --out "$RUNNER_TEMP/shots/captures"
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Frame on the family template
+      - name: Frame on the family standard
         run: |
           npm install --no-save playwright@1.56.1
           npx playwright install chromium
-          ONLY=iphone; [ -f "$RUNNER_TEMP/shots/ipad-5.png" ] && ONLY=iphone,ipad
-          node scripts/app-store-screens.mjs --raw="$RUNNER_TEMP/shots" --out="$RUNNER_TEMP/shots/framed" --only=$ONLY
+          ONLY=iphone,mac; [ -f "$RUNNER_TEMP/shots/captures/ipad-4.png" ] && ONLY=iphone,ipad,mac
+          node scripts/store-frames/store-frames.js --config scripts/store-frames/apps/two-degrees.json \
+            --captures "$RUNNER_TEMP/shots/captures" --out "$RUNNER_TEMP/shots/framed" --only $ONLY
+          node scripts/store-frames/check.js "$RUNNER_TEMP/shots/framed" appstore/metadata.json
       - name: Publish to appstore-screenshots branch
         if: always()
         run: |
