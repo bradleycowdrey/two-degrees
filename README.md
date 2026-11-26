@@ -30,6 +30,9 @@ Pick which unit is large; the other always sits right next to it.
 
 ## What's new
 
+- **2.3.6**: a new icon, widgets' "Now" matching the app, Today's icon showing the sky now, readings that never wrap away
+  from their unit. The Android APK is now signed with the Google Play upload key: a copy installed before
+  26 November 2026 must be uninstalled first, as Android won't update over a different key.
 - **2.3.5**: Two Degrees for Mac is on the Mac App Store, and the iPhone app links to it.
 - **2.3.4**: Android widgets like the iPhone's, and iPhone and iPad through TestFlight.
 - **2.3.3**: the app's name back in the Mac header, beside the icon.
@@ -141,7 +144,9 @@ cd android
 It shares the offline city list (`Resources/Cities.tsv`) with the Mac and iPhone apps. Each build on `main` attaches
 `TwoDegrees.apk` to the current release. With the `ANDROID_KEYSTORE_B64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`
 and `ANDROID_KEY_PASSWORD` secrets set, release builds are signed with that key (the same key is needed for updates to
-install over each other, and for Google Play); without them, they're signed with a throwaway debug key.
+install over each other, and for Google Play); without them, they're signed with a throwaway debug key. The key is
+pinned in `android/signing-sha256.txt` (the Google Play upload key since 2.3.6): on `main`, an APK signed with any other
+key is not attached to the release.
 Release builds (a push to `main` that changes `VERSION`) and builds run by hand on `main` also go to Google Play's
 closed test; the store listing is in [`docs/play`](docs/play/README.md).
 
