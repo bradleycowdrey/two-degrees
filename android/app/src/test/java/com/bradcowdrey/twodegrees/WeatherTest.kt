@@ -332,6 +332,50 @@ class WeatherTest {
         assertTrue(bare.steps.isEmpty())
     }
 
+    /**
+     * Open-Meteo sends -0.0 for readings that round to zero (a temperature just below freezing, a north wind).
+     * Android's org.json writes -0.0 as "-0" and reads that back as the integer 0, so a saved forecast came back
+     * different (the emulator self-test's "a forecast saves and reads back unchanged" failed on cold days). The JVM's
+     * org.json reads "-0" correctly, so this test also checks the saved text never holds a bare -0.
+     */
+    @Test fun negativeZeroSavesAndReadsBackUnchanged() {
+        val body = """
+            {"timezone":"America/New_York",
+             "current":{"time":"2026-11-25T07:00","temperature_2m":-0.0,"apparent_temperature":-0.0,"relative_humidity_2m":90,
+                        "weather_code":3,"wind_speed_10m":0.0,"wind_direction_10m":-0.0,"is_day":1,"pressure_msl":1020.0,"cloud_cover":100,
+                        "wind_gusts_10m":-0.0,"visibility":24140,"precipitation":-0.0},
+             "minutely_15":{"time":["2026-11-25T07:00","2026-11-25T07:15"],"precipitation":[-0.0,0.0]},
+             "hourly":{"time":["2026-11-25T07:00","2026-11-25T08:00"],"temperature_2m":[-0.0,0.4],"weather_code":[3,3],
+                       "precipitation_probability":[0,0],"is_day":[1,1],"precipitation":[-0.0,null],"wind_speed_10m":[-0.0,4],
+                       "wind_gusts_10m":[null,9],"visibility":[24140,null],"cloud_cover_low":[-0.0,100]},
+             "daily":{"time":["2026-11-25"],"weather_code":[3],"temperature_2m_max":[3.0],"temperature_2m_min":[-0.0],
+                      "precipitation_probability_max":[0],"sunrise":["2026-11-25T06:58"],"sunset":[null],"uv_index_max":[-0.0],
+                      "precipitation_sum":[-0.0],"rain_sum":[null],"snowfall_sum":[0.0],"wind_speed_10m_max":[12],"wind_gusts_10m_max":[null],
+                      "wind_direction_10m_dominant":[-0.0]}}
+        """.trimIndent()
+        val f = OpenMeteo.decodeForecast(body, fetchedAt = 1_764_000_000_000L)
+        assertEquals((-0.0).toBits(), f.now.temperature.toBits())   // decoded as Open-Meteo sent it
+        val text = Codec.forecast(f).toString()
+        assertNull("a bare -0 reads back as 0 on Android: $text", Regex("""[:\[,]-0(?![.\dEe])""").find(text))
+        val back = Codec.forecast(JSONObject(text))
+        assertEquals(f, back)
+        assertEquals((-0.0).toBits(), back!!.now.temperature.toBits())
+        assertEquals((-0.0).toBits(), back.now.windDirection!!.toBits())
+        assertEquals((-0.0).toBits(), back.hours[0].temperature.toBits())
+        assertEquals((-0.0).toBits(), back.days[0].low.toBits())
+        assertEquals((-0.0).toBits(), back.days[0].uvIndex!!.toBits())
+        assertEquals((-0.0).toBits(), back.steps[0].precipitation.toBits())
+        // Nulls and missing values stay as they were; a plain 0 stays positive.
+        assertNull(back.hours[0].gusts)
+        assertNull(back.hours[1].visibility)
+        assertNull(back.days[0].sunset)
+        assertNull(back.days[0].rainSum)
+        assertEquals(0.0.toBits(), back.days[0].snowfallSum!!.toBits())
+        // Forecasts saved before this fix (zeros as numbers) still load.
+        val old = JSONObject(text.replace("\"-0.0\"", "0"))
+        assertEquals(0.0, Codec.forecast(old)!!.now.temperature, 0.0)
+    }
+
     @Test fun usPlaces() {
         assertTrue(Region.isUS(newYork))
         assertTrue(Region.isUS(City("Denver", "Colorado, United States", 39.74, -104.98)))
