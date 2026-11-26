@@ -1,0 +1,144 @@
+selftest:      screen visible frame 1024x681, version 0.0.0-selftest
+selftest: PASS forecast loaded for New York
+selftest: PASS New York: 24 upcoming hours (got 24)
+selftest: PASS New York: the 10 days the forecast card lists (got 11)
+selftest: PASS New York: plausible temperature 1.6°C
+selftest: PASS New York: every day's low is at or below its high
+selftest: PASS forecast loaded for London
+selftest: PASS London: 24 upcoming hours (got 24)
+selftest: PASS London: the 10 days the forecast card lists (got 11)
+selftest: PASS London: plausible temperature 5.0°C
+selftest: PASS London: every day's low is at or below its high
+selftest: PASS forecast loaded for Tokyo
+selftest: PASS Tokyo: 24 upcoming hours (got 24)
+selftest: PASS Tokyo: the 10 days the forecast card lists (got 11)
+selftest: PASS Tokyo: plausible temperature 12.7°C
+selftest: PASS Tokyo: every day's low is at or below its high
+selftest: PASS New York: the next two hours in 15-minute steps (8)
+selftest: PASS New York: pressure, cloud cover, visibility and today's precipitation arrive
+selftest: PASS New York: the next sunrise or sunset has a colour outlook (Fair: Clear sky: a clean, simple glow.)
+selftest: PASS New York: a day's 24 hours, with wind, for the day detail
+selftest: PASS New York: the 10-day forecast lists ten days on one scale that takes in right now (10 days, 31–57 ⁠° ⁠F)
+selftest: PASS New York: air quality 50 Good (US AQI)
+selftest: PASS New York: normals and records load (normal high 50 ⁠° ⁠F, record from 1999)
+selftest: PASS National Weather Service alerts answer for Denver (0 active)
+selftest: PASS the moon: Waning Gibbous, 95% lit
+selftest: PASS wind in m/s
+selftest: PASS wind follows the larger unit when automatic
+selftest: PASS extraSmall base: window 404x632, panel 404 wide, content 896 tall (scrolls: the panel shows 578), reading ends at 326
+selftest: PASS extraSmall days: window 404x632, panel 404 wide, content 1304 tall (scrolls: the panel shows 578), reading ends at 326
+selftest: PASS extraSmall tiles: window 404x632, panel 404 wide, content 1844 tall (scrolls: the panel shows 578), reading ends at 326
+selftest: PASS extraSmall adding: window 404x632, panel 404 wide, content 962 tall (scrolls: the panel shows 578), reading ends at 392
+selftest: PASS extraSmall editing: window 404x632, panel 404 wide, content 901 tall (scrolls: the panel shows 578), reading ends at 331
+selftest: PASS extraSmall celsius: window 404x632, panel 404 wide, content 896 tall (scrolls: the panel shows 578), reading ends at 326
+selftest: PASS small base: window 448x627, panel 448 wide, content 994 tall (scrolls: the panel shows 566), reading ends at 355
+selftest: PASS small days: window 448x627, panel 448 wide, content 1453 tall (scrolls: the panel shows 566), reading ends at 355
+selftest: PASS small tiles: window 448x627, panel 448 wide, content 2076 tall (scrolls: the panel shows 566), reading ends at 355
+selftest: PASS small adding: window 448x627, panel 448 wide, content 1069 tall (scrolls: the panel shows 566), reading ends at 430
+selftest: PASS small editing: window 448x627, panel 448 wide, content 999 tall (scrolls: the panel shows 566), reading ends at 360
+selftest: PASS small celsius: window 448x627, panel 448 wide, content 994 tall (scrolls: the panel shows 566), reading ends at 355
+selftest: PASS medium base: window 492x620, panel 492 wide, content 1085 tall (scrolls: the panel shows 554), reading ends at 393
+selftest: PASS the panel sits on New York's sky, right to the top edge (top #19294C, sky #141D3B)
+selftest: PASS medium days: window 492x620, panel 492 wide, content 1585 tall (scrolls: the panel shows 554), reading ends at 393
+selftest: PASS medium tiles: window 492x620, panel 492 wide, content 2238 tall (scrolls: the panel shows 554), reading ends at 393
+selftest: PASS medium adding: window 492x620, panel 492 wide, content 1167 tall (scrolls: the panel shows 554), reading ends at 475
+selftest: PASS medium editing: window 492x620, panel 492 wide, content 1091 tall (scrolls: the panel shows 554), reading ends at 399
+selftest: PASS medium celsius: window 492x620, panel 492 wide, content 1085 tall (scrolls: the panel shows 554), reading ends at 393
+selftest: PASS large base: window 551x612, panel 551 wide, content 1221 tall (scrolls: the panel shows 538), reading ends at 440
+selftest: PASS large days: window 551x612, panel 551 wide, content 1782 tall (scrolls: the panel shows 538), reading ends at 440
+selftest: PASS large tiles: window 551x612, panel 551 wide, content 2516 tall (scrolls: the panel shows 538), reading ends at 440
+selftest: PASS large adding: window 551x612, panel 551 wide, content 1313 tall (scrolls: the panel shows 538), reading ends at 532
+selftest: PASS large editing: window 551x612, panel 551 wide, content 1228 tall (scrolls: the panel shows 538), reading ends at 447
+selftest: PASS large celsius: window 551x612, panel 551 wide, content 1221 tall (scrolls: the panel shows 538), reading ends at 440
+selftest: PASS extraLarge base: window 619x604, panel 619 wide, content 1380 tall (scrolls: the panel shows 520), reading ends at 500
+selftest: PASS extraLarge days: window 619x604, panel 619 wide, content 2003 tall (scrolls: the panel shows 520), reading ends at 500
+selftest: PASS extraLarge tiles: window 619x604, panel 619 wide, content 2837 tall (scrolls: the panel shows 520), reading ends at 500
+selftest: PASS extraLarge adding: window 619x604, panel 619 wide, content 1484 tall (scrolls: the panel shows 520), reading ends at 604
+selftest: PASS extraLarge editing: window 619x604, panel 619 wide, content 1388 tall (scrolls: the panel shows 520), reading ends at 508
+selftest: PASS extraLarge celsius: window 619x604, panel 619 wide, content 1380 tall (scrolls: the panel shows 520), reading ends at 500
+selftest: PASS unit toggles to °C
+selftest: PASS unit toggles back to °F
+selftest: PASS select New York
+selftest: PASS select London
+selftest: PASS select Tokyo
+selftest: PASS city search finds Denver (Colorado, United States)
+selftest: PASS offline city search: 34191 cities bundled, finds Denver (Colorado, United States)
+selftest: PASS add Denver and select it
+selftest: PASS forecast loads for added city
+selftest: PASS adding the same city twice doesn't duplicate it
+selftest: PASS remove Denver
+selftest: PASS a widget for Tokyo opens Tokyo
+selftest: PASS a widget for a city not in the list adds it and opens it
+selftest: PASS city limit is 20
+selftest: PASS test cities removed
+selftest: PASS position left: x 16 expected 16, top 727 expected 727
+selftest: PASS position center: x 266 expected 266, top 727 expected 727
+selftest: PASS position right: x 516 expected 516, top 727 expected 727
+selftest: PASS update check finds the latest release (2.3.6; phase available)
+selftest: FAIL update download, checksum and unpack: FAIL The release has no checksum to verify the download against, so it wasn’t installed.
+selftest: PASS Dock tile renders 35°F / 2°C (dock-tile.png)
+selftest: PASS Dock tile renders -10°F / -23°C (dock-tile-negative.png)
+selftest: PASS Dock tile renders 105°F / 41°C (dock-tile-105F.png)
+selftest: PASS small widget renders
+selftest: PASS small widget (offline) renders
+selftest: PASS medium widget renders
+selftest: PASS medium widget (offline) renders
+selftest: PASS large widget renders
+selftest: PASS large widget (offline) renders
+selftest: PASS widget setting reads back for São Paulo
+selftest: PASS widget setting reads back for Pipe | Town
+selftest: PASS widget search under two letters shows the suggestions
+selftest: PASS widget search finds Denver: Denver, Colorado, United States
+selftest: PASS widget loads Denver after picking it (0.8 s)
+selftest: PASS widget has Denver's numbers within 12 s
+selftest: PASS small widget draws Denver
+selftest: PASS medium widget draws Denver
+selftest: PASS large widget draws Denver
+selftest: PASS widget search finds Sao Paulo: São Paulo, São Paulo, Brazil
+selftest: PASS widget loads São Paulo after picking it (0.2 s)
+selftest: PASS widget has São Paulo's numbers within 12 s
+selftest: PASS small widget draws São Paulo
+selftest: PASS medium widget draws São Paulo
+selftest: PASS large widget draws São Paulo
+selftest: PASS widget search finds Zürich: Zurich, Canton of Zurich, Switzerland
+selftest: PASS widget loads Zurich after picking it (0.5 s)
+selftest: PASS widget has Zurich's numbers within 12 s
+selftest: PASS small widget draws Zurich
+selftest: PASS medium widget draws Zurich
+selftest: PASS large widget draws Zurich
+selftest: PASS widget search finds Reykjavík: Reykjavik, Capital Region, Iceland
+selftest: PASS widget loads Reykjavik after picking it (0.2 s)
+selftest: PASS widget has Reykjavik's numbers within 12 s
+selftest: PASS small widget draws Reykjavik
+selftest: PASS medium widget draws Reykjavik
+selftest: PASS large widget draws Reykjavik
+selftest: PASS widget offline with nothing saved says it couldn't load (not blank) and retries within 5 minutes
+selftest: PASS small widget draws the couldn't-load message
+selftest: PASS medium widget draws the couldn't-load message
+selftest: PASS large widget draws the couldn't-load message
+selftest: PASS app registers its own build with LaunchServices
+selftest: PASS terms: a first launch hasn't agreed yet, so it asks
+selftest: PASS terms: the dialog offers I Agree, Read the Terms and Quit (I Agree, Read the Terms, Quit)
+selftest: PASS terms: the dialog names the terms page and where locations go
+selftest: PASS terms: I Agree is remembered, so it isn't asked again
+selftest: PASS terms: a change within a month of agreeing waits (at most one ask a month)
+selftest: PASS terms: after the terms change, and a month on, it asks again
+selftest: PASS menu bar panel opens centred under its item: item centre 762, panel 517–1009 (centre 763), expected left 517
+selftest: PASS update fallback reads the version from the release page
+selftest: PASS version comparison
+selftest: PASS 10-day scale stretches to take in right now (got 10.0 to 25.0)
+selftest:      store: Tokyo, Mumbai, Dubai, Bangkok, Singapore
+selftest:      store: Tokyo day, code 0
+selftest:      store: Mumbai day, code 0
+selftest:      store: Dubai day, code 0
+selftest:      store: Bangkok day, code 1
+selftest:      store: Singapore day, code 3
+selftest:      store: store-1-top.png 984x1240
+selftest:      store: store-2-days.png 984x1240
+selftest:      store: store-3-tiles.png 984x1240
+selftest:      store: store-5-panel.png (Mumbai) 984x1240
+selftest:      store: store-5-dock.png rendered
+selftest:      store: store-dock.png rendered
+selftest:      store: store-widget-small.png rendered
+selftest:      store: store-widget-medium.png rendered
+selftest:      store: store-widget-large.png rendered
