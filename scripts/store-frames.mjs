@@ -5,11 +5,12 @@
 // The iPhone and iPad sets are framed by scripts/app-store-screens.mjs with the same template.
 //
 //   python3 scripts/make-store-screenshots.py <raw> --mac <rawmac> --screens <dir> --only mac
-//       the app's windows and widgets at 2x (mac-N-*.png) and the menu bar's reading and clock (mac.json)
+//       the app's windows and widgets at 2x (mac-N-*.png) and the menu bar's reading (mac.json)
 //   node scripts/store-frames.mjs --screens <dir> [--out appstore/screenshots]   mac-1..5.png (2880 x 1800 RGB)
 //
 // Everything on the desktop is in points (1512 x 982, drawn at 2x); the captures are 2x, so each is shown at half
-// its pixel size: the app's real size on a 14" MacBook Pro.
+// its pixel size: the app's real size on a 14" MacBook Pro (the menu bar panel, 492 pt wide, is enlarged 1.5x so
+// it reads). The clock is the template's one family clock (MAC_CLOCK); the menu bar's reading comes from mac.json.
 import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
@@ -47,7 +48,7 @@ const piece = (name) => fs.readFileSync(path.join(SCREENS, `${name}.png`));
 const size = (buf) => [buf.readUInt32BE(16) / 2, buf.readUInt32BE(20) / 2]; // 2x pixels -> points
 const meta = JSON.parse(fs.readFileSync(path.join(SCREENS, 'mac.json'), 'utf8'));
 const [DW, DH] = MACBOOK.desktop, BAR = MACBOOK.menuBar;
-const base = { theme: THEME, app: 'Two Degrees', clock: meta.clock, menuExtra: { text: meta.reading, icon: 'sun' }, fonts: FONTS };
+const base = { theme: THEME, app: 'Two Degrees', menuExtra: { text: meta.reading, icon: 'sun' }, fonts: FONTS };
 const WIDGET_R = 28; // the widget renders' own continuous corners, in points
 
 // One app window, as the app draws it (its own title bar, so macOS's traffic lights over it), centred.
@@ -119,14 +120,16 @@ const toward = (c, t, r) => { const dx = t[0] - c[0], dy = t[1] - c[1], n = Math
 // mac-5: the menu-bar extra with its panel open under it, and the Dock with the app's live tile; two round
 // magnifiers show each at 2.4x, drawn from the template's own menu bar and Dock, with a leader to each.
 async function menuBarScreen(browser) {
-  const panel = piece('mac-5-panel'), [pw, ph] = size(panel), dock = { icon: piece('mac-5-dock') };
+  // The panel is 492 pt wide, too small to read at its real size, so it is shown at 1.5x (the template allows a
+  // window under 600 pt to be enlarged up to 1.5x); pw, ph are its enlarged box.
+  const panel = piece('mac-5-panel'), [w0, h0] = size(panel), K = 1.5, [pw, ph] = [w0 * K, h0 * K], dock = { icon: piece('mac-5-dock') };
   const plain = { ...base, dock };
   const at = await measure(browser, plain);
   const ex = at.extra.x + at.extra.w / 2;
   // The panel hangs under the menu bar just left of the extra, so the extra's leader runs clear of it.
   const px = Math.round(ex - 24 - pw), py = BAR + 8;
   const d = 220, k = 2.2;
-  const c1 = [DW - 140, 300], c2 = [330, 640];
+  const c1 = [DW - 140, 300], c2 = [270, 660]; // c2 clear of the enlarged panel's left edge
   const tile = [at.dock.x + at.dock.w / 2, at.dock.y + at.dock.h / 2];
   const t1 = 80; // the menu bar's magnifier shows the bezel's black above the bar, as the screen's edge is
   const v1 = await magnify(browser, plain, ex, d / k / 2 - t1 / k, d, k, t1);
@@ -135,7 +138,7 @@ async function menuBarScreen(browser) {
   const lines = await leaders(browser, [[toward(c1, [ex, BAR], d / 2), [ex, BAR - 2]], [toward(c2, [tile[0], at.dock.y], d / 2), [tile[0] - 6, at.dock.y + 4]]]);
   return {
     dock,
-    windows: [{ png: panel, x: px, y: py, w: pw, h: ph, chrome: 'none' }],
+    windows: [{ png: panel, x: px, y: py, w: w0, h: h0, chrome: 'none', scale: K }],
     extras: [{ png: lines, x: 0, y: 0, w: DW, h: DH, radius: 0 },
       { png: L1, x: c1[0] - d / 2, y: c1[1] - d / 2, w: d, h: d, radius: d / 2 },
       { png: L2, x: c2[0] - d / 2, y: c2[1] - d / 2, w: d, h: d, radius: d / 2 }],

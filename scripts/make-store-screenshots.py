@@ -1605,13 +1605,14 @@ def mac_days(load):
 
 def mac_tiles(load):
     """mac-3's window: the toolbar, then Visibility / Precipitation (edges 518..837) and Cloud cover / Moon
-    (858..1230), 21 rows apart as in the app, and the window's own margin under them. Air quality and Averages
+    (858..1230, its rounded foot ending at 1232), 21 rows apart as in the app, and the window's own background
+    under them for 32 rows (16 pt, the app's side margin), so the last cards don't sit on the window's edge. Air quality and Averages
     (its '7° above normal' carries no unit) are left out; the secondary units are raised to near-white."""
     a = arr(load("store-3-tiles.png"))
     whiten(a, (54, 678, 162, 716), 0.94, 0.3)          # 29 km
     whiten(a, (508, 678, 724, 721), 0.94, 0.3)         # 0.0 mm today
     B = sky_of(a, 12, a.shape[0])
-    H = 144 + (837 - 518 + 1) + 21 + (1230 - 858 + 1) + 10
+    H = 144 + (837 - 518 + 1) + 21 + (1232 - 858 + 1) + 32
     out = a[:H].copy()
     Bd = B[:H]
     fill(out, Bd, 136, H)
