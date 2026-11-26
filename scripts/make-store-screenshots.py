@@ -1604,19 +1604,21 @@ def mac_days(load):
 
 
 def mac_tiles(load):
-    """mac-3's window: the toolbar, then Visibility / Precipitation (edges 518..837) and Cloud cover / Moon
-    (858..1230, its rounded foot ending at 1232), 21 rows apart as in the app, and the window's own background
-    under them for 32 rows (16 pt, the app's side margin), so the last cards don't sit on the window's edge. Air quality and Averages
-    (its '7° above normal' carries no unit) are left out; the secondary units are raised to near-white."""
+    """mac-3's window: the toolbar, then all three rows of tiles as the app lays them out: Air quality / Averages
+    (edges 145..497; Averages gives the normal high and low in °F and °C), Visibility / Precipitation (518..837)
+    and Cloud cover / Moon (858..1230, its rounded foot ending at 1232), 21 rows apart as in the app, and the
+    window's own background under them for 32 rows (16 pt, the app's side margin), so the last cards don't sit on
+    the window's edge. The secondary units are raised to near-white."""
     a = arr(load("store-3-tiles.png"))
-    whiten(a, (54, 678, 162, 716), 0.94, 0.3)          # 29 km
+    whiten(a, (54, 678, 162, 716), 0.94, 0.3)          # 51 km
     whiten(a, (508, 678, 724, 721), 0.94, 0.3)         # 0.0 mm today
+    H = 144 + (497 - 145 + 1) + 21 + (837 - 518 + 1) + 21 + (1232 - 858 + 1) + 32
+    a = arr(pad_bottom(from_arr(a), max(0, H - a.shape[0])))
     B = sky_of(a, 12, a.shape[0])
-    H = 144 + (837 - 518 + 1) + 21 + (1232 - 858 + 1) + 32
     out = a[:H].copy()
     Bd = B[:H]
     fill(out, Bd, 136, H)
-    stack(out, Bd, 144, [(a, B, 518, 837), (a, B, 858, 1230)], 21, H)
+    stack(out, Bd, 144, [(a, B, 145, 497), (a, B, 518, 837), (a, B, 858, 1230)], 21, H)
     return from_arr(out)
 
 
@@ -1686,6 +1688,7 @@ MENU_H = 48
 # The Mac menu bar's reading and date come from the captures' store-snapshot.json (the hero city, as the app's
 # menu-bar extra shows it), so they match every screen. Set by main(); the defaults are only placeholders.
 MENU_READING = "93° · 34°"
+MENU_READING2 = MENU_READING   # mac-5: the second city's, chosen in the menu bar panel (the item follows it)
 MENU_CLOCK = "Tue Nov 24  9:41 AM"
 
 
@@ -1696,21 +1699,30 @@ def app_round(v):
 
 
 def read_menu_bar(raw):
-    """Sets MENU_READING and MENU_CLOCK from raw/store-snapshot.json: the first city's reading in °F and °C, and
-    the day the forecast was fetched (Swift dates count seconds from 2001-01-01 UTC)."""
-    global MENU_READING, MENU_CLOCK
+    """Sets MENU_READING, MENU_READING2 and MENU_CLOCK from raw/store-snapshot.json: the first and second cities'
+    readings in °F and °C, and the clock: the first city's local time as its window shows it ('Japan · 1:30 PM';
+    the app keeps each city's times as wall-clock time stored as GMT, in seconds from 2001-01-01), formatted like
+    the template's MAC_CLOCK, so the menu bar never contradicts the app."""
+    global MENU_READING, MENU_READING2, MENU_CLOCK
     import datetime
     import json
     path = os.path.join(raw, "store-snapshot.json")
     if not os.path.exists(path):
         return
     snap = json.load(open(path))
-    c = snap["cities"][0]
-    f = snap["forecasts"]["%.2f,%.2f" % (c["latitude"], c["longitude"])]
-    t = f["now"]["temperature"]
-    MENU_READING = f"{app_round(t * 9 / 5 + 32)}° · {app_round(t)}°"
-    day = datetime.datetime(2001, 1, 1) + datetime.timedelta(seconds=f["fetchedAt"])
-    MENU_CLOCK = f"{day:%a %b} {day.day}  9:41 AM"
+
+    def city(c):
+        return snap["forecasts"]["%.2f,%.2f" % (c["latitude"], c["longitude"])]
+
+    def reading(c):
+        t = city(c)["now"]["temperature"]
+        return f"{app_round(t * 9 / 5 + 32)}° · {app_round(t)}°"
+
+    cities = snap["cities"]
+    MENU_READING = reading(cities[0])
+    MENU_READING2 = reading(cities[1]) if len(cities) > 1 else MENU_READING
+    t = datetime.datetime(2001, 1, 1) + datetime.timedelta(seconds=city(cities[0])["now"]["time"])
+    MENU_CLOCK = f"{t:%a %b} {t.day}  {(t.hour - 1) % 12 + 1}:{t:%M %p}"
 
 
 def menu_bar(p, extra_open=False, s=1.0):
@@ -2004,12 +2016,19 @@ def mac_pieces(load, raw):
     """For the family template (scripts/store-frames.mjs lays them out on the master's desktop() and MacBook): the
     app's real windows and widgets at 2x, as they are, with no frame, shadow or desktop of ours. mac-1..3-window are
     the hero, the 10-day card and the tiles (the overlay scroller out); mac-4-* the widgets (Tokyo large, medium,
-    small; Mumbai small and large); mac-5-panel is the menu bar panel (the hero again) and mac-5-dock the app's live
-    Dock tile. mac.json carries the menu bar's reading and clock (from the captures' store-snapshot.json)."""
+    small; Mumbai small and large); mac-5-panel is the menu bar panel with the second city chosen (store-5-panel,
+    cropped and treated as mac-1's window) and mac-5-dock that city's live Dock tile (store-5-dock), as the menu bar
+    item and the Dock follow the chosen city; without those captures, the hero again. mac.json carries the menu
+    bar's readings and clock (from the captures' store-snapshot.json)."""
     w = mac_widgets(load, raw)
     out = {f"mac-{i + 1}-window": scroller_out(f(load)) for i, f in enumerate((mac_hero, mac_days, mac_tiles))}
+    try:
+        panel = scroller_out(mac_hero(lambda n: load("store-5-panel.png" if n == "store-1-top.png" else n)))
+        dock = load("store-5-dock.png")
+    except (FileNotFoundError, OSError, subprocess.CalledProcessError):
+        panel, dock = out["mac-1-window"], load("store-dock.png")
     out.update({"mac-4-large": w["L"], "mac-4-medium": w["M"], "mac-4-small": w["S"], "mac-4-small2": w["mS"],
-                "mac-4-large2": w["mL"], "mac-5-panel": out["mac-1-window"], "mac-5-dock": load("store-dock.png")})
+                "mac-4-large2": w["mL"], "mac-5-panel": panel, "mac-5-dock": dock})
     return out
 
 
@@ -2163,7 +2182,7 @@ def main():
                 im.save(path)
                 print(path, im.size)
             with open(os.path.join(a.screens, "mac.json"), "w") as f:
-                json.dump({"reading": MENU_READING, "clock": MENU_CLOCK}, f)
+                json.dump({"reading": MENU_READING, "reading5": MENU_READING2, "clock": MENU_CLOCK}, f)
         sets = [("iphone", lambda: iphone_set(a.raw, True)), ("ipad", lambda: ipad_set(a.raw, True))]
         for name, make in sets:
             if name in only:

@@ -10,8 +10,10 @@
 //
 // Everything on the desktop is in points (1512 x 982, drawn at 2x); the captures are 2x, so each is shown at half
 // its pixel size: the app's real size on a 14" MacBook Pro. The app's window and its menu bar panel are 492 pt wide,
-// too small to read at App Store size, so both are enlarged 1.5x (the 10-day window, taller, 1.4x so it fits).
-// The clock is the template's one family clock (MAC_CLOCK); the menu bar's reading comes from mac.json.
+// too small to read at App Store size, so both are enlarged 1.5x (the taller 10-day and tiles windows 1.4x and 1.45x, so they fit).
+// The app's window shows its city's local time ('Japan · 1:30 PM'), so the menu bar's clock is that same time, in
+// MAC_CLOCK's form (the template's one exception to its family clock); it and the menu bar's readings come from
+// mac.json. mac-5's panel has the second city chosen, and the menu-bar item and Dock tile follow it, as in the app.
 import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
@@ -49,14 +51,14 @@ const piece = (name) => fs.readFileSync(path.join(SCREENS, `${name}.png`));
 const size = (buf) => [buf.readUInt32BE(16) / 2, buf.readUInt32BE(20) / 2]; // 2x pixels -> points
 const meta = JSON.parse(fs.readFileSync(path.join(SCREENS, 'mac.json'), 'utf8'));
 const [DW, DH] = MACBOOK.desktop, BAR = MACBOOK.menuBar;
-const base = { theme: THEME, app: 'Two Degrees', menuExtra: { text: meta.reading, icon: 'sun' }, fonts: FONTS };
+const base = { theme: THEME, app: 'Two Degrees', menuExtra: { text: meta.reading, icon: 'sun' }, clock: meta.clock, fonts: FONTS };
 const WIDGET_R = 28; // the widget renders' own continuous corners, in points
 
 // One app window, as the app draws it (its own title bar, so macOS's traffic lights over it), centred. The window is
 // 492 pt wide, too small for its °C figures to read at App Store size, so it is enlarged as the menu bar panel is:
 // 1.5x (the template's limit), or as near as fits below the menu bar with WIN_MARGIN points above and below it
-// (mac-2's 10-day window, 635 pt tall, is shown at 1.4x).
-const WIN_K = 1.5, WIN_MARGIN = 24;
+// (mac-2's 10-day window, 635 pt tall, is shown at 1.4x; mac-3's three rows of tiles, 633 pt, at 1.45x).
+const WIN_K = 1.5, WIN_MARGIN = 16;
 const windowScreen = (name) => {
   const png = piece(name), [w, h] = size(png);
   const scale = Math.min(WIN_K, Math.floor((DH - BAR - 2 * WIN_MARGIN) / h * 20) / 20);
@@ -64,13 +66,16 @@ const windowScreen = (name) => {
 };
 
 // mac-4: the widgets in two balanced columns: Tokyo's large over the two small ones (Tokyo, Mumbai); Tokyo's medium
-// over Mumbai's large.
+// over Mumbai's large. At their real size (364 pt across) they fill under half the screen, so, like the window,
+// they are enlarged (WIDGET_K, within the template's 1.5x for small windows) to fill it with a comfortable margin.
+const WIDGET_K = 1.45;
 function widgetScreen() {
-  const g = 24, [L, M, S, S2, L2] = ['mac-4-large', 'mac-4-medium', 'mac-4-small', 'mac-4-small2', 'mac-4-large2'].map(piece);
-  const [lw, lh] = size(L), [mw, mh] = size(M), [sw, sh] = size(S), [s2w] = size(S2), [l2w, l2h] = size(L2);
+  const k = WIDGET_K, g = 24 * k, [L, M, S, S2, L2] = ['mac-4-large', 'mac-4-medium', 'mac-4-small', 'mac-4-small2', 'mac-4-large2'].map(piece);
+  const sz = (png) => size(png).map((v) => v * k);
+  const [lw, lh] = sz(L), [mw, mh] = sz(M), [sw, sh] = sz(S), [s2w] = sz(S2), [l2w, l2h] = sz(L2);
   const tw = lw + g + mw, th = Math.max(lh + g + sh, mh + g + l2h);
   const x0 = (DW - tw) / 2, y0 = BAR + (DH - BAR - th) / 2, x1 = x0 + lw + g;
-  const w = (png, x, y, ww, hh) => ({ png, x, y, w: ww, h: hh, radius: WIDGET_R });
+  const w = (png, x, y, ww, hh) => ({ png, x, y, w: ww, h: hh, radius: WIDGET_R * k });
   return { extras: [w(L, x0, y0, lw, lh), w(S, x0, y0 + lh + g, sw, sh), w(S2, x0 + lw - s2w, y0 + lh + g, s2w, sh),
     w(M, x1, y0, mw, mh), w(L2, x1, y0 + mh + g, l2w, l2h)] };
 }
@@ -129,10 +134,13 @@ const toward = (c, t, r) => { const dx = t[0] - c[0], dy = t[1] - c[1], n = Math
 // mac-5: the menu-bar extra with its panel open under it, and the Dock with the app's live tile; two round
 // magnifiers show each at 2.4x, drawn from the template's own menu bar and Dock, with a leader to each.
 async function menuBarScreen(browser) {
+  // The panel has the second city chosen; the menu-bar item and the Dock tile show the chosen city, as the app does.
+  const mac5 = { menuExtra: { text: meta.reading5 ?? meta.reading, icon: 'sun' } };
   // The panel is 492 pt wide, too small to read at its real size, so it is shown at 1.5x (the template allows a
   // window under 600 pt to be enlarged up to 1.5x); pw, ph are its enlarged box.
   const panel = piece('mac-5-panel'), [w0, h0] = size(panel), K = 1.5, [pw, ph] = [w0 * K, h0 * K], dock = { icon: piece('mac-5-dock') };
-  const plain = { ...base, dock };
+  mac5.dock = dock;
+  const plain = { ...base, ...mac5 };
   const at = await measure(browser, plain);
   const ex = at.extra.x + at.extra.w / 2, er = at.extra.x + at.extra.w;
   // The panel hangs directly under its menu-bar item, as a menu-bar panel does: its right edge under the item's.
@@ -149,7 +157,7 @@ async function menuBarScreen(browser) {
   const L1 = await loupe(browser, v1, d, t1), L2 = await loupe(browser, v2, d);
   const lines = await leaders(browser, [[toward(c1, a1, d / 2), a1], [toward(c2, [tile[0], at.dock.y], d / 2), [tile[0] - 6, at.dock.y + 4]]]);
   return {
-    dock,
+    ...mac5,
     windows: [{ png: panel, x: px, y: py, w: w0, h: h0, chrome: 'none', scale: K }],
     extras: [{ png: lines, x: 0, y: 0, w: DW, h: DH, radius: 0 },
       { png: L1, x: c1[0] - d / 2, y: c1[1] - d / 2, w: d, h: d, radius: d / 2 },
