@@ -406,6 +406,24 @@ enum SelfTest {
             note("store: \(name) \(rep.map { "\($0.pixelsWide)x\($0.pixelsHigh)" } ?? "not captured")")
         }
         shown.wrappedValue = "top"
+        // The menu bar panel's picture: the same top of the page with the second city chosen, so it shows
+        // another city than the window's. The menu bar item and the Dock tile follow the chosen city, so its
+        // Dock tile is rendered too (store-5-dock.png).
+        if picks.count > 1 {
+            store.select(picks[1])
+            try? await Task.sleep(for: .seconds(1.5))
+            let rep = snapshot2x(host: host, dir: dir, name: "store-5-panel.png")
+            note("store: store-5-panel.png (\(picks[1].name)) \(rep.map { "\($0.pixelsWide)x\($0.pixelsHigh)" } ?? "not captured")")
+            if let f = store.forecasts[picks[1].id] {
+                let t = f.now.temperature
+                let dock = render(DockTileView(primary: TempUnit.fahrenheit.value(t), primaryUnit: .fahrenheit,
+                                               secondary: TempUnit.celsius.value(t), code: f.now.code, isDay: f.now.isDay)
+                    .frame(width: 128, height: 128), dir: dir, name: "store-5-dock.png")
+                note("store: store-5-dock.png \(dock ? "rendered" : "blank")")
+            }
+            store.select(picks[0])
+            try? await Task.sleep(for: .seconds(0.5))
+        }
 
         let city = picks[0]
         if let forecast = store.forecasts[city.id] {
