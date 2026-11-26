@@ -93,11 +93,12 @@ The shipped set is made from those captures in two steps:
    changed; the app's own numbers and labels are never edited.
 2. `node scripts/app-store-screens.mjs --raw=DIR` frames the iPhone and iPad screens with
    `design/app-store/store-frame.mjs` (a word-for-word copy of the master), and `node scripts/store-frames.mjs
-   --screens DIR` frames the Mac set.
+   --screens DIR` lays the Mac pieces (`mac-N-*.png`, `mac.json`) on the template's desktop and MacBook.
 
 `appstore/screenshots/` is what "App Store listing" uploads:
 - iPhone 6.9" (1320 × 2868): `iphone-1.png` … `iphone-5.png`
 - iPad 13" (2064 × 2752): `ipad-1.png` … `ipad-5.png` (needed because the app also runs on iPad)
-- Mac (2880 × 1800): `mac-1.png` … `mac-5.png`: the family's type, sizes and colours, with a MacBook instead of
-  the template's window (the Mac app is a 492 pt wide menu bar panel, which doesn't fit its 1180 × 700 pt window).
-  `scripts/store-frame.mjs` is the master template plus that MacBook option (`story.bare`) and the same colours.
+- Mac (2880 × 1800): `mac-1.png` … `mac-5.png`, made as every family app's Mac set: the template's MacBook
+  (`device: 'macbook'`) showing its shared desktop (`desktop()`: wallpaper, menu bar with the app's reading and the
+  clock, Dock on page 5) with the app's real windows and widgets on it at their real size (the 2x captures at half
+  their pixels). `scripts/store-frames.mjs` lays the pages out with the word-for-word master copy.
