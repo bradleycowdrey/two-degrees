@@ -179,29 +179,30 @@ object Codec {
 
     private fun JSONObject.putNum(key: String, value: Double): JSONObject = put(key, num(value))
 
-    /** Optional numbers are left out when missing, so older saved forecasts (without them) read the same way. */
-    private fun JSONObject.putOpt(key: String, value: Double?): JSONObject = if (value != null) putNum(key, value) else this
+    /** Optional numbers are left out when missing, so older saved forecasts (without them) read the same way.
+     *  (Not named putOpt: JSONObject has a member of that name, which would be called instead.) */
+    private fun JSONObject.putOptNum(key: String, value: Double?): JSONObject = if (value != null) putNum(key, value) else this
 
     fun forecast(f: Forecast): JSONObject = JSONObject()
         .put("now", JSONObject()
             .put("time", f.now.time.toString()).putNum("temperature", f.now.temperature).putNum("feelsLike", f.now.feelsLike)
             .putNum("humidity", f.now.humidity).putNum("wind", f.now.wind).put("code", f.now.code).put("isDay", f.now.isDay)
             .put("windDirection", f.now.windDirection?.let(::num) ?: JSONObject.NULL)
-            .putOpt("pressure", f.now.pressure).putOpt("cloudCover", f.now.cloudCover).putOpt("gusts", f.now.gusts)
-            .putOpt("visibility", f.now.visibility).putOpt("precipitation", f.now.precipitation))
+            .putOptNum("pressure", f.now.pressure).putOptNum("cloudCover", f.now.cloudCover).putOptNum("gusts", f.now.gusts)
+            .putOptNum("visibility", f.now.visibility).putOptNum("precipitation", f.now.precipitation))
         .put("hours", JSONArray(f.hours.map {
             JSONObject().put("time", it.time.toString()).putNum("temperature", it.temperature).put("code", it.code)
                 .put("rainChance", it.rainChance).put("isDay", it.isDay)
-                .putOpt("precipitation", it.precipitation).putOpt("wind", it.wind).putOpt("gusts", it.gusts)
-                .putOpt("pressure", it.pressure).putOpt("visibility", it.visibility)
-                .putOpt("cloudLow", it.cloudLow).putOpt("cloudMid", it.cloudMid).putOpt("cloudHigh", it.cloudHigh)
+                .putOptNum("precipitation", it.precipitation).putOptNum("wind", it.wind).putOptNum("gusts", it.gusts)
+                .putOptNum("pressure", it.pressure).putOptNum("visibility", it.visibility)
+                .putOptNum("cloudLow", it.cloudLow).putOptNum("cloudMid", it.cloudMid).putOptNum("cloudHigh", it.cloudHigh)
         }))
         .put("days", JSONArray(f.days.map {
             JSONObject().put("date", it.date.toString()).put("code", it.code).putNum("high", it.high).putNum("low", it.low)
                 .put("rainChance", it.rainChance).put("sunrise", it.sunrise?.toString() ?: JSONObject.NULL)
                 .put("sunset", it.sunset?.toString() ?: JSONObject.NULL).put("uvIndex", it.uvIndex?.let(::num) ?: JSONObject.NULL)
-                .putOpt("precipitationSum", it.precipitationSum).putOpt("rainSum", it.rainSum).putOpt("snowfallSum", it.snowfallSum)
-                .putOpt("windMax", it.windMax).putOpt("gustMax", it.gustMax).putOpt("windDirection", it.windDirection)
+                .putOptNum("precipitationSum", it.precipitationSum).putOptNum("rainSum", it.rainSum).putOptNum("snowfallSum", it.snowfallSum)
+                .putOptNum("windMax", it.windMax).putOptNum("gustMax", it.gustMax).putOptNum("windDirection", it.windDirection)
         }))
         .put("steps", JSONArray(f.steps.map { JSONObject().put("time", it.time.toString()).putNum("precipitation", it.precipitation) }))
         .put("timeZone", f.timeZone).put("fetchedAt", f.fetchedAt)
